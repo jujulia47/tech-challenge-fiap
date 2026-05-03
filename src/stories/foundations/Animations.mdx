@@ -1,0 +1,47 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Animations" />
+
+# Animations
+
+Todas as animações são definidas em `src/styles/globals.css` via `@layer utilities`.
+
+## animate-float
+
+Usada nas páginas "Em breve" e 404.
+
+<div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+  <span className="material-icons" style={{ fontSize: 64, color: '#8B8B8B', fontFamily: "'Material Icons'", animation: 'float 3s ease-in-out infinite' }}>rocket_launch</span>
+  <style>{`
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-12px); }
+      100% { transform: translateY(0px); }
+    }
+  `}</style>
+</div>
+
+```css
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-12px); }
+  100% { transform: translateY(0px); }
+}
+```
+
+## toast-progress
+
+Usada na barra de progresso do Toast — 3 segundos de 100% para 0%.
+
+```css
+.toast-progress {
+  animation: toast-shrink 3s linear forwards;
+}
+@keyframes toast-shrink {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+```

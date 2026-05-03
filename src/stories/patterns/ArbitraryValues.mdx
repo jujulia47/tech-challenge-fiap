@@ -1,0 +1,30 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Patterns/Arbitrary Value Exceptions" />
+
+# Arbitrary Value Exceptions
+
+O projeto proíbe valores arbitrários do Tailwind (ex: `p-[24px]`, `text-[13px]`). As únicas exceções documentadas são:
+
+## Tabela de exceções permitidas
+
+| Valor | Localização | Motivo |
+|---|---|---|
+| `max-w-[1200px]` | `dashboard/layout.tsx` | Sem token DS para max content width |
+| `lg:grid-cols-[1fr_380px]` | `dashboard/page.tsx` | Coluna do extrato precisa de 380px fixo |
+| `min-h-[calc(100vh-96px)]` | `coming-soon/page.tsx` | Viewport menos altura do header |
+| `style={{ fontSize: N }}` | `not-found.tsx`, `coming-soon/page.tsx`, `forgot-password/page.tsx` | Sem token `text-icon-xl` no DS |
+| `style={{ width: N% }}` | `CardInvestments.tsx` | Largura dinâmica da barra de progresso |
+| `style={{ animationDelay }}` | `not-found.tsx` | Offset de animação CSS |
+
+## Regra
+
+Qualquer novo valor arbitrário **deve** ser adicionado a esta tabela com justificativa antes de ser mergeado.
+
+```tsx
+// ❌ Proibido sem justificativa
+<div className="p-[23px]">
+
+// ✅ Permitido se documentado na tabela
+<div className="max-w-[1200px]">
+```

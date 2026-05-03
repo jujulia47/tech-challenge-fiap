@@ -1,0 +1,47 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Breakpoints" />
+
+# Breakpoints & Layout
+
+## Sistema de breakpoints
+
+| Name | Min width | Layout | Nav |
+|---|---|---|---|
+| Mobile (default) | 0px | Single column | `MenuDrawer` overlay |
+| `md` tablet | 768px | Single column | `MenuTabs` horizontal |
+| `lg` desktop | 1024px | Sidebar + main | `MenuSidebar` vertical |
+
+## Desktop layout
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Header (full width, h-24, bg-primary-900)            │
+├──────────────────────────────────────────────────────┤
+│ Container max-w-[1200px] mx-auto px-6 py-6           │
+│ ┌──────────────┬───────────────────────────────────┐ │
+│ │  MenuSidebar │  Grid [1fr_380px]                 │ │
+│ │  w-[180px]   │  ┌──────────┐ ┌───────────────┐  │ │
+│ │  self-stretch│  │ Left col │ │ CardStatement │  │ │
+│ │              │  │ Welcome  │ │               │  │ │
+│ │              │  │ NewTx    │ │               │  │ │
+│ └──────────────┴──┴──────────┴─┴───────────────┘  │ │
+└──────────────────────────────────────────────────────┘
+```
+
+## Nav responsivo
+
+```tsx
+<MenuDrawer className="md:hidden" />
+<MenuTabs className="hidden md:flex lg:hidden" />
+<MenuSidebar className="hidden lg:flex" />
+```
+
+## Responsive card widths
+
+| Breakpoint | Width | Tailwind |
+|---|---|---|
+| Mobile | 312px | `w-[312px] mx-auto` |
+| Tablet | 600px | `md:w-[600px] md:mx-auto` |
+| Desktop | fluid | `lg:w-full` |
+

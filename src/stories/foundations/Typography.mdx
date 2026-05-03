@@ -1,0 +1,56 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Typography" />
+
+# Typography
+
+Font family: **Inter** (todos os pesos). Material Icons usado exclusivamente para ícones.
+
+## Escala tipográfica
+
+<div style={{ fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', gap: 24 }}>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>display — 31px / 400 — Valores de saldo</p>
+    <p style={{ fontSize: 31, fontWeight: 400, margin: 0 }}>R$ 2.500,00</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>heading — 25px / 700 — Títulos de tela</p>
+    <p style={{ fontSize: 25, fontWeight: 700, margin: 0 }}>Extrato</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>label — 20px / 600 — Label "Saldo"</p>
+    <p style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Saldo</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>nav-bold — 18px / 700 — Item ativo no drawer</p>
+    <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Início</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>nav — 18px / 400 — Item inativo no drawer</p>
+    <p style={{ fontSize: 18, fontWeight: 400, margin: 0 }}>Transferências</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>body-semibold — 16px / 600 — Labels de botão</p>
+    <p style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Concluir transação</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>body — 16px / 400 — Corpo de texto</p>
+    <p style={{ fontSize: 16, fontWeight: 400, margin: 0 }}>Depósito realizado com sucesso</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>meta-semibold — 13px / 600 — Mês no extrato</p>
+    <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>Novembro</p>
+  </div>
+  <div>
+    <p style={{ fontSize: 12, color: '#8B8B8B', marginBottom: 4 }}>meta — 13px / 400 — Datas, sub-labels</p>
+    <p style={{ fontSize: 13, fontWeight: 400, margin: 0 }}>18/11/2022</p>
+  </div>
+</div>
+
+## Regras de uso
+
+- Títulos de tela: `text-heading font-bold`
+- Valores de saldo: `text-display font-normal`
+- Labels de botão: `text-body-semibold`
+- Datas e meta: `text-meta`
+- Nunca use tamanhos arbitrários como `text-[13px]`

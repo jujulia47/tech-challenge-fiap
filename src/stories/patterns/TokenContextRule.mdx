@@ -1,0 +1,42 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Patterns/Token Context Rule" />
+
+# Token Context Rule
+
+Os tokens do DS são divididos em dois contextos: **app** (autenticado) e **público** (landing, 404).
+
+## Tokens de app
+
+Usados exclusivamente dentro de `/dashboard/*` e nos modais de autenticação (ModalLogin, ModalCadastro):
+
+`primary-*` · `success` · `accent` · `error` · `surface-card` · `surface-form` · `bg-base`
+
+## Tokens neutros (cross-context)
+
+Permitidos em qualquer contexto:
+
+`text-text-primary` · `text-text-secondary` · `text-inverse` · `bg-inverse` · `surface-modal` · `surface-light` · `surface-dark`
+
+## bg-primary-900 em contexto público
+
+`bg-primary-900` é permitido em `NavbarPublic`, `Footer` e `HeroSection` — decisão de design deliberada para unificar a identidade visual entre contexto público e autenticado.
+
+## Tokens públicos
+
+Usados exclusivamente fora de `/dashboard/*`:
+
+`public-accent`
+
+## Exemplos
+
+```tsx
+// ✅ Correto — token app em dashboard
+<div className="bg-primary-900 text-inverse">Header do app</div>
+
+// ✅ Correto — token neutro em página pública
+<p className="text-text-primary">Texto em qualquer contexto</p>
+
+// ❌ Errado — token app em página pública (exceto modais de auth)
+<div className="bg-surface-card">Card em página pública</div>
+```

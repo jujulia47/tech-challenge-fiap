@@ -1,0 +1,35 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Border & Radius" />
+
+# Border & Radius
+
+## Radius tokens
+
+<div style={{ display: 'flex', gap: 48, flexWrap: 'wrap', fontFamily: 'Inter, sans-serif' }}>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+    <div style={{ width: 120, height: 60, background: '#004D61', borderRadius: 8 }} />
+    <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>radius-md — 8px</p>
+    <p style={{ margin: 0, fontSize: 12, color: '#8B8B8B' }}>rounded-md</p>
+    <p style={{ margin: 0, fontSize: 12, color: '#8B8B8B' }}>Buttons, inputs, dropdowns</p>
+  </div>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
+    <div style={{ width: 120, height: 60, background: '#004D61', borderRadius: 0 }} />
+    <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>radius-none — 0px</p>
+    <p style={{ margin: 0, fontSize: 12, color: '#8B8B8B' }}>rounded-none</p>
+    <p style={{ margin: 0, fontSize: 12, color: '#8B8B8B' }}>Full-bleed cards, Header</p>
+  </div>
+</div>
+
+## Border tokens
+
+| Token | Value | Tailwind | Usage |
+|---|---|---|---|
+| `border-width-1` | 1px | `border` | Input/dropdown stroke |
+| `border-color-default` | `color-primary-900` | `border-primary-900` | Input/dropdown closed |
+| `border-color-focus` | `color-primary-800` | `border-primary-800` | Input focus / Select open state |
+| `border-color-error` | `color-error` | `border-error` | Error state |
+
+## Elevation
+
+O design não usa box shadows. Elevação é transmitida exclusivamente através de contraste de cor de fundo.

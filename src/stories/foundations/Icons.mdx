@@ -1,0 +1,60 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Icons" />
+
+# Icons
+
+O projeto usa exclusivamente **Material Icons**. Nunca use SVGs customizados ou outras bibliotecas.
+
+## Como usar
+
+```tsx
+<span className="material-icons text-icon-sm text-primary-900">
+  menu
+</span>
+```
+
+## Tamanhos
+
+| Token | Size | Tailwind |
+|---|---|---|
+| `text-icon-xs` | 20px | `text-icon-xs` |
+| `text-icon-sm` | 24px | `text-icon-sm` |
+| `text-icon-md` | 32px | `text-icon-md` |
+
+## Ícones usados no projeto
+
+<div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, fontFamily: 'Inter, sans-serif' }}>
+  {[
+    { name: 'menu', usage: 'Hamburguer mobile' },
+    { name: 'close', usage: 'Fechar drawer' },
+    { name: 'visibility', usage: 'Mostrar saldo' },
+    { name: 'visibility_off', usage: 'Ocultar saldo' },
+    { name: 'arrow_drop_down', usage: 'Select fechado' },
+    { name: 'arrow_drop_up', usage: 'Select aberto' },
+    { name: 'edit', usage: 'Editar transação' },
+    { name: 'delete', usage: 'Excluir transação' },
+    { name: 'info', usage: 'Ver detalhes' },
+    { name: 'receipt', usage: 'CardBill' },
+    { name: 'receipt_long', usage: 'Extrato completo' },
+    { name: 'trending_up', usage: 'Investimentos' },
+    { name: 'credit_card', usage: 'Cartões' },
+    { name: 'search_off', usage: '404 page' },
+    { name: 'rocket_launch', usage: 'Em breve' },
+    { name: 'construction', usage: 'Transferências' },
+    { name: 'account_balance_wallet', usage: 'Empréstimo' },
+    { name: 'volunteer_activism', usage: 'Doações' },
+    { name: 'qr_code', usage: 'Pix' },
+    { name: 'security', usage: 'Seguros' },
+    { name: 'smartphone', usage: 'Crédito celular' },
+    { name: 'currency_exchange', usage: 'Câmbio' },
+    { name: 'grid_view', usage: 'Outros serviços' },
+    { name: 'chevron_right', usage: 'Link de navegação' },
+  ].map(({ name, usage }) => (
+    <div key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 90 }}>
+      <span className="material-icons" style={{ fontSize: 32, color: '#004D61', fontFamily: "'Material Icons'" }}>{name}</span>
+      <p style={{ margin: 0, fontSize: 11, color: '#004D61', textAlign: 'center' }}>{name}</p>
+      <p style={{ margin: 0, fontSize: 10, color: '#8B8B8B', textAlign: 'center' }}>{usage}</p>
+    </div>
+  ))}
+</div>

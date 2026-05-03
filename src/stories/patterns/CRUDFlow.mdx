@@ -1,0 +1,58 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Patterns/CRUD Flow" />
+
+# CRUD de Transações
+
+Fluxo completo de criação, leitura, atualização e exclusão de transações.
+
+## Arquitetura
+
+```
+TransactionsContext (src/app/dashboard/context/)
+  ├── transactions: Transaction[]     ← estado global
+  ├── addTransaction()                ← POST /transactions
+  ├── editTransaction()               ← PUT /transactions/:id
+  └── deleteTransaction()             ← DELETE /transactions/:id
+
+json-server (porta 3001)
+  └── db.json → { "transactions": [...] }
+```
+
+## Fluxo de adição
+
+1. Usuário preenche `CardNewTransaction` (tipo, data, valor)
+2. Submit → `addTransaction()` → POST para json-server
+3. Context atualiza `transactions`
+4. Toast de sucesso aparece (3s)
+5. Formulário reseta
+
+## Fluxo de edição
+
+1. Usuário clica em ✏️ em um `TransactionItem`
+2. `ModalEditTransaction` abre pré-preenchido
+3. Submit → `editTransaction()` → PUT para json-server
+4. Context atualiza `transactions`
+5. Toast de sucesso
+
+## Fluxo de exclusão
+
+1. Usuário clica em 🗑️ em um `TransactionItem`
+2. `ModalConfirmDelete` abre para confirmação
+3. Confirmar → `deleteTransaction()` → DELETE para json-server
+4. Context atualiza `transactions`
+5. Toast de sucesso
+
+## Fluxo de visualização de detalhes
+
+1. Usuário clica em ℹ️ em um `TransactionItem`
+2. `ModalTransactionDetail` abre com todos os dados
+3. Do modal, pode ir para editar ou excluir
+
+## Ordenação
+
+Transações são exibidas com as mais recentes primeiro via `groupByMonth()` que faz `.reverse()` antes de agrupar.
+
+## Limite na home
+
+`CardStatement` na home recebe `limit={4}` — exibe apenas as 4 mais recentes. Link "Ver extrato completo →" aponta para `/dashboard/statement`.

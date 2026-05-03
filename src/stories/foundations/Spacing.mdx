@@ -1,0 +1,47 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Spacing" />
+
+# Spacing
+
+Base unit: **8px**. Todos os espaçamentos devem ser múltiplos dessa base.
+
+## Tokens de espaçamento
+
+<div style={{ fontFamily: 'Inter, sans-serif', display: 'flex', flexDirection: 'column', gap: 16 }}>
+  {[
+    { label: 'Tight inner gap / icon padding', value: '8px', tw: 'gap-2, p-2' },
+    { label: 'Item gap / inner padding', value: '16px', tw: 'gap-4, p-4' },
+    { label: 'Page horizontal padding (mobile)', value: '24px', tw: 'px-6' },
+    { label: 'Section gap / card margin', value: '32px', tw: 'gap-8, mt-8' },
+    { label: 'Button height / form field height', value: '48px', tw: 'h-12' },
+    { label: 'Large section gap', value: '64px', tw: 'gap-16' },
+    { label: 'Header height', value: '96px', tw: 'h-24' },
+  ].map(({ label, value, tw }) => (
+    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+      <div style={{ width: parseInt(value), height: 24, background: '#004D61', borderRadius: 4, flexShrink: 0, minWidth: 8 }} />
+      <div>
+        <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{value} — {label}</p>
+        <p style={{ margin: 0, fontSize: 12, color: '#8B8B8B' }}>{tw}</p>
+      </div>
+    </div>
+  ))}
+</div>
+
+## Regra
+
+Nunca use valores arbitrários como `p-[24px]`. Sempre use a classe Tailwind do mapeamento acima.
+
+## Width Tokens
+
+Tokens de largura fixos para componentes específicos. Devem ser usados como classes Tailwind nomeadas (ex: `w-sidebar`), nunca via valor arbitrário (ex: `w-[180px]`).
+
+| Token CSS | Classe Tailwind | Valor | Uso |
+|---|---|---|---|
+| `--width-sidebar` | `w-sidebar` | 180px | MenuSidebar (desktop) |
+| `--width-drawer` | `w-drawer` | 172px | MenuDrawer (mobile) |
+| `--width-card-sm` | `w-card-sm` | 312px | Cards no breakpoint mobile |
+| `--width-card-md` | `w-card-md` | 600px | Cards no breakpoint tablet |
+| `--width-button-md` | `w-button-md` | 250px | Botões em tablet/desktop |
+| `--width-select-sm` | `w-select-sm` | 280px | Select em mobile |
+| `--width-select-md` | `w-select-md` | 355px | Select em tablet/desktop |

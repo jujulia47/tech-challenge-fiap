@@ -1,0 +1,39 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Patterns/Auth Flow" />
+
+# Fluxo de Autenticação
+
+O projeto simula autenticação sem backend real. Os dados do usuário são salvos no `localStorage`.
+
+## Login
+
+1. Usuário clica em "Já tenho conta" na landing page
+2. `ModalLogin` abre com campos: Nome, E-mail, Senha
+3. Submit → salva `{ name, email }` em `localStorage` com a chave `bytebank_user`
+4. Redirect para `/dashboard`
+
+## Leitura dos dados
+
+O hook `useUser()` em `src/hooks/use-user.ts` lê do localStorage:
+
+```ts
+const stored = localStorage.getItem('bytebank_user')
+// → { name: 'Joana da Silva', email: 'joana@email.com' }
+```
+
+Fallback: `{ name: 'Joana', email: '' }`
+
+## Uso do nome
+
+| Local | Formato |
+|---|---|
+| `CardWelcome` | Primeiro nome via `getFirstName(user.name)` |
+| `Header` | Nome completo `user.name` |
+| `CardAccount` | Nome completo + email |
+
+## Simular outro usuário
+
+1. Abrir DevTools → Application → Local Storage
+2. Deletar a chave `bytebank_user`
+3. Fazer login novamente com outro nome

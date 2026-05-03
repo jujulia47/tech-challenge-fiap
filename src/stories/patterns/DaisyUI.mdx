@@ -1,0 +1,47 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Patterns/DaisyUI Integration" />
+
+# DaisyUI Integration
+
+DaisyUI está instalado **apenas para primitivas estruturais**. Todos os estilos visuais vêm do DS.
+
+## Permitido
+
+| Primitiva DaisyUI | Uso |
+|---|---|
+| `drawer` | Disponível para slide-in panels (uso futuro) |
+| `modal` | Estrutura dos modais de transação e auth |
+| `collapse` | Accordion (uso futuro) |
+| `loading` | Spinner (uso futuro) |
+
+> **Nota:** O `MenuDrawer` atual **não usa** a primitiva `drawer` da DaisyUI. Ele implementa o slide-in com CSS custom (`translate-x-0` / `-translate-x-full` + `useState`). A primitiva `drawer` continua disponível no projeto caso seja necessário adotar em futuras implementações.
+
+## Proibido
+
+```tsx
+// ❌ Classes visuais do DaisyUI
+<button className="btn btn-primary">
+<div className="bg-base-100">
+<p className="text-base-content">
+
+// ✅ Correto — DaisyUI estrutural + DS visual (exemplo com modal)
+<div className="modal modal-open" role="dialog">
+  <div className="modal-box bg-surface-modal">
+    {/* conteúdo estilizado com tokens DS */}
+  </div>
+</div>
+```
+
+## Temas
+
+DaisyUI themes estão desabilitados. **DaisyUI v5 + Tailwind v4 usa configuração via `@plugin` no CSS, não via `tailwind.config.ts`.**
+
+A config real está em `src/styles/globals.css`:
+
+```css
+@plugin "daisyui" {
+  themes: false;
+  base: false;
+}
+```

@@ -1,0 +1,53 @@
+import { Meta, ColorPalette, ColorItem } from '@storybook/addon-docs/blocks'
+
+<Meta title="Foundations/Colors" />
+
+# Colors
+
+Todos os tokens de cor do Design System. Nenhum componente pode usar valores hex diretamente — apenas os tokens definidos aqui.
+
+## App Tokens
+
+<ColorPalette>
+  <ColorItem title="primary-900" subtitle="Header, borders, primary fill" colors={{ 'primary-900': '#004D61' }} />
+  <ColorItem title="primary-800" subtitle="Button text on light, input stroke" colors={{ 'primary-800': '#024D60' }} />
+  <ColorItem title="primary-50" subtitle="Card text on dark, light button bg" colors={{ 'primary-50': '#DEE9EA' }} />
+  <ColorItem title="bg-base" subtitle="App background" colors={{ 'bg-base': '#E4EDE3' }} />
+  <ColorItem title="surface-card" subtitle="Statement card, sidebar bg" colors={{ 'surface-card': '#F5F5F5' }} />
+  <ColorItem title="surface-form" subtitle="Form/modal section bg" colors={{ 'surface-form': '#CBCBCB' }} />
+  <ColorItem title="surface-modal" subtitle="Modal panel background" colors={{ 'surface-modal': '#F8F8F8' }} />
+  <ColorItem title="surface-light" subtitle="Landing gradient endpoint" colors={{ 'surface-light': '#F0F0F0' }} />
+  <ColorItem title="surface-dark" subtitle="ProfileMenu dropdown bg" colors={{ 'surface-dark': '#000000' }} />
+  <ColorItem title="success" subtitle="Active nav, confirmation feedback" colors={{ 'success': '#47A138' }} />
+  <ColorItem title="error" subtitle="Form validation errors, destructive states" colors={{ 'error': '#BF1313' }} />
+  <ColorItem title="accent" subtitle="CTA emphasis, hamburger icon" colors={{ 'accent': '#FF5031' }} />
+</ColorPalette>
+
+## Text Tokens
+
+<ColorPalette>
+  <ColorItem title="text-primary" subtitle="Default text, inactive nav labels" colors={{ 'text-primary': '#000000' }} />
+  <ColorItem title="text-secondary" subtitle="Dates, meta labels, disabled states" colors={{ 'text-secondary': '#8B8B8B' }} />
+  <ColorItem title="text-inverse" subtitle="Text on dark backgrounds" colors={{ 'text-inverse': '#FFFFFF' }} />
+</ColorPalette>
+
+## Public Tokens
+
+<ColorPalette>
+  <ColorItem title="public-accent" subtitle="Landing icons, nav links, CTA buttons" colors={{ 'public-accent': '#3AB44A' }} />
+</ColorPalette>
+
+## Chart Tokens
+
+<ColorPalette>
+  <ColorItem title="chart-blue" subtitle="Fundos de investimento" colors={{ 'chart-blue': '#2567F9' }} />
+  <ColorItem title="chart-purple" subtitle="Tesouro Direto" colors={{ 'chart-purple': '#8F3CFF' }} />
+  <ColorItem title="chart-pink" subtitle="Previdência Privada" colors={{ 'chart-pink': '#FF3C82' }} />
+  <ColorItem title="chart-orange" subtitle="Bolsa de Valores" colors={{ 'chart-orange': '#F1823D' }} />
+</ColorPalette>
+
+## Design Decisions
+
+> `color-error` (`#BF1313`) e `color-accent` (`#FF5031`) são tokens separados com papéis semânticos distintos — error sinaliza problema, accent sinaliza ênfase.
+
+> `color-public-nav` foi descontinuado. NavbarPublic e Footer agora usam `color-primary-900` para unificar a identidade visual.

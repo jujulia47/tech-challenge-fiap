@@ -1,0 +1,32 @@
+import { Meta } from '@storybook/addon-docs/blocks'
+
+<Meta title="Patterns/Figma Divergence Rule" />
+
+# Figma Divergence Rule
+
+O Figma é referência visual, não especificação absoluta. Quando há divergência entre o Figma e o DS, o DS prevalece.
+
+## Quando divergir é permitido
+
+1. **Valor não tem token** — use o token mais próximo e documente
+2. **Decisão de design deliberada** — documente com justificativa
+3. **Elemento fora de escopo** — decorações SVG, ilustrações complexas
+
+## Divergências documentadas no projeto
+
+| Componente | Figma | Implementado | Motivo |
+|---|---|---|---|
+| CardWelcome — divider | branco em mobile/tablet, accent no desktop | accent em todos | Padronização visual |
+| CardWelcome — eye icon gap | 25px | gap-6 (24px) | Sem token para 25px |
+| MenuSidebar — active font | 16px/700 | text-body font-bold | Equivalente mais próximo |
+| MenuSidebar — separator width | 34px margin | mx-6 (24px) | Sem token para 34px |
+| Edit/delete icons | No título "Extrato" | Em cada TransactionItem | Decisão de UX |
+| Decorative SVGs | Pixel art nos cards | Não implementado | Fora do escopo |
+
+## Como documentar uma divergência
+
+Ao criar ou editar um componente, se o valor do Figma não tem token DS equivalente:
+
+1. Use o token mais próximo
+2. Adicione comentário no código: `{/* Figma: 25px — usando gap-6 (24px), sem token DS */}`
+3. Registre na tabela acima
