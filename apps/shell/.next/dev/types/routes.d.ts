@@ -5,13 +5,14 @@ type AppRoutes = "/" | "/dashboard" | "/dashboard/account" | "/dashboard/cards" 
 type PageRoutes = never
 type LayoutRoutes = "/" | "/dashboard"
 type RedirectRoutes = never
-type RewriteRoutes = never
+type RewriteRoutes = "/dashboard/[[...path]]" | "/transactions/[[...path]]"
 type Routes = AppRoutes | PageRoutes | LayoutRoutes | RedirectRoutes | RewriteRoutes
 
 
 interface ParamMap {
   "/": {}
   "/dashboard": {}
+  "/dashboard/[[...path]]": { "path"?: string[]; }
   "/dashboard/account": {}
   "/dashboard/cards": {}
   "/dashboard/coming-soon": {}
@@ -20,6 +21,7 @@ interface ParamMap {
   "/dashboard/statement": {}
   "/dashboard/transfers": {}
   "/forgot-password": {}
+  "/transactions/[[...path]]": { "path"?: string[]; }
 }
 
 
