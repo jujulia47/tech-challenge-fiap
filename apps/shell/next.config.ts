@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/dashboard/:path*",
-        destination: "http://localhost:3001/dashboard/:path*",
+        destination: "http://localhost:3003/dashboard/:path*",
       },
       {
         source: "/transactions/:path*",

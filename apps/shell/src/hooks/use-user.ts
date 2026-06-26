@@ -1,25 +1,20 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 
 export interface User {
   name: string
   email: string
 }
 
-const DEFAULT_USER: User = { name: 'Joana', email: '' }
+const DEFAULT_USER: User = { name: '', email: '' }
 
 export function useUser(): User {
-  const [user, setUser] = useState<User>(DEFAULT_USER)
+  const { data: session } = useSession()
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('bytebank_user')
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage is unavailable during SSR; useEffect is the only valid place to read it
-      if (stored) setUser(JSON.parse(stored))
-    } catch {
-      // fallback to default
-    }
-  }, [])
+  if (!session?.user) return DEFAULT_USER
 
-  return user
+  return {
+    name: session.user.name ?? '',
+    email: session.user.email ?? '',
+  }
 }

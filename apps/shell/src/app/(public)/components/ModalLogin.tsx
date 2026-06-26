@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { Link } from '@/components/ui/Link'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,20 +15,32 @@ interface ModalLoginProps {
 
 export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
   const router = useRouter()
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   function handleClose() {
-    setName('')
     setEmail('')
     setPassword('')
+    setError('')
     onClose()
   }
 
-  function handleSubmit(e: React.SubmitEvent ) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    localStorage.setItem('bytebank_user', JSON.stringify({ name, email }))
+    setError('')
+
+    const result = await signIn('credentials', {
+      email,
+      password,
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setError('E-mail ou senha inválidos.')
+      return
+    }
+
     onClose()
     router.push('/dashboard')
   }
@@ -36,21 +49,13 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
     <Modal isOpen={isOpen} onClose={handleClose} title="Login">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-6">
         <Input
-          label="Nome"
-          type="text"
-          placeholder="Joana da Silva"
-          value={name}
-          onChange={setName}
-          required
-          autoFocus
-        />
-        <Input
           label="E-mail"
           type="email"
           placeholder="seu@email.com"
           value={email}
           onChange={setEmail}
           required
+          autoFocus
         />
         <Input
           label="Senha"
@@ -60,6 +65,12 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
           onChange={setPassword}
           required
         />
+
+        {error && (
+          <span className="text-meta text-error" role="alert">
+            {error}
+          </span>
+        )}
 
         <Link href="/forgot-password" context="public" size="meta" className="self-start" onClick={handleClose}>
           Esqueci a senha!
