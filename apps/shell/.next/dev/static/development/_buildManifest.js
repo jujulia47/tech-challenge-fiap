@@ -1,6 +1,7 @@
 self.__BUILD_MANIFEST = {
   "__rewrites": {
-    "afterFiles": [
+    "afterFiles": [],
+    "beforeFiles": [
       {
         "source": "/dashboard/:path*"
       },
@@ -8,7 +9,6 @@ self.__BUILD_MANIFEST = {
         "source": "/transactions/:path*"
       }
     ],
-    "beforeFiles": [],
     "fallback": []
   },
   "sortedPages": [

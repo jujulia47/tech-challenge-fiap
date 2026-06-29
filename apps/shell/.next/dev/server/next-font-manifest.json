@@ -1,25 +1,6 @@
 {
-  "app": {
-    "[project]/apps/shell/src/app/_not-found/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/apps/shell/src/app/dashboard/coming-soon/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/apps/shell/src/app/dashboard/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/apps/shell/src/app/dashboard/statement/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/apps/shell/src/app/dashboard/transfers/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ],
-    "[project]/apps/shell/src/app/page": [
-      "static/media/83afe278b6a6bb3c-s.p.0q-301v4kxxnr.woff2"
-    ]
-  },
-  "appUsingSizeAdjust": true,
+  "app": {},
+  "appUsingSizeAdjust": false,
   "pages": {},
   "pagesUsingSizeAdjust": false
 }
