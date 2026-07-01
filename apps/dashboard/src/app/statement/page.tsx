@@ -57,7 +57,7 @@ export default function StatementPage() {
       <nav aria-label="breadcrumb">
         <ol className="flex items-center gap-2">
           <li>
-            <Link href="/dashboard" className="text-body text-text-secondary hover:text-text-primary transition-colors">
+            <Link href="/" className="text-body text-text-secondary hover:text-text-primary transition-colors">
               Início
             </Link>
           </li>

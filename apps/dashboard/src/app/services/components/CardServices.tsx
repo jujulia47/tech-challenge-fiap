@@ -1,15 +1,15 @@
 import Link from 'next/link'
 
 const SERVICES = [
-  { id: 'emprestimo',      label: 'Empréstimo',       icon: 'account_balance_wallet', href: '/dashboard/coming-soon' },
-  { id: 'meus-cartoes',    label: 'Meus cartões',      icon: 'credit_card',            href: '/dashboard/cards' },
-  { id: 'doacoes',         label: 'Doações',           icon: 'volunteer_activism',     href: '/dashboard/coming-soon' },
-  { id: 'pix',             label: 'Pix',               icon: 'qr_code',                href: '/dashboard/coming-soon' },
-  { id: 'seguros',         label: 'Seguros',           icon: 'security',               href: '/dashboard/coming-soon' },
-  { id: 'credito-celular', label: 'Crédito celular',   icon: 'smartphone',             href: '/dashboard/coming-soon' },
-  { id: 'investimentos',   label: 'Investimentos',     icon: 'trending_up',            href: '/dashboard/investments' },
-  { id: 'extrato',         label: 'Extrato completo',  icon: 'receipt_long',           href: '/dashboard/statement' },
-  { id: 'cambio',          label: 'Câmbio de moeda',   icon: 'currency_exchange',      href: '/dashboard/coming-soon' },
+  { id: 'emprestimo',      label: 'Empréstimo',       icon: 'account_balance_wallet', href: '/coming-soon' },
+  { id: 'meus-cartoes',    label: 'Meus cartões',      icon: 'credit_card',            href: '/cards' },
+  { id: 'doacoes',         label: 'Doações',           icon: 'volunteer_activism',     href: '/coming-soon' },
+  { id: 'pix',             label: 'Pix',               icon: 'qr_code',                href: '/coming-soon' },
+  { id: 'seguros',         label: 'Seguros',           icon: 'security',               href: '/coming-soon' },
+  { id: 'credito-celular', label: 'Crédito celular',   icon: 'smartphone',             href: '/coming-soon' },
+  { id: 'investimentos',   label: 'Investimentos',     icon: 'trending_up',            href: '/investments' },
+  { id: 'extrato',         label: 'Extrato completo',  icon: 'receipt_long',           href: '/statement' },
+  { id: 'cambio',          label: 'Câmbio de moeda',   icon: 'currency_exchange',      href: '/coming-soon' },
 ]
 
 const baseClass = 'flex flex-col items-center gap-2 rounded-md p-4 transition-all bg-surface-card border-2 border-transparent'

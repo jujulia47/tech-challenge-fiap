@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { Link } from '@/components/ui/Link'
 import { Button } from '@/components/ui/Button'
@@ -14,7 +13,6 @@ interface ModalLoginProps {
 }
 
 export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -42,7 +40,8 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
     }
 
     onClose()
-    router.push('/dashboard')
+    await new Promise(resolve => setTimeout(resolve, 500))
+    window.location.href = '/dashboard'
   }
 
   return (

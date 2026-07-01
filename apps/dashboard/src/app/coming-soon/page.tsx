@@ -20,7 +20,7 @@ export default function ComingSoonPage() {
             Em breve ela estará disponível para você.
           </p>
         </div>
-        <Link href="/dashboard">
+        <Link href="/">
           <Button variant="primary" label="Voltar ao início" />
         </Link>
       </div>
@@ -32,10 +32,10 @@ export default function ComingSoonPage() {
         </p>
         <div className="flex flex-col gap-2">
           {[
-            { label: 'Ver meu extrato completo', href: '/dashboard/statement',   icon: 'receipt_long'   },
-            { label: 'Meus investimentos',        href: '/dashboard/investments', icon: 'trending_up'    },
-            { label: 'Meus cartões',              href: '/dashboard/cards',       icon: 'credit_card'    },
-            { label: 'Outros serviços',           href: '/dashboard/services',    icon: 'grid_view'      },
+            { label: 'Ver meu extrato completo', href: '/statement',   icon: 'receipt_long'   },
+            { label: 'Meus investimentos',        href: '/investments', icon: 'trending_up'    },
+            { label: 'Meus cartões',              href: '/cards',       icon: 'credit_card'    },
+            { label: 'Outros serviços',           href: '/services',    icon: 'grid_view'      },
           ].map((item) => (
             <Link
               key={item.href}

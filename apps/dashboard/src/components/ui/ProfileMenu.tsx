@@ -13,8 +13,8 @@ interface ProfileMenuProps {
 }
 
 const NAV_ITEMS = [
-  { label: 'Minha conta',   href: '/dashboard/account' },
-  { label: 'Configurações', href: '/dashboard/coming-soon' },
+  { label: 'Minha conta',   href: '/account' },
+  { label: 'Configurações', href: '/coming-soon' },
 ] as const
 
 export function ProfileMenu({ isOpen, onClose, onLogout, triggerRef, pathname }: ProfileMenuProps) {

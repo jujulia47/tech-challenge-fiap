@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
 export default function TransfersPage() {
-  redirect('/dashboard/coming-soon')
+  redirect('/coming-soon')
 }
