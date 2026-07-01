@@ -63,8 +63,8 @@ export function CardStatement({ groups, onDetail, onEdit, onDelete, limit, showV
 
       {showViewMore && (
         <div className="mt-4 text-center">
-          <Link href="http://localhost:3000/transactions" context="app" size="body">
-            Ver todas as transações →
+          <Link href="/statement" context="app" size="body">
+            Ver extrato completo →
           </Link>
         </div>
       )}
