@@ -33,7 +33,7 @@
   --color-chart-orange: #F1823D;
 
   /* ── Font Family ── */
-  --font-sans: var(--font-inter), sans-serif;
+  --font-sans: 'Inter', sans-serif;
 
   /* ── Border Radius ── */
   --radius-md: 8px;

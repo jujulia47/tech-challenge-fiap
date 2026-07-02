@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 
-const JSON_SERVER_URL = process.env.JSON_SERVER_URL ?? 'http://localhost:3001'
+const API_URL = process.env.NEXTAUTH_API_URL ?? 'http://localhost:3001'
 
 interface MockUser {
   id: string
@@ -31,7 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // Mock validation against the json-server users collection
         const res = await fetch(
-          `${JSON_SERVER_URL}/users?email=${encodeURIComponent(email)}`,
+          `${API_URL}/users?email=${encodeURIComponent(email)}`,
         )
         if (!res.ok) return null
 

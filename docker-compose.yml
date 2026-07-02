@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  json-server:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./apps/shell/db.json:/app/db.json
+    command: npx json-server db.json --port 3001 --host 0.0.0.0
+    ports:
+      - "3001:3001"
+    networks:
+      - bytebank
+
+  shell:
+    build:
+      context: .
+      dockerfile: apps/shell/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+      - NEXT_PUBLIC_API_URL=http://json-server:3001
+      - NEXTAUTH_API_URL=http://json-server:3001
+    depends_on:
+      - json-server
+      - dashboard
+      - transactions
+    networks:
+      - bytebank
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - NEXTAUTH_URL=http://localhost:3003
+      - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+      - NEXT_PUBLIC_API_URL=http://json-server:3001
+    depends_on:
+      - json-server
+    networks:
+      - bytebank
+
+  transactions:
+    build:
+      context: .
+      dockerfile: apps/transactions/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NEXTAUTH_URL=http://localhost:3002
+      - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+      - NEXT_PUBLIC_API_URL=http://json-server:3001
+    depends_on:
+      - json-server
+    networks:
+      - bytebank
+
+networks:
+  bytebank:
+    driver: bridge
