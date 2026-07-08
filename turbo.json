@@ -7,7 +7,15 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "NEXTAUTH_SECRET",
+        "NEXTAUTH_URL",
+        "NEXTAUTH_API_URL",
+        "DASHBOARD_URL",
+        "TRANSACTIONS_URL",
+        "NEXT_PUBLIC_API_URL"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
