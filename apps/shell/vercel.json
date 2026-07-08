@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd ../.. && npx turbo build --filter=@bytebank/shell",
+  "env": {
+    "DASHBOARD_URL": "https://bytebank-dashboard.vercel.app",
+    "TRANSACTIONS_URL": "https://bytebank-transactions.vercel.app"
+  }
+}
