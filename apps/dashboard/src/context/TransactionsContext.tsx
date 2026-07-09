@@ -1,20 +1,28 @@
 'use client'
-
-import { createContext, useContext } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import type { RootState, AppDispatch } from '@/store/store'
+import { addTransaction as addAction, updateTransaction as updateAction, removeTransaction } from '@/store/transactionsSlice'
+import * as api from '@/lib/api/transactions'
 import type { Transaction } from '@/types/transaction'
 
-interface TransactionsContextValue {
-  transactions: Transaction[]
-  loading: boolean
-  addTransaction: (data: Omit<Transaction, 'id'>) => Promise<void>
-  editTransaction: (data: Transaction) => Promise<void>
-  deleteTransaction: (id: string) => Promise<void>
-}
-
-export const TransactionsContext = createContext<TransactionsContextValue | null>(null)
-
 export function useTransactionsContext() {
-  const ctx = useContext(TransactionsContext)
-  if (!ctx) throw new Error('useTransactionsContext must be used inside TransactionsProvider')
-  return ctx
+  const dispatch = useDispatch<AppDispatch>()
+  const { items, loading } = useSelector((s: RootState) => s.transactions)
+
+  async function addTransaction(data: Omit<Transaction, 'id'>) {
+    const created = await api.createTransaction(data)
+    dispatch(addAction(created))
+  }
+
+  async function editTransaction(data: Transaction) {
+    const updated = await api.updateTransaction(data)
+    dispatch(updateAction(updated))
+  }
+
+  async function deleteTransaction(id: string) {
+    await api.deleteTransaction(id)
+    dispatch(removeTransaction(id))
+  }
+
+  return { transactions: items, loading, addTransaction, editTransaction, deleteTransaction }
 }
