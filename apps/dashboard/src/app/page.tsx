@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { CardNewTransaction } from '@/components/dashboard/CardNewTransaction'
+import { CardCharts } from '@/components/dashboard/CardCharts'
 import { CardStatement } from '@/components/dashboard/CardStatement'
 import { ModalConfirmDelete } from '@/components/ui/ModalConfirmDelete'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
@@ -15,6 +16,7 @@ import type { Transaction } from '@/types/transaction'
 
 export default function DashboardPage() {
   const { transactions, loading, deleteTransaction } = useTransactionsContext()
+  console.log('page loading:', loading, 'transactions:', transactions.length)
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
@@ -62,6 +64,7 @@ export default function DashboardPage() {
 
         <div className="flex flex-col gap-4 lg:gap-6">
           <DashboardWelcome />
+          <CardCharts transactions={transactions} />
           <CardNewTransaction
             onSuccess={(msg) => showToast(msg, 'success')}
             onError={(msg) => showToast(msg, 'error')}
