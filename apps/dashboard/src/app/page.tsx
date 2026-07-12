@@ -60,39 +60,33 @@ export default function DashboardPage() {
 
   return (
     <>
-      <div className="w-card-sm mx-auto md:w-card-md lg:w-full flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-6">
-
-        <div className="flex flex-col gap-4 lg:gap-6">
-          <DashboardWelcome />
-          <CardCharts transactions={transactions} />
-          <CardNewTransaction
-            onSuccess={(msg) => showToast(msg, 'success')}
-            onError={(msg) => showToast(msg, 'error')}
-          />
+      <div className="w-card-sm mx-auto md:w-card-md lg:w-full flex flex-col gap-4 lg:gap-6">
+        <DashboardWelcome />
+        <CardCharts transactions={transactions} />
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
+          <div className="flex-1">
+            <CardNewTransaction
+              onSuccess={(msg) => showToast(msg, 'success')}
+              onError={(msg) => showToast(msg, 'error')}
+            />
+          </div>
+          <div className="lg:w-[380px] shrink-0">
+            <CardStatement groups={groups} onDetail={handleDetail} onEdit={handleEdit} onDelete={handleDeleteClick} limit={4} showViewMore />
+          </div>
         </div>
-
-        <CardStatement groups={groups} onDetail={handleDetail} onEdit={handleEdit} onDelete={handleDeleteClick} limit={4} showViewMore />
-
       </div>
-
-      <ModalTransactionDetail
-        transaction={detailTx}
-        onClose={() => setDetailTx(null)}
-      />
-
+      <ModalTransactionDetail transaction={detailTx} onClose={() => setDetailTx(null)} />
       <ModalConfirmDelete
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDeleteConfirm}
         transactionLabel={deletingTx?.label}
       />
-
       <ModalEditTransaction
         transaction={editingTx}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}
       />
-
       <Toast message={toast.message} type={toast.type} visible={toast.visible} />
     </>
   )

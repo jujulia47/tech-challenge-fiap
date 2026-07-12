@@ -14,4 +14,5 @@ export interface Transaction {
   amount: string        
   month: string
   transactionDate?: string
+  attachment?: string
 }

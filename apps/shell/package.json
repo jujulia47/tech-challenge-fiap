@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "api": "json-server --watch db.json --port 3001",
+    "api": "json-server db.json --port 3001",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

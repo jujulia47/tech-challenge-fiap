@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
 import { useTransactionsContext } from '@/context/TransactionsContext'
 import { useToast } from '@/hooks/use-toast'
@@ -21,6 +21,10 @@ export default function StatementPage() {
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterType, setFilterType] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 5
+
+  useEffect(() => { setPage(1) }, [filterType, filterMonth])
 
   const monthOptions = useMemo(() => {
     const months = [...new Set(transactions.map(tx => tx.month))]
@@ -38,7 +42,10 @@ export default function StatementPage() {
     })
   }, [transactions, filterType, filterMonth])
 
-  const groups = groupByMonth(filtered)
+  const allTransactions = filtered
+  const totalPages = Math.ceil(allTransactions.length / PAGE_SIZE)
+  const paginated = allTransactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const paginatedGroups = groupByMonth(paginated)
   const deletingTx = transactions.find(t => t.id === deletingId)
 
   async function handleDeleteConfirm() {
@@ -95,13 +102,13 @@ export default function StatementPage() {
         </div>
       </div>
 
-      <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6">
-        {groups.length === 0 ? (
+      <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6 min-h-[400px]">
+        {paginatedGroups.length === 0 ? (
           <p className="text-body text-text-secondary">
             Nenhuma transação encontrada
           </p>
         ) : (
-          groups.map(group => (
+          paginatedGroups.map(group => (
             <div key={group.month}>
               <p className="text-meta-semibold text-success mb-2">
                 {capitalizeMonth(group.month)}
@@ -123,6 +130,53 @@ export default function StatementPage() {
           ))
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-meta text-text-secondary">
+            Mostrando {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, allTransactions.length)} de {allTransactions.length} transações
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="h-8 px-3 rounded-md text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors"
+            >
+              ‹ Anterior
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+              .reduce<(number | '...')[]>((acc, p, i, arr) => {
+                if (i > 0 && p - (arr[i-1] as number) > 1) acc.push('...')
+                acc.push(p)
+                return acc
+              }, [])
+              .map((p, i) => p === '...' ? (
+                <span key={`ellipsis-${i}`} className="h-8 w-8 flex items-center justify-center text-meta text-text-secondary">...</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={`h-8 w-8 rounded-md text-meta transition-colors ${
+                    page === p
+                      ? 'border border-primary-900 text-primary-900 font-semibold'
+                      : 'text-text-secondary hover:bg-primary-50'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))
+            }
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="h-8 px-3 rounded-md text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors"
+            >
+              Próxima ›
+            </button>
+          </div>
+        </div>
+      )}
 
       <ModalTransactionDetail
         transaction={detailTx}
