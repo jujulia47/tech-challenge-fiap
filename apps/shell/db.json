@@ -56,6 +56,12 @@
       "name": "Júlia Borges",
       "email": "julia@bytebank.com",
       "password": "bytebank123"
+    },
+    {
+      "id": "2",
+      "name": "Test User",
+      "email": "test@bytebank.com",
+      "password": "bytebank123"
     }
   ],
   "$schema": "./node_modules/json-server/schema.json"

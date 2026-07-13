@@ -13,8 +13,8 @@ interface TransactionsContextValue {
 
 export const TransactionsContext = createContext<TransactionsContextValue | null>(null)
 
-export function useTransactionsContext() {
+export function useTransactions() {
   const ctx = useContext(TransactionsContext)
-  if (!ctx) throw new Error('useTransactionsContext must be used inside TransactionsProvider')
+  if (!ctx) throw new Error('useTransactions must be used inside TransactionsProvider')
   return ctx
 }

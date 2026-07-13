@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { useTransactionsContext } from '@/context/TransactionsContext'
+import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
 import { TRANSACTION_OPTIONS } from '@/lib/utils/transactions'
 import type { TransactionType } from '@/types/transaction'
@@ -15,7 +15,7 @@ interface CardNewTransactionProps {
 }
 
 export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionProps) {
-  const { addTransaction } = useTransactionsContext()
+  const { addTransaction } = useTransactions()
   const [type, setType] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [error, setError] = useState('')
