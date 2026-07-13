@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
-import { useTransactionsContext } from '@/context/TransactionsContext'
+import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
 import { TRANSACTION_OPTIONS } from '@/lib/utils/transactions'
 import type { TransactionType } from '@/types/transaction'
@@ -15,7 +15,7 @@ interface CardNewTransactionProps {
 }
 
 export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionProps) {
-  const { addTransaction } = useTransactionsContext()
+  const { addTransaction } = useTransactions()
   const [type, setType] = useState('')
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const { digits, formatted, handleChange, setDigits } = useCurrencyInput()
@@ -44,7 +44,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
     reader.readAsDataURL(file)
   }
 
-  async function handleSubmit(e: React.SubmitEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const newErrors: Record<string, string> = {}
     if (!type) newErrors.type = 'Selecione o tipo de transação'
@@ -97,7 +97,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
           {errors.type && <span className="text-meta text-error">{errors.type}</span>}
           {suggestion && (
             <button type="button" onClick={() => setType(suggestion)}
-              className="text-meta text-accent hover:underline self-start">
+              className="text-meta text-accent hover:underline self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 rounded">
               Sugestão: {suggestion}
             </button>
           )}
@@ -128,7 +128,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
         </div>
 
         <div className="w-full md:w-button-md flex flex-col gap-1">
-          <label className="text-body-semibold text-primary-50">
+          <label htmlFor="attachment-input" className="text-body-semibold text-primary-50">
             Anexo (opcional)
           </label>
           <span className="text-meta text-text-secondary">Máximo 100KB. Formatos: imagem ou PDF</span>
@@ -138,6 +138,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
               {attachmentName || 'Selecionar arquivo'}
             </span>
             <input
+              id="attachment-input"
               type="file"
               accept="image/*,.pdf"
               onChange={handleFileChange}

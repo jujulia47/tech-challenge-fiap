@@ -2,7 +2,7 @@
 
 import '@/styles/globals.css'
 import '@fontsource/inter'
-import '@fontsource/material-icons-outlined'
+import '@fontsource/material-icons'
 import { useState, useEffect, useCallback } from 'react'
 import { SessionProvider } from 'next-auth/react'
 import { Header } from '@/components/layout/Header'
@@ -43,14 +43,9 @@ export default function RootLayout({
 
   return (
     <html lang="pt-BR">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          rel="stylesheet"
-        />
-      </head>
+      <head />
       <body>
-        <SessionProvider>
+        <SessionProvider basePath="/transactions/api/auth">
           <TransactionsContext.Provider
             value={{ transactions, loading, addTransaction, editTransaction, deleteTransaction }}
           >

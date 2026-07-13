@@ -16,7 +16,7 @@ export function Header() {
 
   async function handleLogout() {
     await signOut({ redirect: false })
-    window.location.href = 'http://localhost:3000'
+    window.location.href = process.env.NEXT_PUBLIC_SHELL_URL ?? 'http://localhost:3000'
   }
 
   return (

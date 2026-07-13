@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import type { Transaction } from '@/types/transaction'
 
-interface Props {
+interface CardChartsProps {
   transactions: Transaction[]
 }
 
@@ -18,7 +18,7 @@ function parseBRL(amount: string): number {
   ) || 0
 }
 
-export function CardCharts({ transactions }: Props) {
+export function CardCharts({ transactions }: CardChartsProps) {
   const [periodFilter, setPeriodFilter] = useState<'3m' | '6m' | 'tudo'>('tudo')
   const [typeFilter, setTypeFilter] = useState<string | null>(null)
 
@@ -28,7 +28,10 @@ export function CardCharts({ transactions }: Props) {
   const filteredByPeriod = transactions.filter(tx => {
     if (periodFilter === 'tudo') return true
     const months = periodFilter === '3m' ? 3 : 6
-    const [day, month, year] = (tx.transactionDate ?? tx.date).split('/').map(Number)
+    const parts = (tx.transactionDate ?? tx.date).split('/')
+    if (parts.length !== 3) return false
+    const [day, month, year] = parts.map(Number)
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return false
     const txDate = new Date(year, month - 1, day)
     const cutoff = new Date(today.getFullYear(), today.getMonth() - months, today.getDate())
     return txDate >= cutoff
@@ -65,7 +68,7 @@ export function CardCharts({ transactions }: Props) {
             <button
               key={p}
               onClick={() => setPeriodFilter(p)}
-              className={`px-3 py-1 rounded-md text-meta transition-colors ${
+              className={`px-3 py-1 rounded-md text-meta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 ${
                 periodFilter === p
                   ? 'bg-primary-900 text-inverse'
                   : 'bg-primary-50 text-primary-900 hover:opacity-80'
@@ -78,7 +81,7 @@ export function CardCharts({ transactions }: Props) {
         {typeFilter && (
           <button
             onClick={() => setTypeFilter(null)}
-            className="text-meta text-accent hover:underline"
+            className="text-meta text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
           >
             Limpar filtro: {typeFilter} ×
           </button>
@@ -93,7 +96,7 @@ export function CardCharts({ transactions }: Props) {
               <YAxis tick={{fontSize:11}} width={60} />
               <Tooltip formatter={(v) =>
                 Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} />
-              <Bar dataKey="total" fill="#004D61" radius={[4,4,0,0]} />
+              <Bar dataKey="total" fill={COLORS[0]} radius={[4,4,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -109,8 +112,8 @@ export function CardCharts({ transactions }: Props) {
                 dataKey="value"
                 activeShape={{ outerRadius: 88 }}
                 onClick={(_: unknown, index: number) => {
-                  const tipo = pieData[index]?.name
-                  setTypeFilter(prev => prev === tipo ? null : tipo ?? null)
+                  const type = pieData[index]?.name
+                  setTypeFilter(prev => prev === type ? null : type ?? null)
                 }}
               >
                 {pieData.map((entry, i) => (

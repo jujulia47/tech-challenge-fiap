@@ -4,6 +4,7 @@ import type { Transaction } from '@/types/transaction'
 interface TransactionsState {
   items: Transaction[]
   loading: boolean
+  // error: reserved for future UI error display
   error: string | null
 }
 

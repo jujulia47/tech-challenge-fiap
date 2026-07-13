@@ -1,6 +1,5 @@
 'use client'
 
-import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
@@ -16,37 +15,39 @@ export function MenuSidebar() {
       )}
     >
       <nav className="flex flex-col pt-4">
-        {NAV_ITEMS.map((item, idx) => {
-          const isActive =
-            item.href === '/'
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(item.href + '/')
-          const isLast = idx === NAV_ITEMS.length - 1
+        <ul className="flex flex-col">
+          {NAV_ITEMS.map((item, idx) => {
+            const isActive =
+              item.href === '/'
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(item.href + '/')
+            const isLast = idx === NAV_ITEMS.length - 1
 
-          return (
-            <React.Fragment key={item.href}>
-              <Link
-                href={item.href}
-                className={cn(
-                  'py-4 text-center',
-                  isActive
-                    ? 'text-body font-bold text-success'
-                    : 'text-body text-text-primary hover:bg-text-primary/5 transition-colors',
-                )}
-              >
-                {item.label}
-              </Link>
-              {!isLast && (
-                <div
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
                   className={cn(
-                    'border-t mx-6',
-                    isActive ? 'border-success' : 'border-text-primary',
+                    'block py-4 text-center',
+                    isActive
+                      ? 'text-body font-bold text-success'
+                      : 'text-body text-text-primary hover:bg-text-primary/5 transition-colors',
                   )}
-                />
-              )}
-            </React.Fragment>
-          )
-        })}
+                >
+                  {item.label}
+                </Link>
+                {!isLast && (
+                  <div
+                    className={cn(
+                      'border-t mx-6',
+                      isActive ? 'border-success' : 'border-text-primary',
+                    )}
+                  />
+                )}
+              </li>
+            )
+          })}
+        </ul>
       </nav>
     </aside>
   )

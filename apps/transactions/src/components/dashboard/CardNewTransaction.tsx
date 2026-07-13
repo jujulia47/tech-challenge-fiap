@@ -21,7 +21,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
   const [error, setError] = useState('')
   const { digits, formatted, handleChange, setDigits } = useCurrencyInput()
 
-  async function handleSubmit(e: React.SubmitEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (digits === '0' || !type) {
       setError('Informe o tipo e o valor da transação')

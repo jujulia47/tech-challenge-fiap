@@ -29,7 +29,7 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
     onClose()
   }
 
-  function handleSubmit(e: React.SubmitEvent ) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!termsAccepted) {
       setTermsError('Aceite os termos para continuar')

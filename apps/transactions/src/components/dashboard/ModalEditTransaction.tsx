@@ -34,7 +34,7 @@ export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalE
     setError('')
   }, [transaction, setDigits])
 
-  async function handleSubmit(e: React.SubmitEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!type || digits === '0') {
       setError('Preencha todos os campos')

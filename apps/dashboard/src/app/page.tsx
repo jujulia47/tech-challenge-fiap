@@ -7,7 +7,7 @@ import { CardStatement } from '@/components/dashboard/CardStatement'
 import { ModalConfirmDelete } from '@/components/ui/ModalConfirmDelete'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
-import { useTransactionsContext } from '@/context/TransactionsContext'
+import { useTransactions } from '@/context/TransactionsContext'
 import { groupByMonth } from '@/lib/utils/transactions'
 import { Toast } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/use-toast'
@@ -15,8 +15,7 @@ import { DashboardWelcome } from '@/components/layout/DashboardWelcome'
 import type { Transaction } from '@/types/transaction'
 
 export default function DashboardPage() {
-  const { transactions, loading, deleteTransaction } = useTransactionsContext()
-  console.log('page loading:', loading, 'transactions:', transactions.length)
+  const { transactions, loading, deleteTransaction } = useTransactions()
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)

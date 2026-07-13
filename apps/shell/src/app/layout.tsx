@@ -4,6 +4,7 @@ import '@fontsource/inter'
 import '@fontsource/inter/400.css'
 import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
+import '@fontsource/material-icons'
 import '@/styles/globals.css'
 
 export const metadata: Metadata = {
@@ -18,12 +19,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/icon?family=Material+Icons"
-          rel="stylesheet"
-        />
-      </head>
+      <head />
       <body>
         <SessionProvider>{children}</SessionProvider>
       </body>

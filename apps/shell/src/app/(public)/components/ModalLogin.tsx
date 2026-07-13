@@ -24,7 +24,7 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
     onClose()
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
 
@@ -40,7 +40,6 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
     }
 
     onClose()
-    await new Promise(resolve => setTimeout(resolve, 500))
     window.location.href = '/dashboard'
   }
 

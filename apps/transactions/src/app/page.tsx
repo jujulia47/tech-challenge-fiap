@@ -10,6 +10,7 @@ import { ModalConfirmDelete } from '@/components/ui/ModalConfirmDelete'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
 import { Select } from '@/components/ui/Select'
+import { PaginationControls } from '@/components/PaginationControls'
 import { groupByMonth, capitalizeMonth, TRANSACTION_OPTIONS } from '@/lib/utils/transactions'
 import type { Transaction } from '@/types/transaction'
 
@@ -131,52 +132,13 @@ export default function StatementPage() {
         )}
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <span className="text-meta text-text-secondary">
-            Mostrando {((page - 1) * PAGE_SIZE) + 1}–{Math.min(page * PAGE_SIZE, allTransactions.length)} de {allTransactions.length} transações
-          </span>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage(p => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="h-8 px-3 rounded-md text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors"
-            >
-              ‹ Anterior
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
-              .reduce<(number | '...')[]>((acc, p, i, arr) => {
-                if (i > 0 && p - (arr[i-1] as number) > 1) acc.push('...')
-                acc.push(p)
-                return acc
-              }, [])
-              .map((p, i) => p === '...' ? (
-                <span key={`ellipsis-${i}`} className="h-8 w-8 flex items-center justify-center text-meta text-text-secondary">...</span>
-              ) : (
-                <button
-                  key={p}
-                  onClick={() => setPage(p as number)}
-                  className={`h-8 w-8 rounded-md text-meta transition-colors ${
-                    page === p
-                      ? 'border border-primary-900 text-primary-900 font-semibold'
-                      : 'text-text-secondary hover:bg-primary-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))
-            }
-            <button
-              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="h-8 px-3 rounded-md text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors"
-            >
-              Próxima ›
-            </button>
-          </div>
-        </div>
-      )}
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        totalItems={allTransactions.length}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+      />
 
       <ModalTransactionDetail
         transaction={detailTx}

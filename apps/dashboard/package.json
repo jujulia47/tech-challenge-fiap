@@ -11,6 +11,7 @@
     "@bytebank/design-system": "*",
     "@bytebank/types": "*",
     "@bytebank/utils": "*",
+    "@fontsource/material-icons": "^5.2.7",
     "@reduxjs/toolkit": "^2.12.0",
     "clsx": "^2.1.1",
     "next": "16.2.4",
@@ -23,7 +24,6 @@
   },
   "devDependencies": {
     "@fontsource/inter": "^5.2.8",
-    "@fontsource/material-icons-outlined": "^5.2.6",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

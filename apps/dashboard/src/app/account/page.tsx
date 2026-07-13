@@ -3,6 +3,7 @@ import { CardAccount } from '@/app/account/components/CardAccount'
 export default function AccountPage() {
   return (
     <div className="w-card-sm mx-auto md:w-card-md lg:w-full flex flex-col gap-4">
+      <h1 className="sr-only">Minha conta</h1>
       <CardAccount />
     </div>
   )

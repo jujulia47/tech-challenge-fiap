@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useTransactionsContext } from '@/context/TransactionsContext'
+import { useTransactions } from '@/context/TransactionsContext'
 import { useToast } from '@/hooks/use-toast'
 import { Toast } from '@/components/ui/Toast'
 import { TransactionItem } from '@/components/dashboard/TransactionItem'
@@ -14,7 +14,7 @@ import { groupByMonth, capitalizeMonth, TRANSACTION_OPTIONS } from '@/lib/utils/
 import type { Transaction } from '@/types/transaction'
 
 export default function StatementPage() {
-  const { transactions, deleteTransaction } = useTransactionsContext()
+  const { transactions, deleteTransaction } = useTransactions()
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)

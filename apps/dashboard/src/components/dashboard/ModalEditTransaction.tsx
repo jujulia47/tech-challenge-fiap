@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
-import { useTransactionsContext } from '@/context/TransactionsContext'
+import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
 import { TRANSACTION_OPTIONS } from '@/lib/utils/transactions'
 import type { Transaction, TransactionType } from '@/types/transaction'
@@ -16,7 +16,7 @@ interface ModalEditTransactionProps {
 }
 
 export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalEditTransactionProps) {
-  const { editTransaction } = useTransactionsContext()
+  const { editTransaction } = useTransactions()
   const [type, setType]   = useState('')
   const [error, setError] = useState('')
   const { digits, formatted, handleChange, setDigits } = useCurrencyInput()
@@ -34,7 +34,7 @@ export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalE
     setError('')
   }, [transaction, setDigits])
 
-  async function handleSubmit(e: React.SubmitEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!type || digits === '0') {
       setError('Preencha todos os campos')

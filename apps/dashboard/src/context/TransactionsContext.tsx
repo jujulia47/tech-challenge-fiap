@@ -5,7 +5,7 @@ import { addTransaction as addAction, updateTransaction as updateAction, removeT
 import * as api from '@/lib/api/transactions'
 import type { Transaction } from '@/types/transaction'
 
-export function useTransactionsContext() {
+export function useTransactions() {
   const dispatch = useDispatch<AppDispatch>()
   const { items, loading } = useSelector((s: RootState) => s.transactions)
 

@@ -12,7 +12,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
-    "@fontsource/material-icons-outlined": "^5.2.6",
+    "@fontsource/material-icons": "^5.2.7",
     "clsx": "^2.1.1",
     "next": "16.2.4",
     "next-auth": "^5.0.0-beta.31",

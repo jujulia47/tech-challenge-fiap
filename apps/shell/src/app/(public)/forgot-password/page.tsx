@@ -10,7 +10,7 @@ export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
-  function handleSubmit(e: React.SubmitEvent ) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setSubmitted(true)
   }

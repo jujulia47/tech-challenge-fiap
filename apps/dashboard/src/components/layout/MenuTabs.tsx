@@ -14,7 +14,7 @@ export function MenuTabs() {
         'hidden md:flex lg:hidden bg-bg-base',
       )}
     >
-      <div className="grid grid-cols-4 w-full">
+      <ul className="grid grid-cols-4 w-full">
         {NAV_ITEMS.map((item) => {
           const isActive =
             item.href === '/'
@@ -22,21 +22,22 @@ export function MenuTabs() {
               : pathname === item.href || pathname.startsWith(item.href + '/')
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'py-4 text-center',
-                isActive
-                  ? 'text-nav-bold text-success border-b border-success'
-                  : 'text-body text-text-primary',
-              )}
-            >
-              {item.label}
-            </Link>
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className={cn(
+                  'block py-4 text-center',
+                  isActive
+                    ? 'text-nav-bold text-success border-b border-success'
+                    : 'text-body text-text-primary',
+                )}
+              >
+                {item.label}
+              </Link>
+            </li>
           )
         })}
-      </div>
+      </ul>
     </nav>
   )
 }

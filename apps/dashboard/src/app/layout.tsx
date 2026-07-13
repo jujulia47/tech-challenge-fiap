@@ -1,7 +1,7 @@
 'use client'
 import '@/styles/globals.css'
 import '@fontsource/inter'
-import '@fontsource/material-icons-outlined'
+import '@fontsource/material-icons'
 import { useEffect } from 'react'
 import { useDispatch } from 'react-redux'
 import { SessionProvider } from 'next-auth/react'
@@ -39,11 +39,9 @@ function TransactionsLoader({ children }: { children: React.ReactNode }) {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <head>
-        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-      </head>
+      <head />
       <body>
-        <SessionProvider>
+        <SessionProvider basePath="/dashboard/api/auth">
           <ReduxProvider>
             <TransactionsLoader>{children}</TransactionsLoader>
           </ReduxProvider>

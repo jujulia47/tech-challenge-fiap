@@ -52,28 +52,31 @@ export function MenuDrawer() {
         </button>
 
         <nav>
-          {NAV_ITEMS.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(item.href + '/')
+          <ul>
+            {NAV_ITEMS.map((item) => {
+              const isActive =
+                item.href === '/'
+                  ? pathname === item.href
+                  : pathname === item.href || pathname.startsWith(item.href + '/')
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={cn(
-                  'block py-4 border-b',
-                  isActive
-                    ? 'text-nav-bold text-accent border-success'
-                    : 'text-nav text-text-primary border-text-primary',
-                )}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className={cn(
+                      'block py-4 border-b',
+                      isActive
+                        ? 'text-nav-bold text-accent border-success'
+                        : 'text-nav text-text-primary border-text-primary',
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
         </nav>
       </div>
     </div>
