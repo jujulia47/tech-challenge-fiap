@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import Link from 'next/link'
 import { useTransactions } from '@/context/TransactionsContext'
 import { useToast } from '@/hooks/use-toast'
 import { Toast } from '@/components/ui/Toast'
@@ -76,9 +75,9 @@ export default function StatementPage() {
       <nav aria-label="breadcrumb">
         <ol className="flex items-center gap-2">
           <li>
-            <Link href="http://localhost:3000/dashboard" className="text-body text-text-secondary hover:text-text-primary transition-colors">
+            <a href="/dashboard" className="text-body text-text-secondary hover:text-text-primary transition-colors">
               Início
-            </Link>
+            </a>
           </li>
           <li aria-hidden="true">
             <span className="text-body text-text-secondary">/</span>

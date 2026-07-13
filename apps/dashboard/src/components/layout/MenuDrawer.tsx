@@ -59,20 +59,32 @@ export function MenuDrawer() {
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(item.href + '/')
 
+              const linkClassName = cn(
+                'block py-4 border-b',
+                isActive
+                  ? 'text-nav-bold text-accent border-success'
+                  : 'text-nav text-text-primary border-text-primary',
+              )
+
               return (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className={cn(
-                      'block py-4 border-b',
-                      isActive
-                        ? 'text-nav-bold text-accent border-success'
-                        : 'text-nav text-text-primary border-text-primary',
-                    )}
-                  >
-                    {item.label}
-                  </Link>
+                  {item.external ? (
+                    <a
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      className={linkClassName}
+                    >
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      onClick={() => setIsOpen(false)}
+                      className={linkClassName}
+                    >
+                      {item.label}
+                    </Link>
+                  )}
                 </li>
               )
             })}

@@ -22,20 +22,24 @@ export function MenuSidebar() {
                 ? pathname === item.href
                 : pathname === item.href || pathname.startsWith(item.href + '/')
             const isLast = idx === NAV_ITEMS.length - 1
+            const linkClassName = cn(
+              'block py-4 text-center',
+              isActive
+                ? 'text-body font-bold text-success'
+                : 'text-body text-text-primary hover:bg-text-primary/5 transition-colors',
+            )
 
             return (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'block py-4 text-center',
-                    isActive
-                      ? 'text-body font-bold text-success'
-                      : 'text-body text-text-primary hover:bg-text-primary/5 transition-colors',
-                  )}
-                >
-                  {item.label}
-                </Link>
+                {item.external ? (
+                  <a href={item.href} className={linkClassName}>
+                    {item.label}
+                  </a>
+                ) : (
+                  <Link href={item.href} className={linkClassName}>
+                    {item.label}
+                  </Link>
+                )}
                 {!isLast && (
                   <div
                     className={cn(

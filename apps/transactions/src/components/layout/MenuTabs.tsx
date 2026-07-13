@@ -21,17 +21,19 @@ export function MenuTabs() {
               ? pathname === item.href
               : pathname === item.href || pathname.startsWith(item.href + '/')
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                'py-4 text-center',
-                isActive
-                  ? 'text-nav-bold text-success border-b border-success'
-                  : 'text-body text-text-primary',
-              )}
-            >
+          const linkClassName = cn(
+            'py-4 text-center',
+            isActive
+              ? 'text-nav-bold text-success border-b border-success'
+              : 'text-body text-text-primary',
+          )
+
+          return item.external ? (
+            <a key={item.href} href={item.href} className={linkClassName}>
+              {item.label}
+            </a>
+          ) : (
+            <Link key={item.href} href={item.href} className={linkClassName}>
               {item.label}
             </Link>
           )

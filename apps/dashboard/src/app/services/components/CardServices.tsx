@@ -1,6 +1,16 @@
 import Link from 'next/link'
 
-const SERVICES = [
+interface Service {
+  id: string
+  label: string
+  icon: string
+  href: string
+  // Cross-zone link served under the shell origin — rendered as a plain <a>
+  // (root-relative) so the dashboard basePath is not prepended.
+  external?: boolean
+}
+
+const SERVICES: Service[] = [
   { id: 'emprestimo',      label: 'Empréstimo',       icon: 'account_balance_wallet', href: '/coming-soon' },
   { id: 'meus-cartoes',    label: 'Meus cartões',      icon: 'credit_card',            href: '/cards' },
   { id: 'doacoes',         label: 'Doações',           icon: 'volunteer_activism',     href: '/coming-soon' },
@@ -8,7 +18,7 @@ const SERVICES = [
   { id: 'seguros',         label: 'Seguros',           icon: 'security',               href: '/coming-soon' },
   { id: 'credito-celular', label: 'Crédito celular',   icon: 'smartphone',             href: '/coming-soon' },
   { id: 'investimentos',   label: 'Investimentos',     icon: 'trending_up',            href: '/investments' },
-  { id: 'extrato',         label: 'Extrato completo',  icon: 'receipt_long',           href: '/statement' },
+  { id: 'extrato',         label: 'Extrato completo',  icon: 'receipt_long',           href: '/transactions', external: true },
   { id: 'cambio',          label: 'Câmbio de moeda',   icon: 'currency_exchange',      href: '/coming-soon' },
 ]
 
@@ -22,16 +32,23 @@ export function CardServices() {
       </h2>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        {SERVICES.map((service) => (
-          <Link
-            key={service.id}
-            href={service.href}
-            className={baseClass}
-          >
-            <span className="material-icons text-icon-md text-success">{service.icon}</span>
-            <span className="text-body-semibold text-text-primary text-center">{service.label}</span>
-          </Link>
-        ))}
+        {SERVICES.map((service) => {
+          const content = (
+            <>
+              <span className="material-icons text-icon-md text-success">{service.icon}</span>
+              <span className="text-body-semibold text-text-primary text-center">{service.label}</span>
+            </>
+          )
+          return service.external ? (
+            <a key={service.id} href={service.href} className={baseClass}>
+              {content}
+            </a>
+          ) : (
+            <Link key={service.id} href={service.href} className={baseClass}>
+              {content}
+            </Link>
+          )
+        })}
       </div>
     </div>
   )

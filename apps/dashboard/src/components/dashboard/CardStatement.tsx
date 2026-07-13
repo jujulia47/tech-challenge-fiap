@@ -1,4 +1,3 @@
-import { Link } from '@/components/ui/Link'
 import { TransactionItem } from '@/components/dashboard/TransactionItem'
 import type { Transaction } from '@/types/transaction'
 
@@ -63,9 +62,9 @@ export function CardStatement({ groups, onDetail, onEdit, onDelete, limit, showV
 
       {showViewMore && (
         <div className="mt-4 text-center">
-          <Link href="http://localhost:3000/transactions" context="app" size="body">
+          <a href="/transactions" className="text-success text-body hover:opacity-80 transition-opacity">
             Ver todas as transações →
-          </Link>
+          </a>
         </div>
       )}
     </div>
