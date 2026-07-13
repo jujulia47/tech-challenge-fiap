@@ -1,21 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { useUser } from '@/hooks/use-user'
 
-export function CardAccount() {
-  const user = useUser()
-  const [name, setName]         = useState('')
-  const [email, setEmail]       = useState('')
+interface CardAccountProps {
+  initialName: string
+  initialEmail: string
+}
+
+export function CardAccount({ initialName, initialEmail }: CardAccountProps) {
+  const [name, setName]         = useState(initialName)
+  const [email, setEmail]       = useState(initialEmail)
   const [password, setPassword] = useState('••••••••')
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs local form state with async user data from useUser hook
-    if (user.name) setName(user.name)
-    if (user.email) setEmail(user.email)
-  }, [user.name, user.email])
 
   function handleSave() {
     // Save logic (future step)

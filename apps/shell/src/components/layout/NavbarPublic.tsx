@@ -35,7 +35,7 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
       </Link>
 
       <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
-        <Link href="#sobre" className="text-body text-inverse hover:opacity-80 transition-opacity">
+        <Link href="/sobre" className="text-body text-inverse hover:opacity-80 transition-opacity">
           Sobre
         </Link>
         <Link href="#servicos" className="text-body text-inverse hover:opacity-80 transition-opacity">
@@ -69,7 +69,7 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
           )}
         >
           <Link
-            href="#sobre"
+            href="/sobre"
             className="text-body text-inverse hover:opacity-80"
             onClick={() => setMenuOpen(false)}
           >
