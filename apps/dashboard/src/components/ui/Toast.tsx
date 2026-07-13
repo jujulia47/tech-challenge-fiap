@@ -18,7 +18,7 @@ export function Toast({ message, type, visible }: ToastProps) {
         visible ? 'opacity-100' : 'opacity-0 pointer-events-none',
       )}
       role="alert"
-      aria-live="polite"
+      aria-live="assertive"
     >
       <div className="flex items-center gap-2 p-4">
         <span className="material-icons text-icon-sm">

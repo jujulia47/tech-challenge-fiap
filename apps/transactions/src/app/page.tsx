@@ -22,10 +22,11 @@ export default function StatementPage() {
   const [detailTx, setDetailTx] = useState<Transaction | null>(null)
   const [filterType, setFilterType] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 5
 
-  useEffect(() => { setPage(1) }, [filterType, filterMonth])
+  useEffect(() => { setPage(1); setSearchQuery('') }, [filterType, filterMonth])
 
   const monthOptions = useMemo(() => {
     const months = [...new Set(transactions.map(tx => tx.month))]
@@ -43,7 +44,17 @@ export default function StatementPage() {
     })
   }, [transactions, filterType, filterMonth])
 
-  const allTransactions = filtered
+  const searched = useMemo(() => {
+    if (!searchQuery.trim()) return filtered
+    const query = searchQuery.toLowerCase()
+    return filtered.filter(tx =>
+      tx.label.toLowerCase().includes(query) ||
+      tx.amount.includes(searchQuery) ||
+      tx.date.includes(searchQuery)
+    )
+  }, [filtered, searchQuery])
+
+  const allTransactions = searched
   const totalPages = Math.ceil(allTransactions.length / PAGE_SIZE)
   const paginated = allTransactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const paginatedGroups = groupByMonth(paginated)
@@ -82,7 +93,26 @@ export default function StatementPage() {
         Extrato completo
       </h1>
 
-      <div className="flex flex-col gap-4 md:flex-row md:gap-6">
+      <div className="flex flex-col md:flex-row gap-4 items-end">
+        <div className="flex flex-col gap-1 w-full md:w-select-md">
+          <label className="text-body-semibold text-text-primary">Buscar</label>
+          <div className="relative">
+            <span
+              className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-icon-xs text-text-secondary pointer-events-none"
+              aria-hidden="true"
+            >
+              search
+            </span>
+            <input
+              type="search"
+              placeholder="Buscar transação..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              aria-label="Buscar transações"
+              className="h-12 w-full pl-10 pr-4 rounded-md border border-primary-900 bg-inverse text-body text-primary-800 focus:border-2 focus:border-primary-800 focus:outline-none"
+            />
+          </div>
+        </div>
         <div className="w-full md:w-select-md">
           <Select
             label="Tipo de transação"
@@ -101,6 +131,10 @@ export default function StatementPage() {
             onChange={setFilterMonth}
           />
         </div>
+      </div>
+
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {allTransactions.length} transações encontradas
       </div>
 
       <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6 min-h-[400px]">

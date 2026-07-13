@@ -94,7 +94,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
             value={type}
             onChange={setType}
           />
-          {errors.type && <span className="text-meta text-error">{errors.type}</span>}
+          {errors.type && <span role="alert" aria-live="polite" className="text-meta text-error">{errors.type}</span>}
           {suggestion && (
             <button type="button" onClick={() => setType(suggestion)}
               className="text-meta text-accent hover:underline self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 rounded">
@@ -110,7 +110,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
             value={date}
             onChange={setDate}
           />
-          {errors.date && <span className="text-meta text-error">{errors.date}</span>}
+          {errors.date && <span role="alert" aria-live="polite" className="text-meta text-error">{errors.date}</span>}
         </div>
 
         <div className="w-full md:w-button-md flex flex-col gap-1">
@@ -124,7 +124,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
             placeholder="0,00"
             className="h-12 w-full px-4 rounded-md border border-primary-900 bg-inverse text-body text-primary-800 focus:border-2 focus:border-primary-800 focus:outline-none"
           />
-          {errors.amount && <span className="text-meta text-error">{errors.amount}</span>}
+          {errors.amount && <span role="alert" aria-live="polite" className="text-meta text-error">{errors.amount}</span>}
         </div>
 
         <div className="w-full md:w-button-md flex flex-col gap-1">
@@ -153,7 +153,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
             />
           )}
           {errors.attachment && (
-            <span className="text-meta text-error">{errors.attachment}</span>
+            <span role="alert" aria-live="polite" className="text-meta text-error">{errors.attachment}</span>
           )}
         </div>
 
