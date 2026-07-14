@@ -14,9 +14,13 @@ const nextConfig: NextConfig = {
     // TRANSACTIONS_URL from the Dockerfile); locally they fall back to localhost.
     const dashboardUrl = process.env.DASHBOARD_URL ?? "http://localhost:3003";
     const transactionsUrl = process.env.TRANSACTIONS_URL ?? "http://localhost:3002";
+    // Exact (bare) rules are required in addition to the wildcard: `/dashboard`
+    // does not match `/dashboard/:path*`, and post-login lands on the bare path.
     return {
       beforeFiles: [
+        { source: "/dashboard", destination: `${dashboardUrl}/dashboard` },
         { source: "/dashboard/:path*", destination: `${dashboardUrl}/dashboard/:path*` },
+        { source: "/transactions", destination: `${transactionsUrl}/transactions` },
         { source: "/transactions/:path*", destination: `${transactionsUrl}/transactions/:path*` },
       ],
     };

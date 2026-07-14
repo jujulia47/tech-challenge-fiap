@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Checkbox } from '@/components/ui/Checkbox'
@@ -13,7 +12,6 @@ interface ModalCadastroProps {
 }
 
 export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
-  const router = useRouter()
   const [name, setName]                   = useState('')
   const [email, setEmail]                 = useState('')
   const [password, setPassword]           = useState('')
@@ -37,7 +35,8 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
     }
     setTermsError('')
     onClose()
-    router.push('/dashboard')
+    // Hard navigation across zones so the shell rewrite proxies to the dashboard.
+    window.location.href = '/dashboard'
   }
 
   return (
