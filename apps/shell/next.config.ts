@@ -5,15 +5,19 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
   async rewrites() {
-    // Dev-only: proxy the micro-frontend zones to their local ports so
-    // /dashboard and /transactions are served by apps/dashboard (:3003) and
-    // apps/transactions (:3002). In production the rewrites in
-    // apps/shell/vercel.json handle this (pointing to the deployed zones).
-    if (process.env.NODE_ENV !== "development") return [];
+    // Proxy the micro-frontend zones so /dashboard and /transactions are served
+    // by apps/dashboard and apps/transactions under the shell origin. Enabled in
+    // local dev (`next dev`) and in Docker builds (DOCKER=true, set in the shell
+    // Dockerfile); on Vercel the rewrites in apps/shell/vercel.json handle this.
+    if (process.env.NODE_ENV !== "development" && !process.env.DOCKER) return [];
+    // Inside Docker the zones are reachable by service name (DASHBOARD_URL /
+    // TRANSACTIONS_URL from the Dockerfile); locally they fall back to localhost.
+    const dashboardUrl = process.env.DASHBOARD_URL ?? "http://localhost:3003";
+    const transactionsUrl = process.env.TRANSACTIONS_URL ?? "http://localhost:3002";
     return {
       beforeFiles: [
-        { source: "/dashboard/:path*", destination: "http://localhost:3003/dashboard/:path*" },
-        { source: "/transactions/:path*", destination: "http://localhost:3002/transactions/:path*" },
+        { source: "/dashboard/:path*", destination: `${dashboardUrl}/dashboard/:path*` },
+        { source: "/transactions/:path*", destination: `${transactionsUrl}/transactions/:path*` },
       ],
     };
   },
