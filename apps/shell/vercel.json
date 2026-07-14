@@ -3,7 +3,7 @@
   "rewrites": [
     { "source": "/dashboard", "destination": "https://bytebank-dashboard.vercel.app/dashboard" },
     { "source": "/dashboard/:path*", "destination": "https://bytebank-dashboard.vercel.app/dashboard/:path*" },
-    { "source": "/transactions", "destination": "https://bytebank-transactions.vercel.app/transactions" },
-    { "source": "/transactions/:path*", "destination": "https://bytebank-transactions.vercel.app/transactions/:path*" }
+    { "source": "/transactions", "destination": "https://bytebank-transactions-virid.vercel.app/transactions" },
+    { "source": "/transactions/:path*", "destination": "https://bytebank-transactions-virid.vercel.app/transactions/:path*" }
   ]
 }
