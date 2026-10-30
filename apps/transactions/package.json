@@ -12,21 +12,21 @@
     "@bytebank/design-system": "*",
     "@bytebank/types": "*",
     "@bytebank/utils": "*",
-    "@fontsource/material-icons": "^5.2.7",
+    "@fontsource/material-icons": "^5.3.0",
     "clsx": "^2.1.1",
     "next": "16.4.3",
     "next-auth": "5.0.0-beta.32",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "tailwind-merge": "^3.5.0"
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
-    "@fontsource/inter": "^5.2.8",
-    "@tailwindcss/postcss": "^4",
+    "@fontsource/inter": "^5.3.0",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "daisyui": "^5.5.19",
+    "daisyui": "^5.7.50",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "typescript": "^5"
