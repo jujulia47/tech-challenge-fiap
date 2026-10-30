@@ -6,6 +6,8 @@ COPY package.json package-lock.json ./
 COPY apps/shell/package.json ./apps/shell/
 COPY apps/dashboard/package.json ./apps/dashboard/
 COPY apps/transactions/package.json ./apps/transactions/
+COPY packages/core/package.json ./packages/core/
+COPY packages/infrastructure/package.json ./packages/infrastructure/
 COPY packages/design-system/package.json ./packages/design-system/
 COPY packages/utils/package.json ./packages/utils/
 COPY packages/types/package.json ./packages/types/

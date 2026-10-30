@@ -1,0 +1,9 @@
+{
+  "transactions": [
+    { "id": "a", "userId": "1", "type": "deposit", "amountInCents": 15000, "date": "2022-11-18" },
+    { "id": "b", "userId": "1", "type": "payment", "amountInCents": 35000, "date": "2026-01-20" },
+    { "id": "c", "userId": "10", "type": "deposit", "amountInCents": 100, "date": "2026-01-15" },
+    { "id": "d", "userId": "2", "type": "withdrawal", "amountInCents": 200, "date": "2026-02-01" }
+  ],
+  "users": []
+}
