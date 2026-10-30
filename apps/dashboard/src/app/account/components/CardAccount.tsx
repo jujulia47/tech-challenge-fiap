@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { Button, Input } from '@bytebank/design-system'
 
 interface CardAccountProps {
   initialName: string

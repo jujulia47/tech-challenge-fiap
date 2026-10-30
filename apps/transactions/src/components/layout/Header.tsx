@@ -3,10 +3,14 @@
 import { useRef, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { MenuDrawer } from '@/components/layout/MenuDrawer'
-import { ProfileMenu } from '@/components/ui/ProfileMenu'
-import { Modal } from '@/components/ui/Modal'
-import { Button } from '@/components/ui/Button'
+import { ProfileMenu, Modal, Button } from '@bytebank/design-system'
 import { useUser } from '@/hooks/use-user'
+
+// The account pages live in the dashboard zone
+const PROFILE_MENU_ITEMS = [
+  { label: 'Minha conta',   href: '/dashboard/account',     crossZone: true },
+  { label: 'Configurações', href: '/dashboard/coming-soon', crossZone: true },
+]
 
 export function Header() {
   const user = useUser()
@@ -39,6 +43,7 @@ export function Header() {
         </button>
 
         <ProfileMenu
+          items={PROFILE_MENU_ITEMS}
           isOpen={isProfileMenuOpen}
           onClose={() => setIsProfileMenuOpen(false)}
           onLogout={() => setIsLogoutModalOpen(true)}

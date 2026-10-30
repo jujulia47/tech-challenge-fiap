@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { Select } from '@/components/ui/Select'
+import { Button, Modal, Select } from '@bytebank/design-system'
 import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
 import { TRANSACTION_OPTIONS } from '@bytebank/utils'

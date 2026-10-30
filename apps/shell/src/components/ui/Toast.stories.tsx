@@ -1,6 +1,6 @@
 // src/components/ui/Toast.stories.tsx
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Toast } from './Toast'
+import { Toast } from '@bytebank/design-system'
 
 const meta: Meta<typeof Toast> = {
   title: 'Design System/Toast',

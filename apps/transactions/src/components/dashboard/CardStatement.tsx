@@ -1,4 +1,4 @@
-import { Link } from '@/components/ui/Link'
+import { Link } from '@bytebank/design-system'
 import { TransactionItem } from '@/components/dashboard/TransactionItem'
 import type { Transaction } from '@bytebank/types'
 

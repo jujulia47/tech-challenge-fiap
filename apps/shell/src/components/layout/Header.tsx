@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MenuDrawer } from '@/components/layout/MenuDrawer'
-import { ProfileMenu } from '@/components/ui/ProfileMenu'
+import { ProfileMenu } from '@bytebank/design-system'
 import { useUser } from '@/hooks/use-user'
 
 export function Header() {

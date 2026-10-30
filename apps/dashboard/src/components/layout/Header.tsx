@@ -3,10 +3,13 @@
 import { useRef, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import { MenuDrawer } from '@/components/layout/MenuDrawer'
-import { ProfileMenu } from '@/components/ui/ProfileMenu'
-import { Modal } from '@/components/ui/Modal'
-import { Button } from '@/components/ui/Button'
+import { ProfileMenu, Modal, Button } from '@bytebank/design-system'
 import { useUser } from '@/hooks/use-user'
+
+const PROFILE_MENU_ITEMS = [
+  { label: 'Minha conta',   href: '/account' },
+  { label: 'Configurações', href: '/coming-soon' },
+]
 
 export function Header() {
   const user = useUser()
@@ -39,6 +42,7 @@ export function Header() {
         </button>
 
         <ProfileMenu
+          items={PROFILE_MENU_ITEMS}
           isOpen={isProfileMenuOpen}
           onClose={() => setIsProfileMenuOpen(false)}
           onLogout={() => setIsLogoutModalOpen(true)}

@@ -1,10 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Checkbox } from '@/components/ui/Checkbox'
-import { Modal } from '@/components/ui/Modal'
+import { Button, Input, Checkbox, Modal } from '@bytebank/design-system'
 
 interface ModalCadastroProps {
   isOpen: boolean

@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import { PublicShell } from '@/components/layout/PublicShell'
-import { Link } from '@/components/ui/Link'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
+import { Link, Input, Button } from '@bytebank/design-system'
 
 export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('')

@@ -1,7 +1,7 @@
 // src/components/ui/Select.stories.tsx
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { userEvent, within } from 'storybook/test'
-import { Select } from './Select'
+import { Select } from '@bytebank/design-system'
 import { useState, type ComponentProps } from 'react'
 
 const OPTIONS = [

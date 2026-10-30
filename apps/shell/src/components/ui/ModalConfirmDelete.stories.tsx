@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { ModalConfirmDelete } from './ModalConfirmDelete'
+import { ModalConfirmDelete } from '@bytebank/design-system'
 
 const meta: Meta<typeof ModalConfirmDelete> = {
   title: 'Design System/ModalConfirmDelete',

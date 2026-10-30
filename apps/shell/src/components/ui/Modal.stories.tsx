@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Modal } from './Modal'
-import { Input } from './Input'
-import { Button } from './Button'
+import { Modal, Input, Button } from '@bytebank/design-system'
 
 const meta: Meta<typeof Modal> = {
   title: 'Design System/Modal',

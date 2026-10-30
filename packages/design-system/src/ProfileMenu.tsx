@@ -4,7 +4,15 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+export interface ProfileMenuItem {
+  label: string
+  href: string
+  // Target lives in another zone: a plain <a> with the absolute path, so the page reloads
+  crossZone?: boolean
+}
+
 interface ProfileMenuProps {
+  items?: readonly ProfileMenuItem[]
   isOpen: boolean
   onClose: () => void
   onLogout: () => void
@@ -12,12 +20,12 @@ interface ProfileMenuProps {
   pathname?: string
 }
 
-const NAV_ITEMS = [
+const DEFAULT_ITEMS: readonly ProfileMenuItem[] = [
   { label: 'Minha conta',   href: '/dashboard/account' },
   { label: 'Configurações', href: '/dashboard/coming-soon' },
-] as const
+]
 
-export function ProfileMenu({ isOpen, onClose, onLogout, triggerRef, pathname }: ProfileMenuProps) {
+export function ProfileMenu({ items = DEFAULT_ITEMS, isOpen, onClose, onLogout, triggerRef, pathname }: ProfileMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null)
   const currentPath = usePathname()
   const activePath = pathname ?? currentPath
@@ -52,23 +60,29 @@ export function ProfileMenu({ isOpen, onClose, onLogout, triggerRef, pathname }:
         </button>
       </div>
 
-      {NAV_ITEMS.map((item) => (
-        <div key={item.label}>
-          <Link
-            href={item.href}
-            onClick={onClose}
-            className={[
-              'block px-4 py-2 hover:opacity-80 transition-opacity',
-              activePath === item.href
-                ? 'text-body-semibold text-success'
-                : 'text-body text-inverse',
-            ].join(' ')}
-          >
-            {item.label}
-          </Link>
-          <div className="border-b border-inverse/30 mx-4" />
-        </div>
-      ))}
+      {items.map((item) => {
+        const className = [
+          'block px-4 py-2 hover:opacity-80 transition-opacity',
+          activePath === item.href
+            ? 'text-body-semibold text-success'
+            : 'text-body text-inverse',
+        ].join(' ')
+
+        return (
+          <div key={item.label}>
+            {item.crossZone ? (
+              <a href={item.href} onClick={onClose} className={className}>
+                {item.label}
+              </a>
+            ) : (
+              <Link href={item.href} onClick={onClose} className={className}>
+                {item.label}
+              </Link>
+            )}
+            <div className="border-b border-inverse/30 mx-4" />
+          </div>
+        )
+      })}
 
       <button
         type="button"

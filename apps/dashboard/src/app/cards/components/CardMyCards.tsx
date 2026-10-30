@@ -1,4 +1,4 @@
-import { Button } from '@/components/ui/Button'
+import { Button } from '@bytebank/design-system'
 import { cn } from '@bytebank/utils'
 
 interface CardVisualProps {

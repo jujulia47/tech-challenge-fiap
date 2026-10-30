@@ -1,4 +1,4 @@
-# Phase 4: testing (Steps 0.5, 1.1 to 1.4a)
+# Phase 4: testing (Steps 0.5, 1.1 to 1.4b)
 
 **Date:** 2026-10-29, updated 2026-10-30
 
@@ -52,13 +52,14 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 
 ## Scope
 
-**Tested now:** every export of `packages/utils/src`, `packages/core/src` and `packages/infrastructure/src`, 435 tests in 29 files.
+**Tested now:** every export of `packages/utils/src`, `packages/core/src` and `packages/infrastructure/src`, plus `ProfileMenu` from the design system, 441 tests in 30 files.
 
 | Package | Test files | Tests | Kind |
 |---|---|---|---|
 | `packages/utils` | 5 | 89 | Characterization (the `cn` typography tests became specification tests in step 1.4a) |
 | `packages/core` | 15 | 215 | Specification |
 | `packages/infrastructure` | 9 | 131 | Specification (unit, CLI and integration) |
+| `packages/design-system` | 1 | 6 | Specification (static rendering of `ProfileMenu`) |
 
 `packages/core`:
 
@@ -100,7 +101,7 @@ The sample data in `transactions.test.ts` uses the same seven transactions as `a
 - The search, type/month filters and pagination in `apps/transactions/src/app/page.tsx`.
 - Form validation, category suggestion and the attachment size check in `CardNewTransaction.tsx`. Also the amount parsing in `ModalEditTransaction.tsx` (`.replace('R$ ', '')...`).
 - `useCurrencyInput`, `useBalance` and `useToast` (React hooks, which need a component test environment).
-- The `packages/design-system` components (they need a DOM environment, such as jsdom or happy-dom, which is not installed).
+- The other `packages/design-system` components, and any interaction test (clicks, keyboard, focus). `ProfileMenu.test.ts` renders to static HTML with `react-dom/server`, which works in the `node` environment. Interactions need a DOM environment, such as jsdom or happy-dom, which is not installed.
 
 ## Copies vs packages
 
@@ -168,6 +169,7 @@ The test file also checks every token against every color token in both orders, 
 | `core/src/domain/value-objects/Money.ts` | 100% (19/19) | 100% (8/8) | 100% (12/12) | 100% (17/17) |
 | `core/src/testing/InMemoryTransactionRepository.ts` | 100% (12/12) | 100% (5/5) | 100% (7/7) | 100% (9/9) |
 | `core/src/testing/fakes.ts` | 100% (6/6) | 100% (1/1) | 100% (4/4) | 100% (6/6) |
+| `design-system/src/ProfileMenu.tsx` | 44% (11/25) | 60% (9/15) | 33.33% (2/6) | 52.63% (10/19) |
 | `design-system/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `infrastructure/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `infrastructure/src/clock/SaoPauloClock.ts` | 100% (6/6) | 100% (1/1) | 100% (4/4) | 100% (4/4) |
@@ -186,13 +188,13 @@ The test file also checks every token against every color token in both orders, 
 | `utils/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `utils/src/transactions.ts` | 100% (7/7) | 100% (2/2) | 100% (4/4) | 100% (7/7) |
 | `utils/src/user.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| **Total** | **100% (295/295)** | **100% (146/146)** | **100% (121/121)** | **100% (261/261)** |
+| **Total** | **95.62% (306/320)** | **96.27% (155/161)** | **96.85% (123/127)** | **96.78% (271/280)** |
 
 **This total does not cover the design-system components.** The pattern matches `.ts` only, so the `.tsx` files in `packages/design-system/src` are not measured, and they have no tests. The `0/0` rows are files with no executable code (barrels, ports and other type-only files), which v8 reports as 100%. The test doubles in `core/src/testing` are counted too, so they inflate the total slightly.
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 29 test files, 435 tests, all passing, in about 4 s.
+Result: 30 test files, 441 tests, all passing, in about 4 s.
 
 ## Config file extension
 

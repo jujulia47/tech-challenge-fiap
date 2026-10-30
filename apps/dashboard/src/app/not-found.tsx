@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
+import { Button } from '@bytebank/design-system'
 
 export default function NotFound() {
   return (

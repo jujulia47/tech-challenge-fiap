@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { ProfileMenu } from './ProfileMenu'
+import { ProfileMenu } from '@bytebank/design-system'
 
 const dummyRef = { current: null } as React.RefObject<HTMLElement | null>
 

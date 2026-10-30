@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Link } from './Link'
+import { Link } from '@bytebank/design-system'
 
 const meta: Meta<typeof Link> = {
   title: 'Design System/Link',

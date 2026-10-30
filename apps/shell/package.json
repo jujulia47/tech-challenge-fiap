@@ -12,6 +12,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@bytebank/design-system": "*",
     "@bytebank/types": "*",
     "@bytebank/utils": "*",
     "@fontsource/material-icons": "^5.3.0",

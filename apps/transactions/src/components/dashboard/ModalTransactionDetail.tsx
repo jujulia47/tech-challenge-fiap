@@ -1,7 +1,6 @@
 'use client'
 
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
+import { Button, Modal } from '@bytebank/design-system'
 import { capitalizeMonth } from '@bytebank/utils'
 import type { Transaction } from '@bytebank/types'
 

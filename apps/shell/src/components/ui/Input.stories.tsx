@@ -1,6 +1,6 @@
 // src/components/ui/Input.stories.tsx
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Input } from './Input'
+import { Input } from '@bytebank/design-system'
 import { useState, type ComponentProps } from 'react'
 
 const meta: Meta<typeof Input> = {

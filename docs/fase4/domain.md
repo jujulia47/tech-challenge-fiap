@@ -181,4 +181,4 @@ Pure functions over `Transaction[]`, in `domain/transaction/aggregations.ts`. Th
 
 ## Tests and coverage
 
-435 tests pass in total: 89 in `packages/utils`, 215 in `packages/core` and 131 in `packages/infrastructure`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
+441 tests pass in total: 89 in `packages/utils`, 215 in `packages/core`, 131 in `packages/infrastructure` and 6 in `packages/design-system`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.

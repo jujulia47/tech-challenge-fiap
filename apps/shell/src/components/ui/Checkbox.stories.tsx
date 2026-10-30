@@ -1,6 +1,6 @@
 // src/components/ui/Checkbox.stories.tsx
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { Checkbox } from './Checkbox'
+import { Checkbox } from '@bytebank/design-system'
 import { useState, type ComponentProps } from 'react'
 
 const meta: Meta<typeof Checkbox> = {

@@ -2,10 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { Link } from '@/components/ui/Link'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Modal } from '@/components/ui/Modal'
+import { Link, Button, Input, Modal } from '@bytebank/design-system'
 
 interface ModalLoginProps {
   isOpen: boolean
