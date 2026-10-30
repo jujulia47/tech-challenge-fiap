@@ -35,7 +35,7 @@
     "@vitest/browser-playwright": "^4.1.12",
     "@vitest/coverage-v8": "^4.1.12",
     "daisyui": "^5.5.19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.4.3",
     "eslint-plugin-storybook": "^10.6.2",
     "json-server": "^1.0.0-beta.15",
