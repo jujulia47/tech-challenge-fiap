@@ -6,11 +6,34 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      # One PR for all minor and patch updates; majors still get their own PR
+      # Family groups come first: a dependency goes to the first group it matches,
+      # so packages that must move together always land in the same PR
+      vitest:
+        patterns:
+          - vitest
+          - "@vitest/*"
+      storybook:
+        patterns:
+          - storybook
+          - "@storybook/*"
+          - eslint-plugin-storybook
+          - "@chromatic-com/storybook"
+      next:
+        patterns:
+          - next
+          - eslint-config-next
+      # One PR for all other minor and patch updates
       minor-and-patch:
         update-types:
           - minor
           - patch
+    # Major updates are paused during the Phase 4 refactor to keep the toolchain
+    # stable; remove after delivery. Per the Dependabot docs, ignore rules also apply
+    # to security updates: a security fix that needs a major bump gets no automatic PR
+    # (the blocking production audit in CI still fails on it).
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /

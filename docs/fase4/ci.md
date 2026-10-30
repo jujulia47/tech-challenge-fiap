@@ -49,12 +49,41 @@ Current state (step 0.4 and later): `npm audit` and `npm audit --omit=dev` both 
 
 | Ecosystem | Directory | Schedule | Details |
 |---|---|---|---|
-| `npm` | `/` | weekly | One root `package-lock.json` covers all workspaces. `open-pull-requests-limit: 5`. Group `minor-and-patch`: all minor and patch updates come in a **single PR**. Major updates still get one PR each, because they can break things and need individual review. |
+| `npm` | `/` | weekly | One root `package-lock.json` covers all workspaces. `open-pull-requests-limit: 5`. Family groups `vitest`, `storybook` and `next`, then the catch-all group `minor-and-patch`. Major version updates are ignored during Phase 4 (see below). |
 | `github-actions` | `/` | weekly | Keeps `actions/checkout` and `actions/setup-node` on current versions. `/` is the documented value; Dependabot looks in `.github/workflows`. |
+
+### Family groups
+
+Some packages are released in lockstep and must move together. If one of them is updated alone, its peer dependencies no longer match, and `npm ci` fails. This already happened: a Dependabot PR that bumped `@vitest/coverage-v8` to 5.x on its own broke `npm ci` with a peer dependency conflict, because `vitest` and the other `@vitest/*` packages were still on 4.x. Step 0.4 showed the same coupling for Storybook (`@storybook/addon-vitest` requires a matching `storybook` peer, and `@chromatic-com/storybook` declares a `storybook` peer range).
+
+| Group | Patterns | Why together |
+|---|---|---|
+| `vitest` | `vitest`, `@vitest/*` | Versioned in lockstep, and the `@vitest/*` packages declare `vitest` peers |
+| `storybook` | `storybook`, `@storybook/*`, `eslint-plugin-storybook`, `@chromatic-com/storybook` | Same version across the family, with `storybook` peers |
+| `next` | `next`, `eslint-config-next` | `eslint-config-next` must match the Next.js version, and both are pinned to exact versions in the three apps |
+| `minor-and-patch` | (all, `update-types: minor, patch`) | Everything else in one PR to reduce noise |
+
+**Order matters.** The Dependabot docs state: "If a dependency matches more than one rule, it's included in the first group that it matches" ([options reference, `groups`](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference)), and "Dependabot creates groups in the order they appear in your `dependabot.yml` file" ([configuring security updates](https://docs.github.com/en/code-security/dependabot/dependabot-security-updates/configuring-dependabot-security-updates)). The family groups are declared before `minor-and-patch`, so a Vitest, Storybook or Next.js update always goes to its family PR and never into the catch-all PR. The family groups have no `update-types`, so they cover every update level that is not ignored.
+
+These groups have no `applies-to`, so they apply to **version updates** only, which is the default ("When undefined, defaults to version updates"). Security update PRs are not grouped.
+
+### Major updates paused during Phase 4
+
+```yaml
+ignore:
+  - dependency-name: "*"
+    update-types: ["version-update:semver-major"]
+```
+
+During the refactor, the toolchain should stay stable: the same majors of Next.js, React, Vitest, Storybook, ESLint and TypeScript as in the baselines. Then any change in tests, bundle size or Lighthouse comes from the refactor, not from a tool upgrade. The rule must be **removed after the Phase 4 delivery**, so that major updates resume.
+
+**Effect on security updates: the rule is not limited to version updates.** The Dependabot docs say that ignore rules apply to both kinds of PR: "you can configure Dependabot to ignore those dependencies when it opens pull requests for version updates and security updates" ([controlling dependencies updated](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/controlling-dependencies-updated)). The exception "`update-types` only affects *version* updates, not *security* updates" appears only for `allow`, not for `ignore`. The docs do not explicitly describe a security fix that needs a major bump. The safe reading is that **such a fix would not get an automatic PR while this rule is active.** Fixes that do not need a major bump are not affected.
+
+Mitigation: the blocking "Security audit (production)" step in CI fails on any high or critical production vulnerability, whether or not Dependabot opens a PR. A security fix that needs a major bump therefore still turns the pipeline red and has to be handled manually.
 
 Notes:
 
-- Dependabot **security updates** (PRs for known vulnerabilities, outside the weekly schedule) are a repository setting: Settings → Code security → Dependabot security updates. They are not part of this file.
+- Dependabot **security updates** (PRs for known vulnerabilities, outside the weekly schedule) are a repository setting: Settings → Code security → Dependabot security updates. They are not part of this file, but the `ignore` rule above applies to them.
 - Every Dependabot PR runs the `CI` workflow, so an update that breaks lint, tests, build or the production audit shows up as a failing check before merge.
 - Things to watch on grouped PRs: `next` and `eslint-config-next` are pinned to exact versions (`16.4.3`) in the three apps, and `next-auth` to `5.0.0-beta.32`. Dependabot proposes those bumps by editing the pins. Next.js minor updates change Turbopack output, so check the build and a manual smoke test before merging (see `dependency-audit.md`).
 
