@@ -18,7 +18,7 @@ The repository now has a GitHub Actions pipeline (`.github/workflows/ci.yml`) an
 | 2 | Setup Node (with npm cache) | `actions/setup-node@v7`, `node-version: 20`, `cache: npm` | Same Node major as the Dockerfiles (`node:20-alpine`), so CI matches production. The npm cache is keyed on `package-lock.json`, so unchanged dependencies are not downloaded again. |
 | 3 | Install | `npm ci` | Clean install that follows `package-lock.json` exactly and fails if it is out of sync with `package.json`. This catches lockfile mistakes before deploy. |
 | 4 | Lint | `npx turbo lint` | ESLint in all 8 workspaces (shell, dashboard, transactions, core, infrastructure, design-system, types, utils). The baseline is 0 errors and 0 warnings (steps 0.2 and 0.3). Note that warnings do not fail ESLint, only errors do. |
-| 5 | Unit tests | `npm test` | Runs the Vitest unit tests (`packages/**/src/**/*.test.ts`, 398 tests today, including an integration test against a real json-server). Any change in pinned behavior during the refactor fails here. See `testing.md`. |
+| 5 | Unit tests | `npm test` | Runs the Vitest unit tests (`packages/**/src/**/*.test.ts`, 435 tests today, including an integration test against a real json-server). Any change in pinned behavior during the refactor fails here. See `testing.md`. |
 | 6 | Build | `npx turbo build` | Production build of the three Next.js apps, including TypeScript checks. Proves the code deploys. |
 | 7 | Security audit (production) | `npm audit --omit=dev --audit-level=high` | **Blocking.** Fails if any production dependency has a known vulnerability of severity high or critical. |
 | 8 | Security audit (full) | `npm audit --audit-level=high` + `continue-on-error: true` | **Informational.** Reports vulnerabilities in all dependencies, including dev tooling, without failing the pipeline. |
@@ -103,7 +103,7 @@ The commands from steps 3 to 8 were run at the repository root, in order:
 |---|---|---|
 | 3 | `npm ci` | ❌ Locally: `EPERM: operation not permitted, unlink ...lightningcss.win32-x64-msvc.node`. The local `next dev` servers (`npm run dev`) had the native binary loaded, and Windows does not allow deleting a file in use. The tree was restored with `npm install`. This is a local-machine condition: on the CI runner nothing else is running. Run `npm ci` locally only with the dev servers stopped. |
 | 4 | `npx turbo lint` | ✅ exit 0, 6 of 6 tasks |
-| 5 | `npm test` | ✅ exit 0, 29 files, 398 tests passed (updated in step 1.3) |
+| 5 | `npm test` | ✅ exit 0, 29 files, 435 tests passed (updated in step 1.4a) |
 | 6 | `npx turbo build` | ✅ exit 0, 3 of 3 apps (Next.js 16.4.3) |
 | 7 | `npm audit --omit=dev --audit-level=high` | ✅ exit 0, found 0 vulnerabilities |
 | 8 | `npm audit --audit-level=high` | ✅ exit 0, found 0 vulnerabilities |

@@ -10,7 +10,7 @@ import { MenuSidebar } from '@/components/layout/MenuSidebar'
 import { MenuTabs } from '@/components/layout/MenuTabs'
 import { TransactionsContext } from '@/context/TransactionsContext'
 import * as api from '@/lib/api/transactions'
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 export default function RootLayout({
   children,

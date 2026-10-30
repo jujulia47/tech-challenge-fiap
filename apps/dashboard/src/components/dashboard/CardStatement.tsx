@@ -1,5 +1,5 @@
 import { TransactionItem } from '@/components/dashboard/TransactionItem'
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 interface TransactionGroup {
   month: string

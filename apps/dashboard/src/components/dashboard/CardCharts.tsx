@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts'
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 interface CardChartsProps {
   transactions: Transaction[]

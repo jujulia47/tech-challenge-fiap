@@ -1,4 +1,4 @@
-# Phase 4: testing (Steps 0.5, 1.1 to 1.3)
+# Phase 4: testing (Steps 0.5, 1.1 to 1.4a)
 
 **Date:** 2026-10-29, updated 2026-10-30
 
@@ -52,11 +52,11 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 
 ## Scope
 
-**Tested now:** every export of `packages/utils/src`, `packages/core/src` and `packages/infrastructure/src`, 398 tests in 29 files.
+**Tested now:** every export of `packages/utils/src`, `packages/core/src` and `packages/infrastructure/src`, 435 tests in 29 files.
 
 | Package | Test files | Tests | Kind |
 |---|---|---|---|
-| `packages/utils` | 5 | 52 | Characterization |
+| `packages/utils` | 5 | 89 | Characterization (the `cn` typography tests became specification tests in step 1.4a) |
 | `packages/core` | 15 | 215 | Specification |
 | `packages/infrastructure` | 9 | 131 | Specification (unit, CLI and integration) |
 
@@ -104,34 +104,21 @@ The sample data in `transactions.test.ts` uses the same seven transactions as `a
 
 ## Copies vs packages
 
-`packages/utils/src` was compared with the local copies in the apps (line endings ignored):
-
-| Module | `apps/shell/src/lib/utils` | `apps/dashboard/src/lib/utils` | `apps/transactions/src/lib/utils` |
-|---|---|---|---|
-| `cn.ts` | identical | identical | identical |
-| `currency.ts` | identical | identical | identical |
-| `user.ts` | identical | identical | identical |
-| `transactions.ts` | not present | import differs | import differs |
-| `index.ts` | not present | not present | not present |
-
-The only difference is the first line of `transactions.ts`:
-
-```diff
-- import type { Transaction } from '@bytebank/types'      // packages/utils
-+ import type { Transaction } from '@/types/transaction'  // dashboard and transactions copies
-```
-
-The two `Transaction` types are also identical apart from whitespace: `packages/types/src/transaction.ts` got `attachment?: string` in step 0.2. Since the runtime logic is the same, **the tests describe the behavior of the copies the apps use today as well**. That includes the `cn` typography issue below, which affects the running apps.
+Since step 1.4a the local copies are gone, and the apps import `@bytebank/utils` and `@bytebank/types`, so these tests cover the code that runs in the apps. Before the removal, the copies matched the packages except for the type import in `transactions.ts`. See `docs/fase4/modularization.md`.
 
 ## Questionable behaviors
 
-Each item matches one test marked `// Characterization: current behavior, see docs/fase4/testing.md`.
+Each item matches one test marked `// Characterization: current behavior, see docs/fase4/testing.md`, except items 1 to 3, which were fixed in step 1.4a.
 
-### `cn` (`cn.test.ts`)
+### `cn` (`cn.test.ts`): fixed in step 1.4a
 
-1. **"drops a custom typography token when a text color follows it".** `cn('text-body-semibold', 'text-inverse')` returns `'text-inverse'`, and the same happens with `text-body` + `text-primary-800` and `text-meta` + `text-error`. `tailwind-merge` does not know the design system's custom `text-*` font-size tokens, so it treats them as text colors and keeps only the last one. **This is a visible bug in the running apps:** `Button` passes `text-body-semibold` and then a variant with `text-*` color through `cn`, so buttons lose their typography token. `Select` and `Input` do the same.
-2. **"drops a custom icon size token when a text color follows it".** `cn('text-icon-sm', 'text-success')` returns `'text-success'`, for the same reason. It affects icon sizes combined with a text color.
-3. **"treats two custom typography tokens as conflicting and keeps the last one".** `cn('text-body', 'text-meta')` returns `'text-meta'`. That happens to be correct, but only by accident: both tokens are seen as colors, not as font sizes. The real fix for all three items is to register the custom tokens with `extendTailwindMerge`.
+These three items are no longer current behavior. `tailwind-merge` did not know the design system `text-*` tokens and treated them as text colors. They are now registered in the `font-size` group with `extendTailwindMerge`, and the tests state the correct behavior, marked `// Fixed in step 1.4a: design system typography tokens are registered in tailwind-merge`.
+
+1. ~~**"drops a custom typography token when a text color follows it".**~~ **Fixed in 1.4a.** `cn('text-body-semibold', 'text-inverse')` used to return `'text-inverse'`, so `Button`, `Select` and `Input` lost their typography. It now keeps both classes.
+2. ~~**"drops a custom icon size token when a text color follows it".**~~ **Fixed in 1.4a.** `cn('text-icon-sm', 'text-success')` now keeps both classes.
+3. ~~**"treats two custom typography tokens as conflicting and keeps the last one".**~~ **Fixed in 1.4a.** `cn('text-body', 'text-meta')` still returns `'text-meta'`, but now for the right reason: both are font sizes. As a consequence, `cn('text-heading', 'text-sm')` now returns `'text-sm'`.
+
+The test file also checks every token against every color token in both orders, and compares its token list with `globals.css`.
 
 ### `formatCents` (`currency.test.ts`)
 
@@ -194,18 +181,18 @@ Each item matches one test marked `// Characterization: current behavior, see do
 | `types/src/daisyui.d.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `types/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `types/src/transaction.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `utils/src/cn.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
+| `utils/src/cn.ts` | 100% (2/2) | 100% (0/0) | 100% (1/1) | 100% (2/2) |
 | `utils/src/currency.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
 | `utils/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `utils/src/transactions.ts` | 100% (7/7) | 100% (2/2) | 100% (4/4) | 100% (7/7) |
 | `utils/src/user.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| **Total** | **100% (294/294)** | **100% (146/146)** | **100% (121/121)** | **100% (260/260)** |
+| **Total** | **100% (295/295)** | **100% (146/146)** | **100% (121/121)** | **100% (261/261)** |
 
 **This total does not cover the design-system components.** The pattern matches `.ts` only, so the `.tsx` files in `packages/design-system/src` are not measured, and they have no tests. The `0/0` rows are files with no executable code (barrels, ports and other type-only files), which v8 reports as 100%. The test doubles in `core/src/testing` are counted too, so they inflate the total slightly.
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 29 test files, 398 tests, all passing, in about 4.5 s.
+Result: 29 test files, 435 tests, all passing, in about 4 s.
 
 ## Config file extension
 

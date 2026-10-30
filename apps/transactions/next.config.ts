@@ -4,6 +4,7 @@ import path from "path";
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
+  transpilePackages: ['@bytebank/types', '@bytebank/utils'],
   basePath: "/transactions",
 };
 

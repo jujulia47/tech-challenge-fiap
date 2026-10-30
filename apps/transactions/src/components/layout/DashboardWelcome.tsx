@@ -2,7 +2,7 @@
 
 import { CardWelcome } from '@/components/dashboard/CardWelcome'
 import { useUser } from '@/hooks/use-user'
-import { getFirstName } from '@/lib/utils/user'
+import { getFirstName } from '@bytebank/utils'
 
 export function DashboardWelcome() {
   const user = useUser()

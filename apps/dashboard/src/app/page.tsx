@@ -8,11 +8,11 @@ import { ModalConfirmDelete } from '@/components/ui/ModalConfirmDelete'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
 import { useTransactions } from '@/context/TransactionsContext'
-import { groupByMonth } from '@/lib/utils/transactions'
+import { groupByMonth } from '@bytebank/utils'
 import { Toast } from '@/components/ui/Toast'
 import { useToast } from '@/hooks/use-toast'
 import { DashboardWelcome } from '@/components/layout/DashboardWelcome'
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 export default function DashboardPage() {
   const { transactions, loading, deleteTransaction } = useTransactions()

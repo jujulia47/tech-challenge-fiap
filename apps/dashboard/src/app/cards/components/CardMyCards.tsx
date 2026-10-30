@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils/cn'
+import { cn } from '@bytebank/utils'
 
 interface CardVisualProps {
   bgClass: string

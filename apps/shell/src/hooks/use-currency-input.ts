@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatCents } from '@/lib/utils/currency'
+import { formatCents } from '@bytebank/utils'
 
 export function useCurrencyInput(initialDigits = '0') {
   const [digits, setDigits] = useState(initialDigits)

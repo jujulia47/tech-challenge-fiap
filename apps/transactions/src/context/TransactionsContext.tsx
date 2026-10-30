@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'react'
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 interface TransactionsContextValue {
   transactions: Transaction[]

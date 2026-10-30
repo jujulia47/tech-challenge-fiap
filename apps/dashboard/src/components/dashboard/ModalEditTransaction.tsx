@@ -6,8 +6,8 @@ import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
 import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
-import { TRANSACTION_OPTIONS } from '@/lib/utils/transactions'
-import type { Transaction, TransactionType } from '@/types/transaction'
+import { TRANSACTION_OPTIONS } from '@bytebank/utils'
+import type { Transaction, TransactionType } from '@bytebank/types'
 
 interface ModalEditTransactionProps {
   transaction: Transaction | null

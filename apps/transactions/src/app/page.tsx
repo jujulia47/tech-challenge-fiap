@@ -10,8 +10,8 @@ import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransactio
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
 import { Select } from '@/components/ui/Select'
 import { PaginationControls } from '@/components/PaginationControls'
-import { groupByMonth, capitalizeMonth, TRANSACTION_OPTIONS } from '@/lib/utils/transactions'
-import type { Transaction } from '@/types/transaction'
+import { groupByMonth, capitalizeMonth, TRANSACTION_OPTIONS } from '@bytebank/utils'
+import type { Transaction } from '@bytebank/types'
 
 export default function StatementPage() {
   const { transactions, deleteTransaction } = useTransactions()

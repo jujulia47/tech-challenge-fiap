@@ -3,7 +3,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils/cn'
+import { cn } from '@bytebank/utils'
 import { NAV_ITEMS } from '@/components/layout/nav-items'
 
 export function MenuSidebar() {

@@ -1,7 +1,7 @@
 'use client'
 
 import NextLink from 'next/link'
-import { cn } from '@/lib/utils/cn'
+import { cn } from '@bytebank/utils'
 
 interface LinkProps {
   href: string

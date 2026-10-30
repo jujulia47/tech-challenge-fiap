@@ -2,8 +2,8 @@
 
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { capitalizeMonth } from '@/lib/utils/transactions'
-import type { Transaction } from '@/types/transaction'
+import { capitalizeMonth } from '@bytebank/utils'
+import type { Transaction } from '@bytebank/types'
 
 interface ModalTransactionDetailProps {
   transaction: Transaction | null

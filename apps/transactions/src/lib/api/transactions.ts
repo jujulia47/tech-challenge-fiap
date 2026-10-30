@@ -1,4 +1,4 @@
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 const BASE_URL = `${API_URL}/transactions`

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import type { RootState, AppDispatch } from '@/store/store'
 import { addTransaction as addAction, updateTransaction as updateAction, removeTransaction } from '@/store/transactionsSlice'
 import * as api from '@/lib/api/transactions'
-import type { Transaction } from '@/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 export function useTransactions() {
   const dispatch = useDispatch<AppDispatch>()

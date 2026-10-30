@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils/cn'
+import { cn } from '@bytebank/utils'
 
 type ButtonVariant = 'primary' | 'light' | 'accent' | 'outline' | 'error-outline' | 'success'
 
