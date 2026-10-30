@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useTransactions } from '@/context/TransactionsContext'
 import { useToast } from '@/hooks/use-toast'
 import { Toast } from '@/components/ui/Toast'
@@ -25,7 +25,20 @@ export default function StatementPage() {
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 5
 
-  useEffect(() => { setPage(1); setSearchQuery('') }, [filterType, filterMonth])
+  // Changing a filter resets pagination and search in the same update
+  function handleFilterTypeChange(value: string) {
+    if (value === filterType) return
+    setFilterType(value)
+    setPage(1)
+    setSearchQuery('')
+  }
+
+  function handleFilterMonthChange(value: string) {
+    if (value === filterMonth) return
+    setFilterMonth(value)
+    setPage(1)
+    setSearchQuery('')
+  }
 
   const monthOptions = useMemo(() => {
     const months = [...new Set(transactions.map(tx => tx.month))]
@@ -118,7 +131,7 @@ export default function StatementPage() {
             placeholder="Todos os tipos"
             options={[{ value: '', label: 'Todos os tipos' }, ...TRANSACTION_OPTIONS]}
             value={filterType}
-            onChange={setFilterType}
+            onChange={handleFilterTypeChange}
           />
         </div>
         <div className="w-full md:w-select-md">
@@ -127,7 +140,7 @@ export default function StatementPage() {
             placeholder="Todos os meses"
             options={monthOptions}
             value={filterMonth}
-            onChange={setFilterMonth}
+            onChange={handleFilterMonthChange}
           />
         </div>
       </div>

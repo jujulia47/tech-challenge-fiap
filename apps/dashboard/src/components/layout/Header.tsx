@@ -16,6 +16,7 @@ export function Header() {
 
   async function handleLogout() {
     await signOut({ redirect: false })
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- cross-zone navigation requires a full page load
     window.location.href = '/'
   }
 

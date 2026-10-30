@@ -48,3 +48,6 @@ storybook-static
 .claude/
 *claude*
 *.claude*
+
+#turbo
+.turbo

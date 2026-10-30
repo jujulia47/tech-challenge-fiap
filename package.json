@@ -6,9 +6,17 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
-    "turbo": "^2.5.4"
+    "@vitest/coverage-v8": "^4.1.12",
+    "eslint": "^9",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "turbo": "^2.5.4",
+    "typescript-eslint": "^8.58.2",
+    "vitest": "^4.1.12"
   }
 }

@@ -10,7 +10,9 @@ import { NextResponse } from 'next/server'
 // never runs on them.
 export default auth((req) => {
   const { nextUrl } = req
-  const isAuthenticated = !!req.auth
+  // Require a user, not just an auth object: an auth object can be populated
+  // with an error and fail open (defense in depth, GHSA-8fpg-xm3f-6cx3)
+  const isAuthenticated = !!req.auth?.user
 
   const isProtected =
     nextUrl.pathname.startsWith('/dashboard') ||

@@ -36,6 +36,7 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
     setTermsError('')
     onClose()
     // Hard navigation across zones so the shell rewrite proxies to the dashboard.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- cross-zone navigation requires a full page load
     window.location.href = '/dashboard'
   }
 

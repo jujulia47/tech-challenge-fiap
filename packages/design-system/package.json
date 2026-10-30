@@ -6,5 +6,16 @@
   "types": "./src/index.ts",
   "scripts": {
     "lint": "eslint src/"
+  },
+  "dependencies": {
+    "@bytebank/utils": "*"
+  },
+  "peerDependencies": {
+    "next": "^16",
+    "react": "^19",
+    "react-dom": "^19"
+  },
+  "devDependencies": {
+    "@types/react": "^19"
   }
 }

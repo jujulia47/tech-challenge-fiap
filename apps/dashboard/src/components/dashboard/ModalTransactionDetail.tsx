@@ -47,6 +47,7 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
               onClick={() => setShowAttachment(true)}
               className="w-full rounded-md overflow-hidden border border-primary-900 hover:opacity-80 transition-opacity"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- attachment is a base64 data URL; next/image does not optimize data URLs */}
               <img
                 src={transaction.attachment}
                 alt="Preview do anexo"
@@ -86,6 +87,7 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
             </button>
           </div>
           {transaction.attachment.startsWith('data:image') ? (
+            // eslint-disable-next-line @next/next/no-img-element -- attachment is a base64 data URL; next/image does not optimize data URLs
             <img
               src={transaction.attachment}
               alt="Anexo da transação"

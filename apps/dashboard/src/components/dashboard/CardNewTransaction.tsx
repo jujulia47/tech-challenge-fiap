@@ -146,6 +146,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
             />
           </label>
           {attachmentName && attachment?.startsWith('data:image') && (
+            // eslint-disable-next-line @next/next/no-img-element -- attachment is a base64 data URL; next/image does not optimize data URLs
             <img
               src={attachment}
               alt="Preview do anexo"

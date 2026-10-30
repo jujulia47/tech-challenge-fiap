@@ -1,4 +1,4 @@
-import type { Transaction } from '@/app/dashboard/types/transaction'
+import type { Transaction } from '@bytebank/types'
 
 export const TRANSACTION_OPTIONS = [
   { value: 'Câmbio de Moeda',            label: 'Câmbio de Moeda' },
