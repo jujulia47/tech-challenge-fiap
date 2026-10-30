@@ -12,10 +12,10 @@
   },
   "peerDependencies": {
     "next": "^16",
-    "react": "^19",
-    "react-dom": "^19"
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
   },
   "devDependencies": {
-    "@types/react": "^19"
+    "@types/react": "^19.3.0"
   }
 }
