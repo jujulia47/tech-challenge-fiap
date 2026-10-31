@@ -8,6 +8,8 @@ interface ModalProps {
   title: string
   children: React.ReactNode
   showCloseButton?: boolean
+  role?: 'dialog' | 'alertdialog'
+  describedBy?: string
 }
 
 function toSlug(str: string): string {
@@ -18,7 +20,15 @@ function toSlug(str: string): string {
     .replace(/\s+/g, '-')
 }
 
-export function Modal({ isOpen, onClose, title, children, showCloseButton = true }: ModalProps) {
+export function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+  showCloseButton = true,
+  role = 'dialog',
+  describedBy,
+}: ModalProps) {
   const titleId = `modal-title-${toSlug(title)}`
 
   useEffect(() => {
@@ -33,7 +43,7 @@ export function Modal({ isOpen, onClose, title, children, showCloseButton = true
   if (!isOpen) return null
 
   return (
-    <div className="modal modal-open" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+    <div className="modal modal-open" role={role} aria-modal="true" aria-labelledby={titleId} aria-describedby={describedBy}>
       <button
         type="button"
         className="modal-backdrop bg-text-primary/50"

@@ -7,17 +7,15 @@ export default function NotFound() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-16 text-center">
 
-      {/* Animated 404 — style fontSize: exception, no DS token for 80px/96px */}
+      {/* Animated 404 */}
       <div className="flex flex-col items-center gap-4">
         <span
-          className="material-icons text-primary-900 animate-float"
-          style={{ fontSize: 80 }}
+          className="material-icons text-primary-900 animate-float text-[80px]!"
         >
           search_off
         </span>
         <p
-          className="font-bold text-primary-900 animate-float"
-          style={{ fontSize: 96, lineHeight: 1, animationDelay: '0.2s' }}
+          className="font-bold text-primary-900 animate-float text-[96px]! leading-none [animation-delay:0.2s]"
         >
           404
         </p>

@@ -12,6 +12,14 @@ const ATTACHMENT_FORMAT_ERROR = 'Must be a base64 data URL of a PNG, JPEG, WebP 
 const ATTACHMENT_SIZE_ERROR = `Must be at most ${MAX_ATTACHMENT_BYTES / 1024} KB`
 const ID_ERROR = 'Must be a transaction id'
 const PERIOD_ERROR = 'Must be 3, 6 or all'
+const NAME_ERROR = 'Must have from 1 to 100 characters'
+const EMAIL_ERROR = 'Must be a valid email'
+const PASSWORD_ERROR = 'Must be a text of reasonable size'
+const RESET_TOKEN_ERROR = 'Must be a reset token'
+
+// A ceiling for the request only. What a password must be is a rule of the domain.
+const MAX_PASSWORD_INPUT = 1024
+const RESET_TOKEN = /^[\w-]{43}$/
 
 const ATTACHMENT_DATA_URL = /^data:(?:image\/(?:png|jpeg|webp)|application\/pdf);base64,([A-Za-z0-9+/]+={0,2})$/
 // Matches every id in use: legacy ("11"), json-server ("8N9On-LoiYA") and UUIDs. It also
@@ -61,6 +69,25 @@ export const updateTransactionBodySchema = z
   .refine(changes => Object.keys(changes).length > 0, { error: CHANGES_ERROR })
 
 export type UpdateTransactionBody = z.infer<typeof updateTransactionBodySchema>
+
+const email = z.email({ error: EMAIL_ERROR }).max(254, { error: EMAIL_ERROR })
+const password = z.string({ error: PASSWORD_ERROR }).min(1, { error: PASSWORD_ERROR }).max(MAX_PASSWORD_INPUT, { error: PASSWORD_ERROR })
+
+export const registerBodySchema = z.strictObject(
+  {
+    name: z.string({ error: NAME_ERROR }).trim().min(1, { error: NAME_ERROR }).max(100, { error: NAME_ERROR }),
+    email,
+    password,
+  },
+  { error: BODY_ERROR },
+)
+
+export const passwordResetRequestSchema = z.strictObject({ email }, { error: BODY_ERROR })
+
+export const passwordResetConfirmSchema = z.strictObject(
+  { token: z.string({ error: RESET_TOKEN_ERROR }).regex(RESET_TOKEN, { error: RESET_TOKEN_ERROR }), password },
+  { error: BODY_ERROR },
+)
 
 export const transactionParamsSchema = z.object({
   id: z.string({ error: ID_ERROR }).regex(TRANSACTION_ID, { error: ID_ERROR }),

@@ -1,13 +1,8 @@
 import type { UpdateTransactionInput } from '@bytebank/core'
 import type { UseCases } from '../composition/createUseCases'
-import {
-  InvalidJsonError,
-  PayloadTooLargeError,
-  forbiddenOriginResponse,
-  toErrorResponse,
-  unauthenticatedResponse,
-} from './errors'
+import { forbiddenOriginResponse, toErrorResponse, unauthenticatedResponse } from './errors'
 import { isAllowedOrigin } from './origin'
+import { readJson } from './readJson'
 import { jsonResponse, noContentResponse } from './responses'
 import {
   chartDataQuerySchema,
@@ -16,9 +11,6 @@ import {
   updateTransactionBodySchema,
   type UpdateTransactionBody,
 } from './schemas'
-
-// A body with the largest attachment (about 96 KB in base64) stays well below this
-export const MAX_BODY_BYTES = 200 * 1024
 
 export interface Logger {
   error(error: unknown): void
@@ -39,33 +31,6 @@ export interface TransactionHandlers {
   getBalance(request: Request): Promise<Response>
   getStatement(request: Request): Promise<Response>
   getChartData(request: Request): Promise<Response>
-}
-
-// Content-Length may be missing (chunked requests), so the bytes are counted as they arrive
-async function readBody(body: ReadableStream<Uint8Array>): Promise<string> {
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let size = 0
-  let text = ''
-  for (let chunk = await reader.read(); !chunk.done; chunk = await reader.read()) {
-    size += chunk.value.byteLength
-    if (size > MAX_BODY_BYTES) {
-      await reader.cancel()
-      throw new PayloadTooLargeError()
-    }
-    text += decoder.decode(chunk.value, { stream: true })
-  }
-  return text + decoder.decode()
-}
-
-async function readJson(request: Request): Promise<unknown> {
-  if (Number(request.headers.get('Content-Length')) > MAX_BODY_BYTES) throw new PayloadTooLargeError()
-  const text = request.body ? await readBody(request.body) : ''
-  try {
-    return JSON.parse(text)
-  } catch {
-    throw new InvalidJsonError()
-  }
 }
 
 // The use case removes the attachment on an explicit undefined and keeps it on an absent key

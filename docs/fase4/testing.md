@@ -1,4 +1,4 @@
-# Phase 4: testing (Steps 0.5, 1.1 to 1.4b, 2.1 to 2.5b)
+# Phase 4: testing (Steps 0.5, 1.1 to 1.4b, 2.1 to 2.5b, 3.1, 3.2)
 
 **Date:** 2026-10-29, updated 2026-10-30
 
@@ -53,15 +53,15 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 
 ## Scope
 
-**Tested now:** every export of `packages/utils/src`, `packages/core/src`, `packages/infrastructure/src` and `packages/bff/src`, plus `ProfileMenu` and `TransactionItem` from the design system, 913 tests in 43 files.
+**Tested now:** every export of `packages/utils/src`, `packages/core/src`, `packages/infrastructure/src` and `packages/bff/src`, plus `ProfileMenu` and `TransactionItem` from the design system, 1211 tests in 68 files.
 
 | Package | Test files | Tests | Kind |
 |---|---|---|---|
-| `packages/utils` | 5 | 108 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
-| `packages/core` | 15 | 225 | Specification |
-| `packages/infrastructure` | 10 | 172 | Specification (unit, CLI, integration and timeout against real servers) |
-| `packages/bff` | 10 | 378 | Specification (handlers with real `Request` objects, and end to end) |
-| `packages/design-system` | 2 | 13 | Specification (static rendering of `ProfileMenu` and `TransactionItem`) |
+| `packages/utils` | 9 | 144 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
+| `packages/core` | 20 | 301 | Specification |
+| `packages/infrastructure` | 20 | 282 | Specification (unit, CLI, integration and timeout against real servers) |
+| `packages/bff` | 14 | 429 | Specification (handlers with real `Request` objects, and end to end) |
+| `packages/design-system` | 4 | 38 | Specification (static rendering of `ProfileMenu` and `TransactionItem`) |
 | `packages/store` | 1 | 17 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
 
 `packages/core`:
@@ -216,13 +216,21 @@ Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMon
 | `utils/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
 | `utils/src/transactionPresentation.ts` | 100% (17/17) | 100% (4/4) | 100% (6/6) | 100% (15/15) |
 | `utils/src/user.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| **Total** | **96.98% (546/563)** | **97.60% (244/250)** | **96.87% (217/224)** | **97.55% (478/490)** |
+| `core/src/domain/user/User.ts` | 100% (19/19) | 100% (8/8) | 100% (8/8) | 100% (16/16) |
+| `core/src/application/use-cases/AuthenticateUser.ts` | 100% (9/9) | 100% (6/6) | 100% (2/2) | 100% (8/8) |
+| `core/src/application/use-cases/RegisterUser.ts` | 100% (9/9) | 100% (2/2) | 100% (2/2) | 100% (9/9) |
+| `infrastructure/src/password/ScryptPasswordHasher.ts` | 100% (25/25) | 92.85% (13/14) | 100% (7/7) | 100% (22/22) |
+| `infrastructure/src/json-server/HttpUserRepository.ts` | 100% (23/23) | 100% (8/8) | 100% (7/7) | 100% (20/20) |
+| `infrastructure/src/json-server/http.ts` | 100% (16/16) | 100% (9/9) | 100% (5/5) | 100% (14/14) |
+| `bff/src/http/createRegisterHandler.ts` | 100% (12/12) | 100% (6/6) | 100% (3/3) | 100% (9/9) |
+| `bff/src/http/readJson.ts` | 100% (19/19) | 100% (6/6) | 100% (2/2) | 100% (17/17) |
+| **Total** | **97.05% (658/678)** | **97.64% (290/297)** | **96.92% (252/260)** | **97.46% (576/591)** |
 
 **This total does not cover the design-system components.** The pattern matches `.ts` only, so the `.tsx` files in `packages/design-system/src` are not measured, and they have no tests. The `0/0` rows are files with no executable code (barrels, ports and other type-only files), which v8 reports as 100%. The test helpers in `core/src/testing` and `bff/src/testing` are counted too, so they inflate the total slightly.
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 43 test files, 913 tests, all passing, in about 6 s.
+Result: 68 test files, 1211 tests, all passing, in about 6 s.
 
 The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
 

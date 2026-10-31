@@ -138,12 +138,12 @@ export function CardInvestments() {
             {Math.round((INVESTMENT_GOAL.current / INVESTMENT_GOAL.target) * 100)}%
           </span>
         </div>
-        <div className="h-2 bg-surface-form rounded-md overflow-hidden">
-          <div
-            className="h-full bg-success rounded-md transition-all"
-            style={{ width: `${Math.round((INVESTMENT_GOAL.current / INVESTMENT_GOAL.target) * 100)}%` }}
-          />
-        </div>
+        <progress
+          className="progress progress-success w-full h-2 bg-surface-form"
+          value={INVESTMENT_GOAL.current}
+          max={INVESTMENT_GOAL.target}
+          aria-label="Progresso da meta de investimento"
+        />
         <div className="flex justify-between mt-1">
           <span className="text-meta text-text-secondary">
             R$ {INVESTMENT_GOAL.current.toLocaleString('pt-BR')}

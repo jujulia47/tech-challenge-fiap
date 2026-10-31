@@ -23,6 +23,8 @@ ENV DASHBOARD_URL=$DASHBOARD_URL
 ENV TRANSACTIONS_URL=$TRANSACTIONS_URL
 ENV DOCKER=$DOCKER
 COPY --from=deps /app/node_modules ./node_modules
+# npm keeps nodemailer here: next-auth declares an older version as an optional peer
+COPY --from=deps /app/packages/infrastructure/node_modules ./packages/infrastructure/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx turbo build --filter=@bytebank/shell

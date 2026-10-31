@@ -5,7 +5,11 @@ import * as bff from './index'
 describe('@bytebank/bff public API', () => {
   it('exports the composition functions and the handlers', () => {
     expect(Object.keys(bff).sort()).toEqual([
+      'clientIp',
+      'createJsonServerAuthUseCases',
       'createJsonServerUseCases',
+      'createPasswordResetHandlers',
+      'createRegisterHandler',
       'createTransactionHandlers',
       'createUseCases',
     ])

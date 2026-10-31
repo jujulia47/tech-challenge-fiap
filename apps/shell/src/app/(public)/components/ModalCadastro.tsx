@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, Checkbox, Modal } from '@bytebank/design-system'
+import { Button, Input, Checkbox, Modal, PasswordField } from '@bytebank/design-system'
+import { passwordErrorMessage } from '@/lib/passwordErrors'
 
 interface ModalCadastroProps {
   isOpen: boolean
@@ -14,6 +15,9 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
   const [password, setPassword]           = useState('')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [termsError, setTermsError]       = useState('')
+  const [error, setError]                 = useState('')
+  const [submitted, setSubmitted]         = useState(false)
+  const [refusedAsCommon, setRefusedAsCommon] = useState('')
 
   function handleClose() {
     setName('')
@@ -21,20 +25,60 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
     setPassword('')
     setTermsAccepted(false)
     setTermsError('')
+    setError('')
+    setSubmitted(false)
     onClose()
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!termsAccepted) {
       setTermsError('Aceite os termos para continuar')
       return
     }
     setTermsError('')
-    onClose()
-    // Hard navigation across zones so the shell rewrite proxies to the dashboard.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- cross-zone navigation requires a full page load
-    window.location.href = '/dashboard'
+    setError('')
+
+    const response = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password }),
+    }).catch(() => null)
+
+    if (response?.status === 400) {
+      setError('Verifique os dados.')
+      return
+    }
+    if (response?.status === 422) {
+      const code = await response.json().then((body: { error?: unknown }) => body.error, () => null)
+      if (code === 'PASSWORD_TOO_COMMON') setRefusedAsCommon(password)
+      setError(passwordErrorMessage(code) ?? 'Verifique os dados.')
+      return
+    }
+    if (response?.status === 429) {
+      setError('Muitas tentativas. Aguarde alguns minutos e tente novamente.')
+      return
+    }
+    if (!response?.ok) {
+      setError('Não foi possível concluir agora. Tente novamente.')
+      return
+    }
+    setPassword('')
+    setSubmitted(true)
+  }
+
+  // The same text for a new email and a registered one, so the screen does not tell them apart
+  if (submitted) {
+    return (
+      <Modal isOpen={isOpen} onClose={handleClose} title="Criar conta">
+        <div className="flex flex-col gap-4 mt-6">
+          <p role="status" className="text-meta text-primary-900">
+            Cadastro recebido. Se este e-mail puder ser usado, sua conta está pronta: entre com seu e-mail e senha.
+          </p>
+          <Button variant="success" label="Fechar" onClick={handleClose} fullWidth />
+        </div>
+      </Modal>
+    )
   }
 
   return (
@@ -57,12 +101,12 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
           onChange={setEmail}
           required
         />
-        <Input
+        <PasswordField
           label="Senha"
-          type="password"
-          placeholder="••••••••"
           value={password}
           onChange={setPassword}
+          context={{ name, email }}
+          refusedAsCommon={password !== '' && password === refusedAsCommon}
           required
         />
         <Checkbox
@@ -71,6 +115,12 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
           onChange={setTermsAccepted}
           error={termsError}
         />
+
+        {error && (
+          <span className="text-meta text-error" role="alert" aria-live="polite">
+            {error}
+          </span>
+        )}
 
         <Button type="submit" variant="success" label="Criar conta" fullWidth />
       </form>

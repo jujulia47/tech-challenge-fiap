@@ -14,9 +14,12 @@ interface InputProps {
   required?: boolean
   autoFocus?: boolean
   max?: string
+  autoComplete?: string
+  // Something to press at the end of the field
+  trailing?: React.ReactNode
 }
 
-export function Input({ label, placeholder, value, onChange, error, disabled, suffixIcon, type = 'text', required, autoFocus, max }: InputProps) {
+export function Input({ label, placeholder, value, onChange, error, disabled, suffixIcon, type = 'text', required, autoFocus, max, autoComplete, trailing }: InputProps) {
   const slug = label.toLowerCase().replace(/\s/g, '-')
   const inputId = `input-${slug}`
   const errorId = `error-${slug}`
@@ -34,6 +37,7 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
           placeholder={placeholder}
           disabled={disabled}
           max={max}
+          autoComplete={autoComplete}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : undefined}
           onChange={e => onChange(e.target.value)}
@@ -41,10 +45,11 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
             'h-12 w-full rounded-md border bg-inverse text-body text-primary-800',
             'focus:border-2 focus:border-primary-800 focus:outline-none',
             'disabled:bg-surface-card disabled:border-text-secondary disabled:text-text-secondary disabled:cursor-not-allowed',
-            suffixIcon ? 'px-4 pr-10' : 'px-4',
+            suffixIcon || trailing ? 'px-4 pr-10' : 'px-4',
             error ? 'border-error' : 'border-primary-900',
           )}
         />
+        {trailing && <span className="absolute right-3 top-1/2 -translate-y-1/2 flex">{trailing}</span>}
         {suffixIcon && (
           <span
             className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-800"

@@ -223,7 +223,10 @@ Both zones expose the same API. The screens that still read json-server directly
 ```ts
 handlers ??= createTransactionHandlers({
   getUserId: async () => (await auth())?.user?.id ?? null,
-  useCases: createJsonServerUseCases({ baseUrl: requireEnv('JSON_SERVER_URL') }),
+  useCases: createJsonServerUseCases({
+    baseUrl: requireEnv('JSON_SERVER_URL'),
+    attachmentKey: requireEnv('ATTACHMENT_ENCRYPTION_KEY'),
+  }),
   allowedOrigins: parseAllowedOrigins(requireEnv('ALLOWED_ORIGINS')),
   logger,
 })
@@ -267,8 +270,9 @@ Server only, with no `NEXT_PUBLIC_` prefix. They are declared in `turbo.json`, a
 | `JSON_SERVER_URL` | Address of json-server, seen from the server | `http://localhost:3001` | `http://json-server:3001` |
 | `ALLOWED_ORIGINS` | Comma-separated origins allowed to write | `http://localhost:3000` | `http://localhost:3000` |
 | `SHELL_URL` | Public address of the shell, target of the redirect | `http://localhost:3000` | `http://localhost:3000` |
+| `ATTACHMENT_ENCRYPTION_KEY` | Encrypts the attachments: 32 bytes in base64 | `.env.local` | root `.env` |
 
-The shell also has `JSON_SERVER_URL`, for the page `/sobre`, and its login uses `NEXTAUTH_API_URL`. Both are read on the server only.
+The shell uses `JSON_SERVER_URL` for the page `/sobre`, the login and the registration, and `ALLOWED_ORIGINS` for `/api/register` and `/api/password-reset/*`. It also has `SMTP_HOST`, `SMTP_PORT`, `MAIL_FROM` and the optional `SMTP_USER` and `SMTP_PASS` for the recovery email (`docs/fase4/security.md`). All are read on the server only.
 
 A missing variable never gets a default in the zones. In `/sobre`, a public page, it only hides the numbers. Tested on the real image, with one variable removed at a time:
 

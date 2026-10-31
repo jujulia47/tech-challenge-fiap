@@ -1,0 +1,73 @@
+import { AuthenticateUser, RegisterUser, RequestPasswordReset, ResetPassword } from '@bytebank/core'
+import {
+  CryptoIdGenerator,
+  CryptoResetTokenGenerator,
+  HttpPasswordResetTokenRepository,
+  HttpUserRepository,
+  InMemoryRateLimiter,
+  ScryptPasswordHasher,
+  SmtpEmailSender,
+  StaticCommonPasswordList,
+  type SmtpConfig,
+} from '@bytebank/infrastructure'
+
+const MINUTE_MS = 60_000
+
+// Why these: docs/fase4/security.md
+const LOGIN_BY_EMAIL = { maxHits: 5, windowMs: 15 * MINUTE_MS }
+const LOGIN_BY_IP = { maxHits: 20, windowMs: 15 * MINUTE_MS }
+const REGISTER_BY_IP = { maxHits: 10, windowMs: 60 * MINUTE_MS }
+
+export interface AuthUseCases {
+  authenticateUser: AuthenticateUser
+  registerUser: RegisterUser
+  requestPasswordReset: RequestPasswordReset
+  resetPassword: ResetPassword
+}
+
+export interface JsonServerAuthOptions {
+  baseUrl: string
+  // Functions, so that a login does not depend on what only a reset needs
+  resetUrl: (token: string) => string
+  smtp: () => SmtpConfig
+}
+
+export function createJsonServerAuthUseCases({ baseUrl, resetUrl, smtp }: JsonServerAuthOptions): AuthUseCases {
+  const users = new HttpUserRepository(baseUrl)
+  const hasher = new ScryptPasswordHasher()
+  const commonPasswords = new StaticCommonPasswordList()
+  const tokens = new HttpPasswordResetTokenRepository(baseUrl)
+  const generator = new CryptoResetTokenGenerator()
+  // Shared by the login and the reset, which frees the email it belongs to
+  const loginByEmail = new InMemoryRateLimiter(LOGIN_BY_EMAIL)
+
+  return {
+    authenticateUser: new AuthenticateUser(users, hasher, {
+      byEmail: loginByEmail,
+      byIp: new InMemoryRateLimiter(LOGIN_BY_IP),
+    }),
+    registerUser: new RegisterUser(
+      users,
+      hasher,
+      new CryptoIdGenerator(),
+      new InMemoryRateLimiter(REGISTER_BY_IP),
+      commonPasswords,
+    ),
+    requestPasswordReset: new RequestPasswordReset({
+      users,
+      tokens,
+      generator,
+      emails: new SmtpEmailSender(smtp),
+      limiters: { byEmail: new InMemoryRateLimiter(LOGIN_BY_EMAIL), byIp: new InMemoryRateLimiter(LOGIN_BY_IP) },
+      resetUrl,
+    }),
+    resetPassword: new ResetPassword({
+      users,
+      tokens,
+      generator,
+      hasher,
+      commonPasswords,
+      loginLimiterByEmail: loginByEmail,
+    }),
+  }
+}

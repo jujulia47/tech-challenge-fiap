@@ -10,6 +10,8 @@ export interface TransactionProps {
   amount: Money
   date: CalendarDate
   attachment?: string
+  // It exists but cannot be read now. The stored value stays until someone replaces it.
+  attachmentUnavailable?: boolean
 }
 
 export type TransactionChanges = Partial<Pick<TransactionProps, 'type' | 'amount' | 'date' | 'attachment'>>
@@ -21,6 +23,7 @@ export interface TransactionPrimitives {
   amountInCents: number
   date: string
   attachment?: string
+  attachmentUnavailable?: boolean
 }
 
 // Raw input (storage, API): the type is still an unchecked string
@@ -59,6 +62,7 @@ export class Transaction {
       amount: Money.fromCents(primitives.amountInCents),
       date: CalendarDate.fromISO(primitives.date),
       attachment: primitives.attachment,
+      attachmentUnavailable: primitives.attachmentUnavailable,
     })
   }
 
@@ -86,6 +90,10 @@ export class Transaction {
     return this.props.attachment
   }
 
+  get attachmentUnavailable(): boolean {
+    return this.props.attachmentUnavailable === true
+  }
+
   monthKey(): string {
     return this.date.monthKey()
   }
@@ -103,6 +111,7 @@ export class Transaction {
       amount: changes.amount ?? this.amount,
       date: changes.date ?? this.date,
       attachment: 'attachment' in changes ? changes.attachment : this.attachment,
+      attachmentUnavailable: 'attachment' in changes ? false : this.attachmentUnavailable,
     })
   }
 
@@ -115,6 +124,7 @@ export class Transaction {
       date: this.date.toISO(),
     }
     if (this.attachment !== undefined) primitives.attachment = this.attachment
+    if (this.attachmentUnavailable) primitives.attachmentUnavailable = true
     return primitives
   }
 }

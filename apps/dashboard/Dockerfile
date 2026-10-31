@@ -17,6 +17,8 @@ RUN npm ci
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+# npm keeps nodemailer here: next-auth declares an older version as an optional peer
+COPY --from=deps /app/packages/infrastructure/node_modules ./packages/infrastructure/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx turbo build --filter=@bytebank/dashboard

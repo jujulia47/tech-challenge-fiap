@@ -1,7 +1,9 @@
+import { Suspense } from 'react'
 import { PublicShell } from '@/components/layout/PublicShell'
 import { Footer } from '@/components/layout/Footer'
 import { HeroSection } from '@/app/(public)/components/HeroSection'
 import { BenefitsSection } from '@/app/(public)/components/BenefitsSection'
+import { SessionEndedNotice } from '@/app/(public)/components/SessionEndedNotice'
 
 export default function LandingPage() {
   return (
@@ -13,6 +15,9 @@ export default function LandingPage() {
         </main>
         <Footer />
       </PublicShell>
+      <Suspense fallback={null}>
+        <SessionEndedNotice />
+      </Suspense>
     </div>
   )
 }

@@ -8,6 +8,10 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "@bytebank/core": "*"
+    "@bytebank/core": "*",
+    "nodemailer": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/nodemailer": "^8.0.2"
   }
 }

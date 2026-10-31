@@ -36,6 +36,10 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
         </div>
       </dl>
 
+      {transaction?.attachmentUnavailable && (
+        <p className="mt-6 text-body text-text-secondary">Anexo indisponível</p>
+      )}
+
       <div className="mt-8">
         <Button variant="light" label="Fechar" onClick={onClose} fullWidth />
       </div>

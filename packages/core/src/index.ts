@@ -20,12 +20,41 @@ export {
 } from './domain/transaction/aggregations'
 export type { MonthGroup, MonthTotal, PeriodInMonths, TypeTotal } from './domain/transaction/aggregations'
 
+export { User, normalizeEmail } from './domain/user/User'
+export {
+  PASSWORD_MAX_LENGTH,
+  PASSWORD_MIN_LENGTH,
+  findPasswordIssue,
+  passwordLength,
+} from './domain/user/passwordPolicy'
+export type { PasswordContext, PasswordIssue } from './domain/user/passwordPolicy'
+export type { UserProps } from './domain/user/User'
+
 export { ApplicationError } from './application/errors/ApplicationError'
 export type { ApplicationErrorCode } from './application/errors/ApplicationError'
+export { RateLimitedError } from './application/errors/RateLimitedError'
 export type { Clock } from './application/ports/Clock'
+export type { CommonPasswordList } from './application/ports/CommonPasswordList'
+export type { EmailMessage, EmailSender } from './application/ports/EmailSender'
+export type {
+  PasswordResetToken,
+  PasswordResetTokenRepository,
+  ResetTokenGenerator,
+} from './application/ports/PasswordResetTokens'
+export type { DataCipher } from './application/ports/DataCipher'
 export type { IdGenerator } from './application/ports/IdGenerator'
 export type { TransactionRepository } from './application/ports/TransactionRepository'
+export type { PasswordHasher } from './application/ports/PasswordHasher'
+export type { RateLimiter, RateLimitResult } from './application/ports/RateLimiter'
+export type { UserRepository } from './application/ports/UserRepository'
 export type { TransactionDTO } from './application/TransactionDTO'
+export type { UserDTO } from './application/UserDTO'
+export { AuthenticateUser } from './application/use-cases/AuthenticateUser'
+export type { AuthenticateUserInput, LoginRateLimiters } from './application/use-cases/AuthenticateUser'
+export { RegisterUser } from './application/use-cases/RegisterUser'
+export type { RegisterUserInput } from './application/use-cases/RegisterUser'
+export { RequestPasswordReset } from './application/use-cases/RequestPasswordReset'
+export { ResetPassword } from './application/use-cases/ResetPassword'
 export { ListTransactions } from './application/use-cases/ListTransactions'
 export { CreateTransaction } from './application/use-cases/CreateTransaction'
 export type { CreateTransactionInput } from './application/use-cases/CreateTransaction'

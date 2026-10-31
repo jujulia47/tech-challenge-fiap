@@ -14,7 +14,11 @@ let handlers: TransactionHandlers | undefined
 export function getTransactionHandlers(): TransactionHandlers {
   handlers ??= createTransactionHandlers({
     getUserId: async () => (await auth())?.user?.id ?? null,
-    useCases: createJsonServerUseCases({ baseUrl: requireEnv('JSON_SERVER_URL') }),
+    useCases: createJsonServerUseCases({
+      baseUrl: requireEnv('JSON_SERVER_URL'),
+      attachmentKey: requireEnv('ATTACHMENT_ENCRYPTION_KEY'),
+      logger,
+    }),
     allowedOrigins: parseAllowedOrigins(requireEnv('ALLOWED_ORIGINS')),
     logger,
   })

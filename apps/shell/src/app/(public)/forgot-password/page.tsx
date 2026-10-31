@@ -7,9 +7,22 @@ import { Link, Input, Button } from '@bytebank/design-system'
 export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setError('')
+
+    const response = await fetch('/api/password-reset/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    }).catch(() => null)
+
+    if (!response?.ok) {
+      setError('Não foi possível concluir agora. Tente novamente.')
+      return
+    }
     setSubmitted(true)
   }
 
@@ -25,7 +38,7 @@ export default function EsqueciSenhaPage() {
                   Esqueci a senha
                 </h1>
                 <p className="text-body text-text-secondary">
-                  Informe seu e-mail cadastrado. Enviaremos as instruções para redefinir sua senha.
+                  Informe seu e-mail cadastrado. Enviaremos um link para criar uma nova senha.
                 </p>
               </div>
 
@@ -38,7 +51,12 @@ export default function EsqueciSenhaPage() {
                   onChange={setEmail}
                   required
                 />
-                <Button type="submit" variant="success" label="Enviar instruções" fullWidth />
+                {error && (
+                  <span className="text-meta text-error" role="alert" aria-live="polite">
+                    {error}
+                  </span>
+                )}
+                <Button type="submit" variant="success" label="Enviar link" fullWidth />
               </form>
 
               <Link href="/" context="public" size="body" className="self-start">
@@ -49,15 +67,14 @@ export default function EsqueciSenhaPage() {
             <>
               <div className="flex flex-col items-center gap-4 text-center">
                 {/* text-icon-xl (48px) não existe como token DS — exceção documentada no skill-forgot-password.md */}
-                <span className="material-icons text-success" style={{ fontSize: 48 }}>
+                <span className="material-icons text-success text-[48px]!">
                   mark_email_read
                 </span>
                 <h2 className="text-heading font-bold text-text-primary">
-                  E-mail enviado!
+                  Verifique seu e-mail
                 </h2>
-                <p className="text-body text-text-secondary">
-                  Se o endereço <strong>{email}</strong> estiver cadastrado,
-                  você receberá as instruções em breve. Verifique também sua caixa de spam.
+                <p role="status" className="text-body text-text-secondary">
+                  Se o e-mail estiver cadastrado, enviamos um link. Verifique também sua caixa de spam.
                 </p>
               </div>
 

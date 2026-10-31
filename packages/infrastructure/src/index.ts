@@ -1,6 +1,17 @@
 export { InfrastructureError } from './errors/InfrastructureError'
 export type { InfrastructureErrorCode } from './errors/InfrastructureError'
 export { HttpTransactionRepository } from './json-server/HttpTransactionRepository'
+export { HttpPasswordResetTokenRepository } from './json-server/HttpPasswordResetTokenRepository'
+export { HttpUserRepository } from './json-server/HttpUserRepository'
+export { SmtpEmailSender } from './email/SmtpEmailSender'
+export type { SmtpConfig } from './email/SmtpEmailSender'
+export { CryptoResetTokenGenerator } from './password/CryptoResetTokenGenerator'
+export { StaticCommonPasswordList } from './password/StaticCommonPasswordList'
+export { InMemoryRateLimiter } from './rate-limit/InMemoryRateLimiter'
+export { AesGcmCipher } from './encryption/AesGcmCipher'
+export { EncryptedAttachmentRepository } from './encryption/EncryptedAttachmentRepository'
+export type { AttachmentLogger } from './encryption/EncryptedAttachmentRepository'
+export { ScryptPasswordHasher } from './password/ScryptPasswordHasher'
 export type { TransactionRecord } from './json-server/TransactionRecord'
 export {
   parseTransactionRecord,

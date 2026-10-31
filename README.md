@@ -57,11 +57,15 @@ Criar os seguintes arquivos:
 
 **apps/shell/.env.local**
 ```
-NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+NEXTAUTH_SECRET=<valor-gerado>
 NEXTAUTH_URL=http://localhost:3000
 DASHBOARD_URL=http://localhost:3003
 TRANSACTIONS_URL=http://localhost:3002
 JSON_SERVER_URL=http://localhost:3001
+ALLOWED_ORIGINS=http://localhost:3000
+SMTP_HOST=localhost
+SMTP_PORT=1025
+MAIL_FROM=Bytebank <no-reply@bytebank.local>
 ```
 
 **apps/dashboard/.env.local**
@@ -69,8 +73,9 @@ JSON_SERVER_URL=http://localhost:3001
 JSON_SERVER_URL=http://localhost:3001
 ALLOWED_ORIGINS=http://localhost:3000
 SHELL_URL=http://localhost:3000
+ATTACHMENT_ENCRYPTION_KEY=<valor-gerado>
 NEXT_PUBLIC_SHELL_URL=http://localhost:3000
-NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+NEXTAUTH_SECRET=<valor-gerado>
 ```
 
 **apps/transactions/.env.local**
@@ -78,7 +83,8 @@ NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
 JSON_SERVER_URL=http://localhost:3001
 ALLOWED_ORIGINS=http://localhost:3000
 SHELL_URL=http://localhost:3000
-NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+ATTACHMENT_ENCRYPTION_KEY=<valor-gerado>
+NEXTAUTH_SECRET=<valor-gerado>
 ```
 
 ### Rodando
@@ -98,6 +104,12 @@ Acesse: http://localhost:3000
 ---
 
 ## Como rodar com Docker
+
+Os segredos ficam num `.env` na raiz, fora do git. Sem ele, o Docker Compose não sobe. Copie `.env.example` para `.env` e gere cada valor com:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
 
 ```bash
 docker-compose up --build
@@ -134,9 +146,15 @@ Acesse: http://localhost:6006
 
 ## Credenciais de teste
 
+Os e-mails de recuperação de senha chegam na caixa do Mailpit: http://localhost:8025 (com o Docker Compose no ar).
+
 | Email | Senha |
 |---|---|
 | test@bytebank.com | bytebank123 |
+
+Esta senha é um dado de demonstração. O banco guarda só o hash scrypt dela, e o cadastro em "Abrir minha conta" cria usuários do mesmo jeito. Detalhes em [docs/fase4/security.md](docs/fase4/security.md).
+
+Se o seu `db.json` for anterior à Etapa 3.1, rode `npm run db:reset` e `docker compose restart json-server`.
 
 ---
 

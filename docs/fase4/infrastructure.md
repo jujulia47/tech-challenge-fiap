@@ -30,7 +30,7 @@ packages/infrastructure/scripts/
 | `type` | string (type code) | `"deposit"` |
 | `amountInCents` | integer | `15000` |
 | `date` | ISO string | `"2022-11-18"` |
-| `attachment` | string, optional | `"data:image/png;base64,..."` |
+| `attachment` | string, optional | `"aes256gcm$v1$..."` since step 3.3, see `docs/fase4/security.md` |
 
 This matches `TransactionPrimitives`. There is no `month`, no `label` and no text `amount`.
 
@@ -179,7 +179,7 @@ node packages/infrastructure/scripts/migrate-db.mjs <input.json> <output.json> -
 | `apps/shell/data/db.seed.json` | The seed: the 7 records in the new format. json-server never writes to it | Yes |
 | `apps/shell/data/db.json` | The database in use, created from the seed when it does not exist | No, it is in `.gitignore` and `.dockerignore` |
 
-`docker compose up` and `npm run api` create `db.json` when it is missing. `Dockerfile.jsonserver`, which is what runs on Railway, copies the seed into the image, so a new deploy starts from the seed.
+`docker compose up` and `npm run api` create `db.json` when it is missing, and since step 3.3 Docker Compose and Railway use the same image. `Dockerfile.jsonserver`, which is what runs on Railway, copies the seed into the image, so a new deploy starts from the seed.
 
 ### The problem: editing and deleting answered 502
 
@@ -213,7 +213,7 @@ json-server changes the data in memory first and saves afterwards, so:
 
 - Compose mounts a folder, `./apps/shell/data:/app`, so the rename happens inside a normal directory. Mounting all of `./apps/shell` would expose `.env.local` to the container and serve its `public` folder.
 - Compose creates `db.json` from the seed before starting json-server.
-- The image is `node:22-alpine`, because this version requires Node >= 22.12.
+- The image comes from `apps/shell/Dockerfile.jsonserver` since step 3.3, on `node:22-alpine`, because this version requires Node >= 22.12. It has json-server installed, so starting it needs no network.
 
 Verified with the real `docker-compose.yml`, on port 3001 and through the BFF:
 
@@ -244,7 +244,7 @@ docker compose restart json-server   # only when it runs in Docker
 
 ## Reaching json-server for debugging (step 2.5b)
 
-Docker Compose no longer publishes port 3001. Only the apps reach json-server, through the `bytebank` network, so `curl http://localhost:3001` is refused on purpose: the mock database has plain-text passwords, and anything on the machine could read them.
+Docker Compose no longer publishes port 3001. Only the apps reach json-server, through the `bytebank` network, so `curl http://localhost:3001` is refused on purpose: the mock database has no access control, and anything on the machine could read it.
 
 To look at it, run commands inside the container, with the services up:
 

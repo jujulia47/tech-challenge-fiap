@@ -1,10 +1,20 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { securityHeaders } from "@bytebank/utils/src/securityHeaders";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  transpilePackages: ['@bytebank/core', '@bytebank/design-system', '@bytebank/utils'],
+  transpilePackages: [
+    '@bytebank/bff',
+    '@bytebank/core',
+    '@bytebank/design-system',
+    '@bytebank/infrastructure',
+    '@bytebank/utils',
+  ],
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders(process.env.VERCEL_ENV === "production") }];
+  },
   async rewrites() {
     // Proxy the micro-frontend zones so /dashboard and /transactions are served
     // by apps/dashboard and apps/transactions under the shell origin. Enabled in

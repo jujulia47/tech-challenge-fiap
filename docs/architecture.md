@@ -60,7 +60,7 @@ Veja `docs/fase4/state-management.md`.
 
 | Página | Estratégia | Motivo |
 |---|---|---|
-| Landing page | SSG | Conteúdo estático |
+| Landing page | SSR | Renderizada por requisição para receber o nonce da CSP (`docs/fase4/security.md`) |
 | `/sobre` | SSR | Números lidos do json-server a cada requisição |
 | `/dashboard/account` | SSR | Dados do usuário por request |
 | Dashboard, Transactions | CSR | Interatividade com RTK Query |

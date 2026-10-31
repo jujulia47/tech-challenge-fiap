@@ -55,14 +55,15 @@
       "id": "1",
       "name": "Júlia Borges",
       "email": "julia@bytebank.com",
-      "password": "bytebank123"
+      "passwordHash": "scrypt$N=131072,r=8,p=1$apKd-ad7xFTjQsytHRFOqw$lv8c4JQ81gI1259WDnX891cPqfWYLocNqR0LXIlZPG8"
     },
     {
       "id": "2",
       "name": "Test User",
       "email": "test@bytebank.com",
-      "password": "bytebank123"
+      "passwordHash": "scrypt$N=131072,r=8,p=1$hYj-wtkJx6YroSZgIsPv0Q$C7kXujGwLwNMVISrE-28fsU7bhpv15ZVxIPtPNQ_Ma4"
     }
   ],
+  "passwordResetTokens": [],
   "$schema": "./node_modules/json-server/schema.json"
 }

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { Link, Button, Input, Modal } from '@bytebank/design-system'
+import { retryAfterMsFrom, retryMessage } from '@bytebank/utils'
+import { useLoginBlock } from '@/hooks/use-login-block'
 
 interface ModalLoginProps {
   isOpen: boolean
@@ -13,6 +15,9 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const { block, startBlock } = useLoginBlock()
+  // The block belongs to what was typed: another email may be free to try
+  const activeBlock = block?.email === email ? block : null
 
   function handleClose() {
     setEmail('')
@@ -30,6 +35,12 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
       password,
       redirect: false,
     })
+
+    const retryAfterMs = retryAfterMsFrom(result?.code)
+    if (retryAfterMs !== null) {
+      startBlock(email, retryAfterMs)
+      return
+    }
 
     if (result?.error) {
       setError('E-mail ou senha inválidos.')
@@ -72,7 +83,19 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
           Esqueci a senha!
         </Link>
 
-        <Button type="submit" variant="success" label="Entrar" fullWidth />
+        {activeBlock && (
+          <>
+            {/* Announced once: the counter below changes every minute, so it stays silent */}
+            <span className="sr-only" role="alert" aria-live="polite">
+              {retryMessage(activeBlock.initialMinutes)}
+            </span>
+            <span className="text-meta text-error" aria-hidden="true">
+              {retryMessage(activeBlock.minutes)}
+            </span>
+          </>
+        )}
+
+        <Button type="submit" variant="success" label="Entrar" disabled={activeBlock !== null} fullWidth />
       </form>
     </Modal>
   )

@@ -25,6 +25,10 @@ export class PayloadTooLargeError extends Error {
 const APPLICATION_ERROR_STATUS: Record<ApplicationErrorCode, number> = {
   TRANSACTION_NOT_FOUND: 404,
   TRANSACTION_DATE_IN_FUTURE: 422,
+  INVALID_CREDENTIALS: 401,
+  EMAIL_ALREADY_REGISTERED: 409,
+  RATE_LIMITED: 429,
+  INVALID_RESET_TOKEN: 400,
 }
 
 function validationResponse(issues: ValidationIssue[]): Response {

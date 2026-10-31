@@ -1,19 +1,29 @@
-import NextAuth from 'next-auth'
+import NextAuth, { CredentialsSignin } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
+import { clientIp } from '@bytebank/bff'
+import { ApplicationError, RateLimitedError } from '@bytebank/core'
+import { authLogger, rateLimitCode, readSessionPolicy } from '@bytebank/utils'
+import { getAuthUseCases } from '@/server/authUseCases'
 
-const API_URL = process.env.NEXTAUTH_API_URL ?? 'http://localhost:3001'
+// Ceilings for the request: a huge password must not reach the hash, nor a huge email the limiter
+const MAX_PASSWORD_LENGTH = 1024
+const MAX_EMAIL_LENGTH = 254
 
-interface MockUser {
-  id: string
-  name: string
-  email: string
-  password: string
+const { maxAgeSeconds, updateAgeSeconds } = readSessionPolicy(process.env)
+
+// Auth.js puts this code in the answer: the only way to tell the screen how long to wait
+class RateLimitedSignin extends CredentialsSignin {
+  constructor(retryAfterMs: number) {
+    super()
+    this.code = rateLimitCode(retryAfterMs)
+  }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
-  session: { strategy: 'jwt' },
+  logger: authLogger,
+  session: { strategy: 'jwt', maxAge: maxAgeSeconds, updateAge: updateAgeSeconds },
   pages: {
     signIn: '/',
   },
@@ -23,25 +33,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'E-mail', type: 'email' },
         password: { label: 'Senha', type: 'password' },
       },
-      async authorize(credentials) {
-        const email = credentials?.email as string | undefined
-        const password = credentials?.password as string | undefined
+      async authorize(credentials, request) {
+        const email = credentials?.email
+        const password = credentials?.password
 
-        if (!email || !password) return null
+        if (typeof email !== 'string' || typeof password !== 'string') return null
+        if (password.length > MAX_PASSWORD_LENGTH || email.length > MAX_EMAIL_LENGTH) return null
 
-        // Mock validation against the json-server users collection
-        const res = await fetch(
-          `${API_URL}/users?email=${encodeURIComponent(email)}`,
-        )
-        if (!res.ok) return null
-
-        const users = (await res.json()) as MockUser[]
-        const user = users[0]
-
-        // Plain-text comparison (mock — no bcrypt)
-        if (!user || user.password !== password) return null
-
-        return { id: user.id, name: user.name, email: user.email }
+        try {
+          const ip = clientIp(request.headers)
+          return await getAuthUseCases().authenticateUser.execute({ email, password, ip })
+        } catch (error) {
+          if (error instanceof RateLimitedError) throw new RateLimitedSignin(error.retryAfterMs)
+          if (error instanceof ApplicationError && error.code === 'INVALID_CREDENTIALS') return null
+          throw error
+        }
       },
     }),
   ],

@@ -11,7 +11,8 @@ import {
   setup,
   validBody,
 } from '../testing/handlerHarness'
-import { createTransactionHandlers, MAX_BODY_BYTES } from './createTransactionHandlers'
+import { createTransactionHandlers } from './createTransactionHandlers'
+import { MAX_BODY_BYTES } from './readJson'
 
 const UPSTREAM_URL = 'http://internal-backend:3001/transactions?_where=user-a'
 
@@ -40,6 +41,25 @@ const TRANSLATIONS: Array<[string, unknown, number, object]> = [
     new ApplicationError('TRANSACTION_DATE_IN_FUTURE', 'internal detail'),
     422,
     { error: 'TRANSACTION_DATE_IN_FUTURE' },
+  ],
+  [
+    'INVALID_CREDENTIALS',
+    new ApplicationError('INVALID_CREDENTIALS', 'internal detail'),
+    401,
+    { error: 'INVALID_CREDENTIALS' },
+  ],
+  [
+    'EMAIL_ALREADY_REGISTERED',
+    new ApplicationError('EMAIL_ALREADY_REGISTERED', 'internal detail'),
+    409,
+    { error: 'EMAIL_ALREADY_REGISTERED' },
+  ],
+  ['RATE_LIMITED', new ApplicationError('RATE_LIMITED', 'internal detail'), 429, { error: 'RATE_LIMITED' }],
+  [
+    'INVALID_RESET_TOKEN',
+    new ApplicationError('INVALID_RESET_TOKEN', 'internal detail'),
+    400,
+    { error: 'INVALID_RESET_TOKEN' },
   ],
   [
     'InfrastructureError',

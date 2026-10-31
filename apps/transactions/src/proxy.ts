@@ -1,4 +1,5 @@
 import { requireEnv } from '@bytebank/bff/env'
+import { withContentSecurityPolicy } from '@bytebank/utils'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 
@@ -9,7 +10,10 @@ export default auth((req) => {
   // Require a user, not just an auth object: same criterion as apps/shell/src/proxy.ts
   if (!req.auth?.user) return NextResponse.redirect(requireEnv('SHELL_URL'))
 
-  return NextResponse.next()
+  const { requestHeaders, policy } = withContentSecurityPolicy(req.headers)
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  response.headers.set('Content-Security-Policy', policy)
+  return response
 })
 
 // Next prefixes the matcher with the basePath, so the second pattern needs a slash after it and

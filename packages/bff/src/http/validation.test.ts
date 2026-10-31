@@ -13,7 +13,7 @@ import {
   streamRequest,
   validBody,
 } from '../testing/handlerHarness'
-import { MAX_BODY_BYTES } from './createTransactionHandlers'
+import { MAX_BODY_BYTES } from './readJson'
 import { MAX_ATTACHMENT_BYTES } from './limits'
 
 const existing = aTransaction({ id: 'existing', date: '2026-01-10' })

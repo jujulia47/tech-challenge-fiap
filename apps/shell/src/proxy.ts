@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { withContentSecurityPolicy } from '@bytebank/utils'
 import { NextResponse } from 'next/server'
 
 // /dashboard and /transactions are protected zones proxied to their micro-frontends
@@ -6,8 +7,9 @@ import { NextResponse } from 'next/server'
 //   - NOT authenticated + path is a protected zone  -> redirect to /
 //   - otherwise                                      -> pass through, so the
 //     beforeFiles rewrite proxies the request to the zone (do NOT redirect)
-// Public routes (/, /forgot-password, /api/auth/*) aren't in the matcher, so this
-// never runs on them. Neither do the zone APIs: their handlers answer 401 in JSON,
+// The public pages get their Content-Security-Policy here. The zones send their own:
+// a second policy with another nonce would block their scripts.
+// APIs and static files aren't in the matcher. The zone APIs answer 401 in JSON,
 // and a redirect would hand HTML to a client that expects JSON.
 export default auth((req) => {
   const { nextUrl } = req
@@ -23,9 +25,14 @@ export default auth((req) => {
     return NextResponse.redirect(new URL('/', nextUrl))
   }
 
-  return NextResponse.next()
+  if (isProtected) return NextResponse.next()
+
+  const { requestHeaders, policy } = withContentSecurityPolicy(req.headers)
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  response.headers.set('Content-Security-Policy', policy)
+  return response
 })
 
 export const config = {
-  matcher: ['/dashboard', '/dashboard/((?!api/).*)', '/transactions', '/transactions/((?!api/).*)'],
+  matcher: ['/((?!api/|dashboard/api/|transactions/api/|_next/static|_next/image|.*\\.\\w+$).*)'],
 }

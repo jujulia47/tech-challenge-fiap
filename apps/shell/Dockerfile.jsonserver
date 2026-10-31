@@ -1,6 +1,8 @@
+# json-server is installed here, so starting the container needs no network.
+# docker-compose.yml mounts the data at /app. Railway has no mount, so the seed lives outside /app.
 FROM node:22-alpine
-WORKDIR /app
-COPY apps/shell/data/db.seed.json ./db.json
 RUN npm install -g json-server@1.0.0-beta.15
+COPY apps/shell/data/db.seed.json /seed/db.seed.json
+WORKDIR /app
 EXPOSE 3001
-CMD ["json-server", "db.json", "--port", "3001", "--host", "0.0.0.0"]
+CMD ["sh", "-c", "[ -f db.json ] || cp /seed/db.seed.json db.json; exec json-server db.json --port 3001 --host 0.0.0.0"]

@@ -4,6 +4,8 @@ export type InfrastructureErrorCode =
   | 'UPSTREAM_BAD_STATUS'
   | 'UPSTREAM_INVALID_RESPONSE'
   | 'CORRUPTED_RECORD'
+  | 'UNREADABLE_DATA'
+  | 'EMAIL_NOT_SENT'
 
 interface InfrastructureErrorDetails {
   code?: InfrastructureErrorCode

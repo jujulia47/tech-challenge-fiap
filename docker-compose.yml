@@ -1,14 +1,22 @@
 services:
   json-server:
-    # 1.0.0-beta.15 requires Node >= 22.12
-    image: node:22-alpine
-    working_dir: /app
+    # json-server comes installed in the image, so starting needs no network
+    build:
+      context: .
+      dockerfile: apps/shell/Dockerfile.jsonserver
     # A folder, never the file: json-server saves with a rename, which fails on a mounted file.
     # Only this folder: all of apps/shell would expose .env.local and the public folder.
     volumes:
       - ./apps/shell/data:/app
-    command: sh -c "[ -f db.json ] || cp db.seed.json db.json; exec npx json-server@1.0.0-beta.15 db.json --port 3001 --host 0.0.0.0"
     # No published port: only the apps reach it, through the bytebank network. See docs/fase4/infrastructure.md
+    networks:
+      - bytebank
+
+  mailpit:
+    image: axllent/mailpit:v1.29.5
+    # SMTP only inside the bytebank network. The inbox only on this machine: http://localhost:8025
+    ports:
+      - "127.0.0.1:8025:8025"
     networks:
       - bytebank
 
@@ -20,11 +28,19 @@ services:
       - "3000:3000"
     environment:
       - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
-      - NEXTAUTH_API_URL=http://json-server:3001
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
       - JSON_SERVER_URL=http://json-server:3001
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - SMTP_HOST=mailpit
+      - SMTP_PORT=1025
+      - MAIL_FROM=Bytebank <no-reply@bytebank.local>
+      # Only for a demonstration, and they can only shorten: see docs/fase4/security.md
+      - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
+      - IDLE_TIMEOUT_SECONDS=${IDLE_TIMEOUT_SECONDS:-}
+      - IDLE_WARNING_SECONDS=${IDLE_WARNING_SECONDS:-}
     depends_on:
       - json-server
+      - mailpit
       - dashboard
       - transactions
     networks:
@@ -38,10 +54,12 @@ services:
       - "3003:3003"
     environment:
       - NEXTAUTH_URL=http://localhost:3003
-      - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
       - JSON_SERVER_URL=http://json-server:3001
       - ALLOWED_ORIGINS=http://localhost:3000
       - SHELL_URL=http://localhost:3000
+      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing ATTACHMENT_ENCRYPTION_KEY, copy .env.example to .env and fill it in}
+      - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
     depends_on:
       - json-server
     networks:
@@ -55,10 +73,12 @@ services:
       - "3002:3002"
     environment:
       - NEXTAUTH_URL=http://localhost:3002
-      - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
       - JSON_SERVER_URL=http://json-server:3001
       - ALLOWED_ORIGINS=http://localhost:3000
       - SHELL_URL=http://localhost:3000
+      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing ATTACHMENT_ENCRYPTION_KEY, copy .env.example to .env and fill it in}
+      - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
     depends_on:
       - json-server
     networks:

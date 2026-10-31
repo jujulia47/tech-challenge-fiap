@@ -7,8 +7,7 @@ export default function ComingSoonPage() {
 
       {/* Main content — centered */}
       <div className="flex flex-col items-center justify-center gap-6 text-center">
-        {/* style fontSize: exception — no text-icon-xl token in DS */}
-        <span className="material-icons text-text-secondary animate-float" style={{ fontSize: 64 }}>
+        <span className="material-icons text-text-secondary animate-float text-[64px]!">
           rocket_launch
         </span>
         <div className="flex flex-col gap-2">

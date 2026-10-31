@@ -13,6 +13,7 @@
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@bytebank/bff": "*",
     "@bytebank/core": "*",
     "@bytebank/design-system": "*",
     "@bytebank/utils": "*",
