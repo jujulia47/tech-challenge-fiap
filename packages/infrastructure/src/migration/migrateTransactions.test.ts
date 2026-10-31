@@ -9,18 +9,21 @@ const migrated = { id: '1', userId: '1', type: 'deposit', amountInCents: 15000, 
 
 const migrateOne = (record: unknown) => migrateTransactions([record], '1')
 
+function readTransactions(relativePath: string): unknown[] {
+  const db = JSON.parse(readFileSync(new URL(relativePath, import.meta.url), 'utf8')) as { transactions: unknown[] }
+  return db.transactions
+}
+
 describe('migrateTransactions', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  describe('the real apps/shell/db.json', () => {
-    const db = JSON.parse(readFileSync(new URL('../../../../apps/shell/db.json', import.meta.url), 'utf8')) as {
-      transactions: unknown[]
-    }
+  describe('the frozen legacy records (fixtures/legacy-db.json)', () => {
+    const records = readTransactions('./fixtures/legacy-db.json')
 
     it('migrates the 7 records without errors', () => {
-      const { transactions, errors, summary } = migrateTransactions(db.transactions, '1')
+      const { transactions, errors, summary } = migrateTransactions(records, '1')
 
       expect(errors).toEqual([])
       expect(summary).toEqual({ total: 7, migrated: 7, alreadyMigrated: 0, errors: 0 })
@@ -35,12 +38,24 @@ describe('migrateTransactions', () => {
     })
 
     it('gives a balance of 115000 cents through GetBalance', async () => {
-      const { transactions } = migrateTransactions(db.transactions, '1')
+      const { transactions } = migrateTransactions(records, '1')
       vi.stubGlobal('fetch', async () => new Response(JSON.stringify(transactions)))
 
       const balance = await new GetBalance(new HttpTransactionRepository('http://api.test')).execute('1')
 
       expect(balance).toEqual({ amountInCents: 115000 })
+    })
+  })
+
+  // The database in use is not versioned, so this reads the seed that creates it
+  describe('the seed in apps/shell/data/db.seed.json', () => {
+    it('migrates every record without errors', () => {
+      const records = readTransactions('../../../../apps/shell/data/db.seed.json')
+
+      const { transactions, errors } = migrateTransactions(records, '1')
+
+      expect(errors).toEqual([])
+      expect(transactions).toHaveLength(records.length)
     })
   })
 

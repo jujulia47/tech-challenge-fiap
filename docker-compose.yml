@@ -1,12 +1,14 @@
 services:
   json-server:
-    image: node:20-alpine
+    # 1.0.0-beta.15 requires Node >= 22.12
+    image: node:22-alpine
     working_dir: /app
+    # A folder, never the file: json-server saves with a rename, which fails on a mounted file.
+    # Only this folder: all of apps/shell would expose .env.local and the public folder.
     volumes:
-      - ./apps/shell/db.json:/app/db.json
-    command: npx json-server db.json --port 3001 --host 0.0.0.0
-    ports:
-      - "3001:3001"
+      - ./apps/shell/data:/app
+    command: sh -c "[ -f db.json ] || cp db.seed.json db.json; exec npx json-server@1.0.0-beta.15 db.json --port 3001 --host 0.0.0.0"
+    # No published port: only the apps reach it, through the bytebank network. See docs/fase4/infrastructure.md
     networks:
       - bytebank
 
@@ -19,8 +21,8 @@ services:
     environment:
       - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
-      - NEXT_PUBLIC_API_URL=http://json-server:3001
       - NEXTAUTH_API_URL=http://json-server:3001
+      - JSON_SERVER_URL=http://json-server:3001
     depends_on:
       - json-server
       - dashboard
@@ -37,7 +39,9 @@ services:
     environment:
       - NEXTAUTH_URL=http://localhost:3003
       - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
-      - NEXT_PUBLIC_API_URL=http://json-server:3001
+      - JSON_SERVER_URL=http://json-server:3001
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - SHELL_URL=http://localhost:3000
     depends_on:
       - json-server
     networks:
@@ -52,7 +56,9 @@ services:
     environment:
       - NEXTAUTH_URL=http://localhost:3002
       - NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
-      - NEXT_PUBLIC_API_URL=http://json-server:3001
+      - JSON_SERVER_URL=http://json-server:3001
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - SHELL_URL=http://localhost:3000
     depends_on:
       - json-server
     networks:

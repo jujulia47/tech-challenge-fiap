@@ -61,18 +61,23 @@ NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
 NEXTAUTH_URL=http://localhost:3000
 DASHBOARD_URL=http://localhost:3003
 TRANSACTIONS_URL=http://localhost:3002
+JSON_SERVER_URL=http://localhost:3001
 ```
 
 **apps/dashboard/.env.local**
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3001
+JSON_SERVER_URL=http://localhost:3001
+ALLOWED_ORIGINS=http://localhost:3000
+SHELL_URL=http://localhost:3000
 NEXT_PUBLIC_SHELL_URL=http://localhost:3000
 NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
 ```
 
 **apps/transactions/.env.local**
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3001
+JSON_SERVER_URL=http://localhost:3001
+ALLOWED_ORIGINS=http://localhost:3000
+SHELL_URL=http://localhost:3000
 NEXTAUTH_SECRET=bytebank-secret-fase2-fiap
 ```
 
@@ -100,7 +105,7 @@ docker-compose up --build
 
 Todos os serviços sobem automaticamente:
 - shell → http://localhost:3000
-- json-server → http://localhost:3001
+- json-server → só na rede interna do Docker (a porta 3001 não é publicada)
 - transactions → http://localhost:3002
 - dashboard → http://localhost:3003
 

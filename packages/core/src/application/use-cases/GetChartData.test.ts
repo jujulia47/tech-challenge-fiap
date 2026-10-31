@@ -47,6 +47,55 @@ describe('GetChartData', () => {
     expect(byMonth.map(m => m.monthKey)).toEqual(['2025-12', '2026-02'])
   })
 
+  describe('filter by type', () => {
+    it('narrows byMonth to the type', async () => {
+      const { byMonth } = await setup().execute({ userId: 'user-a', period: 'all', type: 'payment' })
+
+      expect(byMonth).toEqual([
+        { monthKey: '2025-12', amountInCents: 200 },
+        { monthKey: '2026-02', amountInCents: 30 },
+      ])
+    })
+
+    it('keeps every type in byType, which is what the type is chosen from', async () => {
+      const { byType } = await setup().execute({ userId: 'user-a', period: 'all', type: 'payment' })
+
+      expect(byType).toEqual([
+        { type: 'deposit', amountInCents: 1000 },
+        { type: 'payment', amountInCents: 230 },
+        { type: 'loan', amountInCents: 4 },
+      ])
+    })
+
+    it('combines with the period', async () => {
+      const { byMonth, byType } = await setup().execute({ userId: 'user-a', period: 3, type: 'payment' })
+
+      expect(byMonth).toEqual([{ monthKey: '2026-02', amountInCents: 30 }])
+      expect(byType).toEqual([{ type: 'payment', amountInCents: 30 }])
+    })
+
+    it('gives an empty byMonth for a type with no transactions in the period', async () => {
+      const { byMonth, byType } = await setup().execute({ userId: 'user-a', period: 3, type: 'deposit' })
+
+      expect(byMonth).toEqual([])
+      expect(byType).toEqual([{ type: 'payment', amountInCents: 30 }])
+    })
+
+    it('does not reach transactions of other users', async () => {
+      const { byMonth } = await setup().execute({ userId: 'user-a', period: 'all', type: 'deposit' })
+
+      expect(byMonth).toEqual([{ monthKey: '2025-01', amountInCents: 1000 }])
+    })
+
+    it('gives the same result with no filter and with undefined', async () => {
+      const useCase = setup()
+
+      expect(await useCase.execute({ userId: 'user-a', period: 'all', type: undefined })).toEqual(
+        await useCase.execute({ userId: 'user-a', period: 'all' }),
+      )
+    })
+  })
+
   it('returns empty totals when the user has no transactions', async () => {
     await expect(setup().execute({ userId: 'nobody', period: 'all' })).resolves.toEqual({ byMonth: [], byType: [] })
   })

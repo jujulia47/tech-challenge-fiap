@@ -52,21 +52,18 @@ O middleware (`proxy.ts`) no shell protege as rotas `/dashboard/*` e
 
 ## Gestão de estado
 
-Redux Toolkit foi aplicado na zona dashboard para gerenciar o estado
-de transações. A zona transactions usa React Context — decisão intencional
-para demonstrar as duas abordagens no mesmo projeto.
-
-O hook `useTransactions()` mantém a mesma interface em ambas as zonas,
-abstraindo a implementação subjacente.
+As duas zonas usam RTK Query para os dados do servidor, com a mesma fábrica de
+`@bytebank/store`, e falam com o BFF pelo mesmo cliente, `@bytebank/bff/client`.
+Veja `docs/fase4/state-management.md`.
 
 ## Renderização
 
 | Página | Estratégia | Motivo |
 |---|---|---|
 | Landing page | SSG | Conteúdo estático |
-| `/sobre` | ISR (revalidate 3600) | Dados semi-estáticos |
+| `/sobre` | SSR | Números lidos do json-server a cada requisição |
 | `/dashboard/account` | SSR | Dados do usuário por request |
-| Dashboard, Transactions | CSR | Interatividade com Redux/Context |
+| Dashboard, Transactions | CSR | Interatividade com RTK Query |
 
 ## Docker
 
@@ -88,4 +85,4 @@ shell (:3000), json-server (:3001), transactions (:3002), dashboard (:3003).
 | json-server | Railway | https://glistening-recreation-production-63c0.up.railway.app |
 
 O json-server no Railway usa um Dockerfile dedicado (`apps/shell/Dockerfile.jsonserver`)
-que instala o json-server globalmente e serve o `db.json` na porta 3001.
+que instala o json-server globalmente e serve na porta 3001 um `db.json` copiado da semente `apps/shell/data/db.seed.json`.

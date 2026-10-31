@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 
 FROM base AS deps
 WORKDIR /app
@@ -8,9 +8,10 @@ COPY apps/dashboard/package.json ./apps/dashboard/
 COPY apps/transactions/package.json ./apps/transactions/
 COPY packages/core/package.json ./packages/core/
 COPY packages/infrastructure/package.json ./packages/infrastructure/
+COPY packages/bff/package.json ./packages/bff/
+COPY packages/store/package.json ./packages/store/
 COPY packages/design-system/package.json ./packages/design-system/
 COPY packages/utils/package.json ./packages/utils/
-COPY packages/types/package.json ./packages/types/
 RUN npm ci
 
 FROM base AS builder

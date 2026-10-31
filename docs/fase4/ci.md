@@ -15,23 +15,23 @@ The repository now has a GitHub Actions pipeline (`.github/workflows/ci.yml`) an
 | # | Step | Command | Why it exists |
 |---|---|---|---|
 | 1 | Checkout | `actions/checkout@v7` | Gets the commit being tested. |
-| 2 | Setup Node (with npm cache) | `actions/setup-node@v7`, `node-version: 20`, `cache: npm` | Same Node major as the Dockerfiles (`node:20-alpine`), so CI matches production. The npm cache is keyed on `package-lock.json`, so unchanged dependencies are not downloaded again. |
+| 2 | Setup Node (with npm cache) | `actions/setup-node@v7`, `node-version: 22`, `cache: npm` | Same Node major as the Dockerfiles (`node:22-alpine`), so CI matches production. json-server 1.0.0-beta.15 requires Node >= 22.12. The npm cache is keyed on `package-lock.json`, so unchanged dependencies are not downloaded again. |
 | 3 | Install | `npm ci` | Clean install that follows `package-lock.json` exactly and fails if it is out of sync with `package.json`. This catches lockfile mistakes before deploy. |
-| 4 | Lint | `npx turbo lint` | ESLint in all 8 workspaces (shell, dashboard, transactions, core, infrastructure, design-system, types, utils). The baseline is 0 errors and 0 warnings (steps 0.2 and 0.3). Note that warnings do not fail ESLint, only errors do. |
-| 5 | Unit tests | `npm test` | Runs the Vitest unit tests (`packages/**/src/**/*.test.ts`, 441 tests today, including an integration test against a real json-server). Any change in pinned behavior during the refactor fails here. See `testing.md`. |
+| 4 | Lint | `npx turbo lint` | ESLint in all 9 workspaces (shell, dashboard, transactions, core, infrastructure, bff, store, design-system, utils). The baseline is 0 errors and 0 warnings (steps 0.2 and 0.3). Note that warnings do not fail ESLint, only errors do. |
+| 5 | Unit tests | `npm test` | Runs the Vitest unit tests (`packages/**/src/**/*.test.ts`, 913 tests today, including integration and end-to-end tests against a real json-server). Any change in pinned behavior during the refactor fails here. See `testing.md`. |
 | 6 | Build | `npx turbo build` | Production build of the three Next.js apps, including TypeScript checks. Proves the code deploys. |
 | 7 | Security audit (production) | `npm audit --omit=dev --audit-level=high` | **Blocking.** Fails if any production dependency has a known vulnerability of severity high or critical. |
 | 8 | Security audit (full) | `npm audit --audit-level=high` + `continue-on-error: true` | **Informational.** Reports vulnerabilities in all dependencies, including dev tooling, without failing the pipeline. |
 
-The action versions are the current majors, checked on 2026-10-29 against the GitHub releases API: `actions/checkout` latest is v7.0.1 and `actions/setup-node` latest is v7.1.0. Both `v7` major tags exist, and both actions run on `node24`. `setup-node@v7` still supports the `node-version` and `cache: npm` inputs. Every tool in the pipeline supports Node 20: the strictest is Vite/rolldown with `^20.19.0`, and `node-version: 20` resolves to the latest 20.x.
+The action versions are the current majors, checked on 2026-10-29 against the GitHub releases API: `actions/checkout` latest is v7.0.1 and `actions/setup-node` latest is v7.1.0. Both `v7` major tags exist, and both actions run on `node24`. `setup-node@v7` still supports the `node-version` and `cache: npm` inputs. `node-version: 22` resolves to the latest 22.x. CI moved from Node 20 to 22 in step 2.4a, together with the three app Dockerfiles, because the integration tests run json-server, which does not support Node 20. The pipeline itself only runs on GitHub after a push, so the same steps were run in a copy of the repository on `node:22-alpine`: `npm ci`, 15 rounds of the tests with no failure, `turbo lint` and `turbo build`.
 
 ### Environment variables
 
-The workflow sets **no environment variables and uses no secrets**. A build was run locally under CI-like conditions: `.env.local` not loaded (with `NODE_ENV=test`, Next.js skips `.env.local`) and the API pointed to a closed port, to simulate the missing json-server. It succeeded:
+The workflow sets **no environment variables and uses no secrets**. That still holds after step 2.2: `JSON_SERVER_URL`, `ALLOWED_ORIGINS` and `SHELL_URL` are read on the first request, never during the build. A build was run locally under CI-like conditions: `.env.local` not loaded (with `NODE_ENV=test`, Next.js skips `.env.local`) and the API pointed to a closed port, to simulate the missing json-server. It succeeded:
 
 - `NEXTAUTH_SECRET` is only read when an auth request is handled. The auth route and `/dashboard/account` are dynamic (`ƒ`), so they do not run at build time.
-- `NEXT_PUBLIC_API_URL`, `DASHBOARD_URL` and `TRANSACTIONS_URL` all have `localhost` fallbacks in code. The shell rewrites are disabled outside `next dev` and Docker.
-- `/sobre` fetches the json-server at build time (ISR). Without the API, the fetch fails, the existing `try/catch` returns `total: 0`, and the page is generated without the "Em números" section. It is regenerated with real data after the first revalidation (`revalidate: 3600`) in the deployed app.
+- `DASHBOARD_URL` and `TRANSACTIONS_URL` have `localhost` fallbacks in code. The shell rewrites are disabled outside `next dev` and Docker.
+- `/sobre` is rendered on each request since step 2.5b, so the build does not need json-server.
 
 ### Why the production audit blocks and the full audit does not
 
@@ -103,7 +103,7 @@ The commands from steps 3 to 8 were run at the repository root, in order:
 |---|---|---|
 | 3 | `npm ci` | ❌ Locally: `EPERM: operation not permitted, unlink ...lightningcss.win32-x64-msvc.node`. The local `next dev` servers (`npm run dev`) had the native binary loaded, and Windows does not allow deleting a file in use. The tree was restored with `npm install`. This is a local-machine condition: on the CI runner nothing else is running. Run `npm ci` locally only with the dev servers stopped. |
 | 4 | `npx turbo lint` | ✅ exit 0, 6 of 6 tasks |
-| 5 | `npm test` | ✅ exit 0, 30 files, 441 tests passed (updated in step 1.4b) |
+| 5 | `npm test` | ✅ exit 0, 43 files, 913 tests passed (updated in step 2.5b) |
 | 6 | `npx turbo build` | ✅ exit 0, 3 of 3 apps (Next.js 16.4.3) |
 | 7 | `npm audit --omit=dev --audit-level=high` | ✅ exit 0, found 0 vulnerabilities |
 | 8 | `npm audit --audit-level=high` | ✅ exit 0, found 0 vulnerabilities |

@@ -1,7 +1,7 @@
 import { CalendarDate, Transaction } from '@bytebank/core'
 import { InfrastructureError } from '../errors/InfrastructureError'
 import type { TransactionRecord } from '../json-server/TransactionRecord'
-import { parseTransactionRecord, recordFromPrimitives } from '../json-server/transactionRecordMapper'
+import { idOf, parseTransactionRecord, recordFromPrimitives } from '../json-server/transactionRecordMapper'
 import { LEGACY_LABEL_TO_TYPE, parseLegacyTransaction, type LegacyTransaction } from './legacyTransaction'
 
 const AMOUNT = /^\s*(-?)\s*R\$\s*(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})\s*$/
@@ -59,11 +59,6 @@ function fromLegacy(legacy: LegacyTransaction, userId: string): TransactionRecor
 
 function validated(record: TransactionRecord): TransactionRecord {
   return recordFromPrimitives(Transaction.fromPrimitives(record).toPrimitives())
-}
-
-function idOf(value: unknown): string {
-  const id = (value as { id?: unknown } | null)?.id
-  return typeof id === 'string' ? id : '(no id)'
 }
 
 function isNewFormat(value: object): boolean {

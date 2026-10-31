@@ -2,19 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { Button, Modal, Select } from '@bytebank/design-system'
-import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
-import { TRANSACTION_OPTIONS } from '@bytebank/utils'
-import type { Transaction, TransactionType } from '@bytebank/types'
+import { useUpdateTransactionMutation } from '@/store/transactionsApi'
+import { isTransactionType, type TransactionDTO } from '@bytebank/core'
+import { TRANSACTION_TYPE_OPTIONS } from '@bytebank/utils'
 
 interface ModalEditTransactionProps {
-  transaction: Transaction | null
+  transaction: TransactionDTO | null
   onClose: () => void
   onSuccess: () => void
+  onError: (message: string) => void
 }
 
-export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalEditTransactionProps) {
-  const { editTransaction } = useTransactions()
+export function ModalEditTransaction({ transaction, onClose, onSuccess, onError }: ModalEditTransactionProps) {
+  const [updateTransaction] = useUpdateTransactionMutation()
   const [type, setType]   = useState('')
   const [error, setError] = useState('')
   const { digits, formatted, handleChange, setDigits } = useCurrencyInput()
@@ -22,32 +23,26 @@ export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalE
   useEffect(() => {
     if (!transaction) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- populates form fields when target transaction changes; refactor to key-based remount tracked as tech debt
-    setType(transaction.label)
-    const raw = transaction.amount
-      .replace('R$ ', '')
-      .replace('-R$ ', '')
-      .replace(/\./g, '')
-      .replace(',', '')
-    setDigits(raw || '0')
+    setType(transaction.type)
+    setDigits(String(transaction.amountInCents))
     setError('')
   }, [transaction, setDigits])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (!type || digits === '0') {
+    // digits can be "00" after erasing, so the check is on the number
+    const amountInCents = parseInt(digits, 10)
+    if (!isTransactionType(type) || amountInCents === 0) {
       setError('Preencha todos os campos')
       return
     }
     try {
-      await editTransaction({
-        ...transaction!,
-        label: type as TransactionType,
-        amount: `R$ ${formatted}`,
-      })
+      await updateTransaction({ id: transaction!.id, changes: { type, amountInCents } }).unwrap()
       onClose()
       onSuccess()
     } catch {
       setError('Erro ao salvar alterações. Tente novamente.')
+      onError('Erro ao salvar alterações')
     }
   }
 
@@ -57,7 +52,7 @@ export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalE
         <Select
           label="Tipo de transação"
           placeholder="Selecione o tipo"
-          options={TRANSACTION_OPTIONS}
+          options={TRANSACTION_TYPE_OPTIONS}
           value={type}
           onChange={setType}
         />
@@ -72,7 +67,7 @@ export function ModalEditTransaction({ transaction, onClose, onSuccess }: ModalE
             placeholder="0,00"
             className="h-12 w-full px-4 rounded-md border border-primary-900 bg-inverse text-body text-primary-800 focus:border-2 focus:border-primary-800 focus:outline-none"
           />
-          {error && <span className="text-meta text-error">{error}</span>}
+          {error && <span role="alert" aria-live="polite" className="text-meta text-error">{error}</span>}
         </div>
         <div className="mt-8">
           <Button

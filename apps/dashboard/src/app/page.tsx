@@ -1,27 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { CardNewTransaction } from '@/components/dashboard/CardNewTransaction'
 import { CardCharts } from '@/components/dashboard/CardCharts'
 import { CardStatement } from '@/components/dashboard/CardStatement'
 import { ModalConfirmDelete, Toast } from '@bytebank/design-system'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
-import { useTransactions } from '@/context/TransactionsContext'
-import { groupByMonth } from '@bytebank/utils'
+import { useDeleteTransactionMutation, useGetStatementQuery } from '@/store/transactionsApi'
+import { TRANSACTION_TYPE_LABELS } from '@bytebank/utils'
 import { useToast } from '@/hooks/use-toast'
 import { DashboardWelcome } from '@/components/layout/DashboardWelcome'
-import type { Transaction } from '@bytebank/types'
+import type { TransactionDTO } from '@bytebank/core'
 
 export default function DashboardPage() {
-  const { transactions, loading, deleteTransaction } = useTransactions()
+  const { data: statement, isLoading, isError } = useGetStatementQuery()
+  const [deleteTransaction] = useDeleteTransactionMutation()
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
-  const [detailTx, setDetailTx] = useState<Transaction | null>(null)
+  const [editingTx, setEditingTx] = useState<TransactionDTO | null>(null)
+  const [detailTx, setDetailTx] = useState<TransactionDTO | null>(null)
 
+  const groups = useMemo(() => statement?.groups ?? [], [statement])
+  const transactions = useMemo(() => groups.flatMap(group => group.transactions), [groups])
   const deletingTx = transactions.find(t => t.id === deletingId)
-  const groups = groupByMonth(transactions)
 
   function handleDeleteClick(id: string) {
     setDeletingId(id)
@@ -29,7 +31,7 @@ export default function DashboardPage() {
 
   async function handleDeleteConfirm() {
     try {
-      await deleteTransaction(deletingId!)
+      await deleteTransaction(deletingId!).unwrap()
       showToast('Transação excluída com sucesso', 'success')
     } catch {
       showToast('Erro ao excluir transação', 'error')
@@ -48,19 +50,11 @@ export default function DashboardPage() {
     setEditingTx(tx)
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <span className="text-body text-text-secondary">Carregando transações...</span>
-      </div>
-    )
-  }
-
   return (
     <>
       <div className="w-card-sm mx-auto md:w-card-md lg:w-full flex flex-col gap-4 lg:gap-6">
         <DashboardWelcome />
-        <CardCharts transactions={transactions} />
+        <CardCharts />
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
           <div className="flex-1">
             <CardNewTransaction
@@ -69,7 +63,16 @@ export default function DashboardPage() {
             />
           </div>
           <div className="lg:w-[380px] shrink-0">
-            <CardStatement groups={groups} onDetail={handleDetail} onEdit={handleEdit} onDelete={handleDeleteClick} limit={4} showViewMore />
+            <CardStatement
+              groups={groups}
+              loading={isLoading}
+              loadFailed={isError}
+              onDetail={handleDetail}
+              onEdit={handleEdit}
+              onDelete={handleDeleteClick}
+              limit={4}
+              showViewMore
+            />
           </div>
         </div>
       </div>
@@ -78,12 +81,13 @@ export default function DashboardPage() {
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDeleteConfirm}
-        transactionLabel={deletingTx?.label}
+        transactionLabel={deletingTx && TRANSACTION_TYPE_LABELS[deletingTx.type]}
       />
       <ModalEditTransaction
         transaction={editingTx}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}
+        onError={(msg) => showToast(msg, 'error')}
       />
       <Toast message={toast.message} type={toast.type} visible={toast.visible} />
     </>

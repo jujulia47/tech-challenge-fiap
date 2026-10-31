@@ -1,0 +1,68 @@
+{
+  "transactions": [
+    {
+      "id": "1",
+      "userId": "1",
+      "type": "deposit",
+      "amountInCents": 15000,
+      "date": "2022-11-18"
+    },
+    {
+      "id": "2",
+      "userId": "1",
+      "type": "deposit",
+      "amountInCents": 10000,
+      "date": "2022-11-21"
+    },
+    {
+      "id": "3",
+      "userId": "1",
+      "type": "deposit",
+      "amountInCents": 5000,
+      "date": "2022-11-21"
+    },
+    {
+      "id": "6",
+      "userId": "1",
+      "type": "transfer",
+      "amountInCents": 10000,
+      "date": "2022-12-10"
+    },
+    {
+      "id": "7",
+      "userId": "1",
+      "type": "deposit",
+      "amountInCents": 250000,
+      "date": "2026-01-15"
+    },
+    {
+      "id": "8",
+      "userId": "1",
+      "type": "payment",
+      "amountInCents": 35000,
+      "date": "2026-01-20"
+    },
+    {
+      "id": "11",
+      "userId": "1",
+      "type": "currency_exchange",
+      "amountInCents": 120000,
+      "date": "2026-03-08"
+    }
+  ],
+  "users": [
+    {
+      "id": "1",
+      "name": "Júlia Borges",
+      "email": "julia@bytebank.com",
+      "password": "bytebank123"
+    },
+    {
+      "id": "2",
+      "name": "Test User",
+      "email": "test@bytebank.com",
+      "password": "bytebank123"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}

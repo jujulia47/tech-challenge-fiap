@@ -1,0 +1,12 @@
+{
+  "transactions": [
+    { "id": "a", "userId": "1", "type": "deposit", "amountInCents": 15000, "date": "2022-11-18" },
+    { "id": "b", "userId": "1", "type": "payment", "amountInCents": 5000, "date": "2026-01-20" },
+    { "id": "c", "userId": "10", "type": "deposit", "amountInCents": 100, "date": "2026-01-15" },
+    { "id": "d", "userId": "2", "type": "withdrawal", "amountInCents": 200, "date": "2026-02-01" },
+    { "id": "bad-value", "userId": "6", "type": "Depósito", "amountInCents": 100, "date": "2026-01-15" },
+    { "id": "bad-shape", "userId": "7", "type": "deposit", "amountInCents": "R$ 1,00", "date": "2026-01-15" },
+    { "id": "legacy", "date": "18/11/2022", "label": "Depósito", "amount": "R$ 150,00", "month": "novembro" }
+  ],
+  "users": []
+}

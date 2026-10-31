@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# json-server: the database in use. The versioned one is data/db.seed.json
+apps/shell/data/db.json
+apps/shell/data/.db.json.tmp
+
 # vercel
 .vercel
 

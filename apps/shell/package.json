@@ -7,13 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "api": "json-server db.json --port 3001",
+    "api": "node scripts/db.mjs ensure && json-server data/db.json --port 3001",
+    "db:reset": "node scripts/db.mjs reset",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },
   "dependencies": {
+    "@bytebank/core": "*",
     "@bytebank/design-system": "*",
-    "@bytebank/types": "*",
     "@bytebank/utils": "*",
     "@fontsource/material-icons": "^5.3.0",
     "clsx": "^2.1.1",

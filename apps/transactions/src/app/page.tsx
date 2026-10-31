@@ -1,22 +1,31 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useTransactions } from '@/context/TransactionsContext'
+import { useDeleteTransactionMutation, useGetTransactionsQuery } from '@/store/transactionsApi'
 import { useToast } from '@/hooks/use-toast'
 import { Toast, ModalConfirmDelete, Select } from '@bytebank/design-system'
-import { TransactionItem } from '@/components/dashboard/TransactionItem'
+import { StatementResults } from '@/components/dashboard/StatementResults'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
 import { PaginationControls } from '@/components/PaginationControls'
-import { groupByMonth, capitalizeMonth, TRANSACTION_OPTIONS } from '@bytebank/utils'
-import type { Transaction } from '@bytebank/types'
+import { transactionDirection, type TransactionDTO } from '@bytebank/core'
+import {
+  TRANSACTION_TYPE_LABELS,
+  TRANSACTION_TYPE_OPTIONS,
+  formatDateBR,
+  formatMonthKey,
+  formatSignedCents,
+  groupDtosByMonth,
+} from '@bytebank/utils'
 
 export default function StatementPage() {
-  const { transactions, deleteTransaction } = useTransactions()
+  const { data, isLoading, isError } = useGetTransactionsQuery()
+  const [deleteTransaction] = useDeleteTransactionMutation()
+  const transactions = useMemo(() => data ?? [], [data])
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
-  const [detailTx, setDetailTx] = useState<Transaction | null>(null)
+  const [editingTx, setEditingTx] = useState<TransactionDTO | null>(null)
+  const [detailTx, setDetailTx] = useState<TransactionDTO | null>(null)
   const [filterType, setFilterType] = useState('')
   const [filterMonth, setFilterMonth] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -39,17 +48,17 @@ export default function StatementPage() {
   }
 
   const monthOptions = useMemo(() => {
-    const months = [...new Set(transactions.map(tx => tx.month))]
+    const monthKeys = [...new Set(transactions.map(tx => tx.date.slice(0, 7)))]
     return [
       { value: '', label: 'Todos os meses' },
-      ...months.map(m => ({ value: m, label: capitalizeMonth(m) })),
+      ...monthKeys.map(monthKey => ({ value: monthKey, label: formatMonthKey(monthKey) })),
     ]
   }, [transactions])
 
   const filtered = useMemo(() => {
     return transactions.filter(tx => {
-      const matchType = !filterType || tx.label === filterType
-      const matchMonth = !filterMonth || tx.month === filterMonth
+      const matchType = !filterType || tx.type === filterType
+      const matchMonth = !filterMonth || tx.date.startsWith(filterMonth)
       return matchType && matchMonth
     })
   }, [transactions, filterType, filterMonth])
@@ -58,21 +67,21 @@ export default function StatementPage() {
     if (!searchQuery.trim()) return filtered
     const query = searchQuery.toLowerCase()
     return filtered.filter(tx =>
-      tx.label.toLowerCase().includes(query) ||
-      tx.amount.includes(searchQuery) ||
-      tx.date.includes(searchQuery)
+      TRANSACTION_TYPE_LABELS[tx.type].toLowerCase().includes(query) ||
+      formatSignedCents(tx.amountInCents, transactionDirection(tx.type)).includes(searchQuery) ||
+      formatDateBR(tx.date).includes(searchQuery)
     )
   }, [filtered, searchQuery])
 
   const allTransactions = searched
   const totalPages = Math.ceil(allTransactions.length / PAGE_SIZE)
   const paginated = allTransactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const paginatedGroups = groupByMonth(paginated)
+  const paginatedGroups = groupDtosByMonth(paginated)
   const deletingTx = transactions.find(t => t.id === deletingId)
 
   async function handleDeleteConfirm() {
     try {
-      await deleteTransaction(deletingId!)
+      await deleteTransaction(deletingId!).unwrap()
       showToast('Transação excluída com sucesso', 'success')
     } catch {
       showToast('Erro ao excluir transação', 'error')
@@ -127,7 +136,7 @@ export default function StatementPage() {
           <Select
             label="Tipo de transação"
             placeholder="Todos os tipos"
-            options={[{ value: '', label: 'Todos os tipos' }, ...TRANSACTION_OPTIONS]}
+            options={[{ value: '', label: 'Todos os tipos' }, ...TRANSACTION_TYPE_OPTIONS]}
             value={filterType}
             onChange={handleFilterTypeChange}
           />
@@ -148,32 +157,14 @@ export default function StatementPage() {
       </div>
 
       <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6 min-h-[400px]">
-        {paginatedGroups.length === 0 ? (
-          <p className="text-body text-text-secondary">
-            Nenhuma transação encontrada
-          </p>
-        ) : (
-          paginatedGroups.map(group => (
-            <div key={group.month}>
-              <p className="text-meta-semibold text-success mb-2">
-                {capitalizeMonth(group.month)}
-              </p>
-              {group.transactions.map((tx, idx) => (
-                <TransactionItem
-                  key={tx.id}
-                  id={tx.id}
-                  date={tx.date}
-                  label={tx.label}
-                  amount={tx.amount}
-                  showDivider={idx < group.transactions.length - 1}
-                  onDetail={(id) => setDetailTx(transactions.find(t => t.id === id) ?? null)}
-                  onEdit={(id) => setEditingTx(transactions.find(t => t.id === id) ?? null)}
-                  onDelete={setDeletingId}
-                />
-              ))}
-            </div>
-          ))
-        )}
+        <StatementResults
+          groups={paginatedGroups}
+          loading={isLoading}
+          loadFailed={isError}
+          onDetail={(id) => setDetailTx(transactions.find(t => t.id === id) ?? null)}
+          onEdit={(id) => setEditingTx(transactions.find(t => t.id === id) ?? null)}
+          onDelete={setDeletingId}
+        />
       </div>
 
       <PaginationControls
@@ -193,13 +184,14 @@ export default function StatementPage() {
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDeleteConfirm}
-        transactionLabel={deletingTx?.label}
+        transactionLabel={deletingTx && TRANSACTION_TYPE_LABELS[deletingTx.type]}
       />
 
       <ModalEditTransaction
         transaction={editingTx}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}
+        onError={(message) => showToast(message, 'error')}
       />
 
       <Toast message={toast.message} type={toast.type} visible={toast.visible} />

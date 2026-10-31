@@ -3,7 +3,7 @@ import { aTransaction } from '../../testing/fakes'
 import { InMemoryTransactionRepository } from '../../testing/InMemoryTransactionRepository'
 import { GetBalance } from './GetBalance'
 
-// The seven records of apps/shell/db.json, converted to the domain format
+// The seven records of apps/shell/data/db.seed.json
 const DB_TRANSACTIONS = [
   aTransaction({ id: '1', userId: '1', type: 'deposit', amountInCents: 15000, date: '2022-11-18' }),
   aTransaction({ id: '2', userId: '1', type: 'deposit', amountInCents: 10000, date: '2022-11-21' }),
@@ -65,7 +65,7 @@ describe('GetBalance', () => {
     await expect(useCase.execute('user-a')).resolves.toEqual({ amountInCents: 100 })
   })
 
-  it('gives R$ 1.150,00 for the current db.json data', async () => {
+  it('gives R$ 1.150,00 for the seed data', async () => {
     const useCase = new GetBalance(new InMemoryTransactionRepository(DB_TRANSACTIONS))
 
     await expect(useCase.execute('1')).resolves.toEqual({ amountInCents: 115000 })

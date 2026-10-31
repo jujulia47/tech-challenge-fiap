@@ -8,6 +8,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@bytebank/core": "*",
     "@bytebank/utils": "*"
   },
   "peerDependencies": {

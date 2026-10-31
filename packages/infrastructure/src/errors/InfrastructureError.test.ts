@@ -12,10 +12,21 @@ describe('InfrastructureError', () => {
     expect(error.url).toBe('http://api/transactions')
   })
 
+  it('carries the code and the cause', () => {
+    const cause = new TypeError('fetch failed')
+
+    const error = new InfrastructureError('failed', { code: 'UPSTREAM_UNREACHABLE', cause })
+
+    expect(error.code).toBe('UPSTREAM_UNREACHABLE')
+    expect(error.cause).toBe(cause)
+  })
+
   it('has no details by default', () => {
     const error = new InfrastructureError('failed')
 
+    expect(error.code).toBeUndefined()
     expect(error.status).toBeUndefined()
     expect(error.url).toBeUndefined()
+    expect(error.cause).toBeUndefined()
   })
 })

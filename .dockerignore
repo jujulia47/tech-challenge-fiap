@@ -6,4 +6,6 @@
 .git
 **/storybook-static
 **/coverage
+apps/shell/data/db.json
+apps/shell/data/.db.json.tmp
 docs

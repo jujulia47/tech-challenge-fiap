@@ -1,13 +1,10 @@
-import { TransactionItem } from '@/components/dashboard/TransactionItem'
-import type { Transaction } from '@bytebank/types'
-
-interface TransactionGroup {
-  month: string
-  transactions: Transaction[]
-}
+import { TransactionItem } from '@bytebank/design-system'
+import { formatMonthKey, type TransactionMonthGroup } from '@bytebank/utils'
 
 interface CardStatementProps {
-  groups: TransactionGroup[]
+  groups: TransactionMonthGroup[]
+  loading?: boolean
+  loadFailed?: boolean
   onDetail?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
@@ -15,7 +12,16 @@ interface CardStatementProps {
   showViewMore?: boolean
 }
 
-export function CardStatement({ groups, onDetail, onEdit, onDelete, limit, showViewMore }: CardStatementProps) {
+export function CardStatement({
+  groups,
+  loading,
+  loadFailed,
+  onDetail,
+  onEdit,
+  onDelete,
+  limit,
+  showViewMore,
+}: CardStatementProps) {
   const displayGroups = limit
     ? (() => {
         const all = groups.flatMap(g => g.transactions)
@@ -36,19 +42,22 @@ export function CardStatement({ groups, onDetail, onEdit, onDelete, limit, showV
       </h2>
 
       <div className="flex flex-col gap-6">
-        {displayGroups.length === 0 ? (
+        {loadFailed ? (
+          <p role="alert" aria-live="polite" className="text-body text-error">
+            Não foi possível carregar as transações. Tente novamente.
+          </p>
+        ) : loading ? (
+          <p className="text-body text-text-secondary">Carregando transações...</p>
+        ) : displayGroups.length === 0 ? (
           <p className="text-body text-text-secondary">Nenhuma transação encontrada</p>
         ) : (
           displayGroups.map((group) => (
-            <div key={group.month}>
-              <p className="text-meta-semibold text-success">{group.month}</p>
+            <div key={group.monthKey}>
+              <p className="text-meta-semibold text-success">{formatMonthKey(group.monthKey)}</p>
               {group.transactions.map((tx, idx) => (
                 <TransactionItem
                   key={tx.id}
-                  id={tx.id}
-                  date={tx.date}
-                  label={tx.label}
-                  amount={tx.amount}
+                  transaction={tx}
                   showDivider={idx < group.transactions.length - 1}
                   onDetail={onDetail}
                   onEdit={onEdit}

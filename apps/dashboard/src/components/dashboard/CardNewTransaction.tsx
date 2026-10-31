@@ -1,36 +1,42 @@
 'use client'
 
 import { useState } from 'react'
+import { MAX_ATTACHMENT_BYTES } from '@bytebank/bff/limits'
 import { Button, Input, Select } from '@bytebank/design-system'
-import { useTransactions } from '@/context/TransactionsContext'
 import { useCurrencyInput } from '@/hooks/use-currency-input'
-import { TRANSACTION_OPTIONS } from '@bytebank/utils'
-import type { TransactionType } from '@bytebank/types'
+import { useCreateTransactionMutation } from '@/store/transactionsApi'
+import { isTransactionType, type TransactionType } from '@bytebank/core'
+import { TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_OPTIONS } from '@bytebank/utils'
 
 interface CardNewTransactionProps {
   onSuccess?: (message: string) => void
   onError?: (message: string) => void
 }
 
+// The calendar day in São Paulo, as on the server. toISOString() is UTC: already tomorrow after 21:00.
+function today(): string {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+}
+
 export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionProps) {
-  const { addTransaction } = useTransactions()
+  const [createTransaction] = useCreateTransactionMutation()
   const [type, setType] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState(today)
   const { digits, formatted, handleChange, setDigits } = useCurrencyInput()
   const [attachment, setAttachment] = useState<string | undefined>(undefined)
   const [attachmentName, setAttachmentName] = useState<string>('')
   const [errors, setErrors] = useState<{ type?: string; amount?: string; date?: string; attachment?: string }>({})
 
-  const amountValue = parseFloat(digits) / 100
-  const suggestion = !type && amountValue >= 1000 ? 'Depósito'
-    : !type && amountValue > 0 && amountValue < 1000 ? 'Pagamento'
+  const amountInCents = parseInt(digits, 10)
+  const suggestion: TransactionType | null = !type && amountInCents >= 100000 ? 'deposit'
+    : !type && amountInCents > 0 ? 'payment'
     : null
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 100 * 1024) {
-      setErrors(prev => ({ ...prev, attachment: 'Arquivo deve ter no máximo 100KB' }))
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setErrors(prev => ({ ...prev, attachment: `Arquivo deve ter no máximo ${MAX_ATTACHMENT_BYTES / 1024}KB` }))
       return
     }
     const reader = new FileReader()
@@ -45,29 +51,19 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const newErrors: Record<string, string> = {}
-    if (!type) newErrors.type = 'Selecione o tipo de transação'
-    if (!digits || digits === '0' || parseFloat(digits) === 0) newErrors.amount = 'Informe um valor maior que zero'
-    const selectedDate = new Date(date + 'T00:00:00')
-    const today = new Date()
-    today.setHours(23, 59, 59, 999)
-    if (selectedDate > today) newErrors.date = 'A data não pode ser futura'
-    if (Object.keys(newErrors).length > 0) {
+    if (!isTransactionType(type)) newErrors.type = 'Selecione o tipo de transação'
+    if (amountInCents === 0) newErrors.amount = 'Informe um valor maior que zero'
+    if (date > today()) newErrors.date = 'A data não pode ser futura'
+    if (!isTransactionType(type) || Object.keys(newErrors).length > 0) {
       setErrors(prev => ({ ...prev, ...newErrors }))
       return
     }
     setErrors({})
     try {
-      await addTransaction({
-        date: new Date().toLocaleDateString('pt-BR'),
-        transactionDate: new Date(date + 'T00:00:00').toLocaleDateString('pt-BR'),
-        label: type as TransactionType,
-        amount: `R$ ${formatted}`,
-        month: new Date().toLocaleDateString('pt-BR', { month: 'long', timeZone: 'America/Sao_Paulo' }),
-        attachment,
-      })
+      await createTransaction({ type, amountInCents, date, attachment }).unwrap()
       setDigits('0')
       setType('')
-      setDate(new Date().toISOString().split('T')[0])
+      setDate(today())
       setErrors({})
       setAttachment(undefined)
       setAttachmentName('')
@@ -88,7 +84,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
           <Select
             label="Tipo de transação"
             placeholder="Selecione o tipo de transação"
-            options={TRANSACTION_OPTIONS}
+            options={TRANSACTION_TYPE_OPTIONS}
             value={type}
             onChange={setType}
           />
@@ -96,7 +92,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
           {suggestion && (
             <button type="button" onClick={() => setType(suggestion)}
               className="text-meta text-accent hover:underline self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 rounded">
-              Sugestão: {suggestion}
+              Sugestão: {TRANSACTION_TYPE_LABELS[suggestion]}
             </button>
           )}
         </div>
@@ -129,7 +125,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
           <label htmlFor="attachment-input" className="text-body-semibold text-primary-50">
             Anexo (opcional)
           </label>
-          <span className="text-meta text-text-secondary">Máximo 100KB. Formatos: imagem ou PDF</span>
+          <span className="text-meta text-text-secondary">Máximo {MAX_ATTACHMENT_BYTES / 1024}KB. Formatos: imagem ou PDF</span>
           <label className="flex items-center gap-3 h-12 px-4 rounded-md border border-primary-900 bg-inverse cursor-pointer hover:opacity-90">
             <span className="material-icons text-icon-md text-primary-800">attach_file</span>
             <span className="text-body text-primary-800 truncate">
@@ -138,7 +134,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
             <input
               id="attachment-input"
               type="file"
-              accept="image/*,.pdf"
+              accept="image/png,image/jpeg,image/webp,application/pdf"
               onChange={handleFileChange}
               className="hidden"
             />

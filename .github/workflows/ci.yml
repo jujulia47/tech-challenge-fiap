@@ -20,8 +20,8 @@ jobs:
       - name: Setup Node (with npm cache)
         uses: actions/setup-node@v7
         with:
-          # Same major as the Dockerfiles (node:20-alpine)
-          node-version: 20
+          # Same major as the Dockerfiles (node:22-alpine). json-server 1.0.0-beta.15 requires >= 22.12
+          node-version: 22
           cache: npm
 
       - name: Install

@@ -175,8 +175,12 @@ Files that still exist in more than one app, as candidates for future steps. "Id
 | `components/dashboard/CardWelcome.tsx` | dashboard, transactions | Shared transaction UI |
 | `components/layout/DashboardWelcome.tsx` | dashboard, transactions | Shared transaction UI |
 | `app/api/auth/[...nextauth]/route.ts` | shell, dashboard, transactions | Thin re-export, can stay |
-| `types/fontsource.d.ts` | shell, dashboard, transactions | `@bytebank/types` |
+| `types/fontsource.d.ts` | shell, dashboard, transactions | A shared package |
 | `tsconfig.json`, `tailwind.config.ts`, `postcss.config.mjs` | shell, dashboard, transactions | `tsconfig.base.json` and shared config |
+
+**Step 2.5b:** `@bytebank/types` was retired, `TransactionItem` moved to `@bytebank/design-system`, and the unused `DashboardWelcome.tsx`, `CardWelcome.tsx` and `use-balance.ts` of the transactions zone were removed. The mentions of `@bytebank/types` above record step 1.4a.
+
+**Dead code removed in step 2.3:** the transactions copies of `CardNewTransaction.tsx` and `CardStatement.tsx`. A search confirmed that no file referred to them. The dashboard keeps its own copies, which are in use.
 
 **Copies that have diverged:**
 
@@ -184,10 +188,7 @@ Files that still exist in more than one app, as candidates for future steps. "Id
 |---|---|---|
 | `components/layout/Header.tsx` | shell, dashboard, transactions | Different `signOut` and menu handling |
 | `components/layout/MenuDrawer.tsx`, `MenuSidebar.tsx`, `MenuTabs.tsx`, `nav-items.ts` | shell, dashboard, transactions | Differ in zone paths, a good case for the same `crossZone` rule |
-| `components/dashboard/CardNewTransaction.tsx` | dashboard, transactions | The transactions copy is not used by any file |
-| `components/dashboard/CardStatement.tsx` | dashboard, transactions | The transactions copy is not used by any file |
 | `components/dashboard/ModalTransactionDetail.tsx` | dashboard, transactions | Should be one component |
-| `context/TransactionsContext.tsx` | dashboard, transactions | Redux and Context behind the same hook, replaced by the use cases |
 | `lib/auth.ts` | shell, dashboard, transactions | Reads different environment variables |
 | `styles/globals.css` | shell, dashboard, transactions | The tokens are identical, and the `.material-icons` class differs in the dashboard. Candidate for a shared stylesheet in the design system. |
 | `app/not-found.tsx`, `app/layout.tsx` | shell, dashboard, transactions | Similar structure per zone |

@@ -4,12 +4,15 @@ import * as utils from './index'
 describe('@bytebank/utils public API', () => {
   it('re-exports every module', () => {
     expect(Object.keys(utils).sort()).toEqual([
-      'TRANSACTION_OPTIONS',
-      'capitalizeMonth',
+      'TRANSACTION_TYPE_LABELS',
+      'TRANSACTION_TYPE_OPTIONS',
       'cn',
       'formatCents',
+      'formatDateBR',
+      'formatMonthKey',
+      'formatSignedCents',
       'getFirstName',
-      'groupByMonth',
+      'groupDtosByMonth',
     ])
   })
 })

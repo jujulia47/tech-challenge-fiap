@@ -34,7 +34,7 @@ describe('HttpTransactionRepository', () => {
 
     await new HttpTransactionRepository(`${BASE_URL}//`).findById('1', 'user-a')
 
-    expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/transactions/1`)
+    expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/transactions/1`)
   })
 
   describe('findAllByUser', () => {
@@ -74,22 +74,29 @@ describe('HttpTransactionRepository', () => {
       expect(found.map(t => t.id)).toEqual(['1'])
     })
 
-    it('rejects an invalid stored record', async () => {
-      respondWith([{ ...record, type: 'Depósito' }])
+    it('rejects an invalid stored record as corrupted, with its id', async () => {
+      respondWith([{ ...record, id: 'broken', type: 'Depósito' }])
 
-      await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({ code: 'TRANSACTION_INVALID_TYPE' })
+      await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({
+        name: 'InfrastructureError',
+        code: 'CORRUPTED_RECORD',
+        message: 'Stored transaction is invalid: broken',
+      })
     })
 
-    it('rejects a record in the legacy format', async () => {
+    it('rejects a record in the legacy format as corrupted', async () => {
       respondWith([{ id: '1', date: '18/11/2022', label: 'Depósito', amount: 'R$ 150,00', month: 'novembro' }])
 
-      await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({ name: 'InfrastructureError' })
+      await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({ code: 'CORRUPTED_RECORD' })
     })
 
     it('rejects a response that is not a list', async () => {
       respondWith({ data: [] })
 
-      await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({ name: 'InfrastructureError' })
+      await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({
+        name: 'InfrastructureError',
+        code: 'UPSTREAM_INVALID_RESPONSE',
+      })
     })
 
     it('throws on a non-2xx response', async () => {
@@ -97,6 +104,7 @@ describe('HttpTransactionRepository', () => {
 
       await expect(repository.findAllByUser('user-a')).rejects.toMatchObject({
         name: 'InfrastructureError',
+        code: 'UPSTREAM_BAD_STATUS',
         status: 500,
       })
     })
@@ -108,7 +116,7 @@ describe('HttpTransactionRepository', () => {
 
       const found = await repository.findById('1', 'user-a')
 
-      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/transactions/1`)
+      expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/transactions/1`)
       expect(found?.toPrimitives()).toEqual(record)
     })
 
@@ -117,7 +125,7 @@ describe('HttpTransactionRepository', () => {
 
       await repository.findById('a/b', 'user-a')
 
-      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/transactions/a%2Fb`)
+      expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/transactions/a%2Fb`)
     })
 
     it('returns null on 404', async () => {
@@ -141,10 +149,84 @@ describe('HttpTransactionRepository', () => {
       expect(String(error)).not.toContain('secret server detail')
     })
 
-    it('rejects an invalid stored record', async () => {
+    it('rejects an invalid stored record as corrupted', async () => {
       respondWith({ ...record, amountInCents: 'R$ 150,00' })
 
-      await expect(repository.findById('1', 'user-a')).rejects.toMatchObject({ name: 'InfrastructureError' })
+      await expect(repository.findById('1', 'user-a')).rejects.toMatchObject({
+        name: 'InfrastructureError',
+        code: 'CORRUPTED_RECORD',
+      })
+    })
+
+    it('reads a corrupted record before it can check the owner', async () => {
+      respondWith({ ...otherUserRecord, type: 'Depósito' })
+
+      await expect(repository.findById('2', 'user-a')).rejects.toMatchObject({ code: 'CORRUPTED_RECORD' })
+    })
+  })
+
+  describe('when no response arrives', () => {
+    const networkFailure = new TypeError('fetch failed')
+    const unreachable = { name: 'InfrastructureError', code: 'UPSTREAM_UNREACHABLE', cause: networkFailure }
+
+    it.each([
+      ['findAllByUser', () => repository.findAllByUser('user-a')],
+      ['findById', () => repository.findById('1', 'user-a')],
+      ['create', () => repository.create(transaction)],
+      ['update', () => repository.update(transaction)],
+      ['delete', () => repository.delete('1', 'user-a')],
+    ])('%s reports the backend as unreachable', async (_, call) => {
+      fetchMock.mockRejectedValueOnce(networkFailure)
+
+      await expect(call()).rejects.toMatchObject(unreachable)
+    })
+
+    it.each([
+      ['update', () => repository.update(transaction)],
+      ['delete', () => repository.delete('1', 'user-a')],
+    ])('%s reports a failure on the write after the owner check', async (_, call) => {
+      respondWith(record)
+      fetchMock.mockRejectedValueOnce(networkFailure)
+
+      await expect(call()).rejects.toMatchObject(unreachable)
+    })
+
+    it('names the url in the error', async () => {
+      fetchMock.mockRejectedValueOnce(networkFailure)
+
+      await expect(repository.findById('1', 'user-a')).rejects.toMatchObject({
+        url: `${BASE_URL}/transactions/1`,
+        message: `Could not reach the backend: ${BASE_URL}/transactions/1`,
+      })
+    })
+  })
+
+  describe('when the response is not JSON', () => {
+    function respondWithText(status = 200) {
+      fetchMock.mockResolvedValueOnce(new Response('<!doctype html>secret server detail', { status }))
+    }
+
+    it.each([
+      ['findAllByUser', () => repository.findAllByUser('user-a')],
+      ['findById', () => repository.findById('1', 'user-a')],
+      ['create', () => repository.create(transaction)],
+    ])('%s reports an invalid response', async (_, call) => {
+      respondWithText()
+
+      await expect(call()).rejects.toMatchObject({
+        name: 'InfrastructureError',
+        code: 'UPSTREAM_INVALID_RESPONSE',
+      })
+    })
+
+    it('keeps the body out of the error, including the cause', async () => {
+      respondWithText()
+
+      const error = (await repository.findById('1', 'user-a').catch((e: unknown) => e)) as Error
+
+      expect(error.message).not.toContain('secret server detail')
+      expect(error.message).not.toContain('doctype')
+      expect(error.cause).toBeUndefined()
     })
   })
 
@@ -175,7 +257,7 @@ describe('HttpTransactionRepository', () => {
 
       await repository.update(transaction)
 
-      expect(fetchMock.mock.calls[0]).toEqual([`${BASE_URL}/transactions/1`])
+      expect(fetchMock.mock.calls[0][0]).toBe(`${BASE_URL}/transactions/1`)
       const [url, init] = fetchMock.mock.calls[1]
       expect(url).toBe(`${BASE_URL}/transactions/1`)
       expect(init).toMatchObject({ method: 'PUT' })
@@ -211,7 +293,8 @@ describe('HttpTransactionRepository', () => {
 
       await repository.delete('1', 'user-a')
 
-      expect(fetchMock.mock.calls[1]).toEqual([`${BASE_URL}/transactions/1`, { method: 'DELETE' }])
+      expect(fetchMock.mock.calls[1][0]).toBe(`${BASE_URL}/transactions/1`)
+      expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'DELETE' })
     })
 
     it('does not delete a transaction of another user', async () => {

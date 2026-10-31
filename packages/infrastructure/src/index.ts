@@ -1,4 +1,5 @@
 export { InfrastructureError } from './errors/InfrastructureError'
+export type { InfrastructureErrorCode } from './errors/InfrastructureError'
 export { HttpTransactionRepository } from './json-server/HttpTransactionRepository'
 export type { TransactionRecord } from './json-server/TransactionRecord'
 export {

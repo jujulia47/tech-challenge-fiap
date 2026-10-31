@@ -15,6 +15,11 @@ function isRecordShape(value: unknown): value is TransactionRecord {
   )
 }
 
+export function idOf(value: unknown): string {
+  const id = (value as { id?: unknown } | null)?.id
+  return typeof id === 'string' ? id : '(no id)'
+}
+
 // Keeps known fields only, so stray keys in the database never reach the domain
 export function parseTransactionRecord(value: unknown): TransactionRecord {
   if (!isRecordShape(value)) {
@@ -28,7 +33,15 @@ export function recordFromPrimitives(primitives: TransactionPrimitives): Transac
   return { ...primitives }
 }
 
-// Invalid stored data becomes an error here and never enters the application
+// Invalid stored data becomes an error here and never enters the application. It is a
+// failure of the data, not of the caller, so a DomainError must not escape from this read.
 export function transactionFromRecord(value: unknown): Transaction {
-  return Transaction.fromPrimitives(parseTransactionRecord(value))
+  try {
+    return Transaction.fromPrimitives(parseTransactionRecord(value))
+  } catch (error) {
+    throw new InfrastructureError(`Stored transaction is invalid: ${idOf(value)}`, {
+      code: 'CORRUPTED_RECORD',
+      cause: error,
+    })
+  }
 }

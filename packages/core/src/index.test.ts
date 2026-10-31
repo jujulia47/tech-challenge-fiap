@@ -1,3 +1,4 @@
+import * as testing from '@bytebank/core/testing'
 import { describe, expect, it } from 'vitest'
 import * as core from './index'
 
@@ -27,7 +28,21 @@ describe('@bytebank/core public API', () => {
     ])
   })
 
-  it('does not export the testing helpers', () => {
-    expect(core).not.toHaveProperty('InMemoryTransactionRepository')
+  it.each(['InMemoryTransactionRepository', 'FixedClock', 'SequentialIdGenerator', 'aTransaction'])(
+    'does not export the testing helper %s',
+    helper => {
+      expect(core).not.toHaveProperty(helper)
+    },
+  )
+})
+
+describe('@bytebank/core/testing', () => {
+  it('exports the testing helpers through the subpath', () => {
+    expect(Object.keys(testing).sort()).toEqual([
+      'FixedClock',
+      'InMemoryTransactionRepository',
+      'SequentialIdGenerator',
+      'aTransaction',
+    ])
   })
 })

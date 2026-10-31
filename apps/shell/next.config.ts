@@ -4,7 +4,7 @@ import path from "path";
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  transpilePackages: ['@bytebank/design-system', '@bytebank/types', '@bytebank/utils'],
+  transpilePackages: ['@bytebank/core', '@bytebank/design-system', '@bytebank/utils'],
   async rewrites() {
     // Proxy the micro-frontend zones so /dashboard and /transactions are served
     // by apps/dashboard and apps/transactions under the shell origin. Enabled in

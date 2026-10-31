@@ -16,7 +16,7 @@ TransactionsContext (src/app/dashboard/context/)
   └── deleteTransaction()             ← DELETE /transactions/:id
 
 json-server (porta 3001)
-  └── db.json → { "transactions": [...] }
+  └── data/db.json → { "transactions": [...] }
 ```
 
 ## Fluxo de adição
@@ -51,7 +51,7 @@ json-server (porta 3001)
 
 ## Ordenação
 
-Transações são exibidas com as mais recentes primeiro via `groupByMonth()` que faz `.reverse()` antes de agrupar.
+Transações são exibidas com as mais recentes primeiro, na ordem que vem do servidor. `groupDtosByMonth()` só agrupa, sem reordenar.
 
 ## Limite na home
 

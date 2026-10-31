@@ -2,10 +2,19 @@
 
 import { CardWelcome } from '@/components/dashboard/CardWelcome'
 import { useUser } from '@/hooks/use-user'
-import { getFirstName } from '@bytebank/utils'
+import { useGetBalanceQuery } from '@/store/transactionsApi'
+import { formatSignedCents, getFirstName } from '@bytebank/utils'
 
 export function DashboardWelcome() {
   const user = useUser()
+  const { data, isError } = useGetBalanceQuery()
+
+  const balance = isError
+    ? 'Indisponível'
+    : data
+      ? formatSignedCents(Math.abs(data.amountInCents), data.amountInCents < 0 ? 'expense' : 'income')
+      : 'Carregando...'
+
   return (
     <CardWelcome
       name={getFirstName(user.name)}
@@ -14,8 +23,9 @@ export function DashboardWelcome() {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
+        timeZone: 'America/Sao_Paulo',
       })}
-      balance="R$ 2.500,00"
+      balance={balance}
       accountType="Conta Corrente"
     />
   )

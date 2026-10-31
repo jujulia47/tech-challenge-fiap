@@ -4,7 +4,14 @@ import path from "path";
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
-  transpilePackages: ['@bytebank/design-system', '@bytebank/types', '@bytebank/utils'],
+  transpilePackages: [
+    '@bytebank/bff',
+    '@bytebank/core',
+    '@bytebank/design-system',
+    '@bytebank/infrastructure',
+    '@bytebank/store',
+    '@bytebank/utils',
+  ],
   basePath: "/transactions",
 };
 

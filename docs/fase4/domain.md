@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-30
 
-`@bytebank/core` (`packages/core`) holds the domain and application layers of the Clean Architecture refactor. It is pure TypeScript with no runtime dependencies: no React, no Next.js, no date library. **The apps do not use it yet.**
+`@bytebank/core` (`packages/core`) holds the domain and application layers of the Clean Architecture refactor. It is pure TypeScript with no runtime dependencies: no React, no Next.js, no date library. The zones reach it through `@bytebank/bff` since step 2.2, and the screens of the transactions zone use its DTOs since step 2.3.
 
 ```text
 packages/core/src/
@@ -114,7 +114,7 @@ The entity has no clock and no repository. These rules live outside it:
 
 - **"The date cannot be in the future"** and the **balance**: implemented in the use cases (see below).
 - **Category suggestion** (amount ≥ R$ 1.000 suggests deposit, otherwise payment): not implemented yet.
-- **Attachment size and format** (100 KB, image or PDF). The entity treats `attachment` as an opaque string.
+- **Attachment size and format** (70 KB, image or PDF). The entity treats `attachment` as an opaque string. These rules are in `@bytebank/bff`, see `bff.md`.
 - **Search and pagination.**
 - **Formatting and labels** (`R$ 150,00`, Portuguese type names, month names).
 
@@ -130,9 +130,11 @@ The entity has no clock and no repository. These rules live outside it:
 | `Clock` | `today(): CalendarDate` | `SaoPauloClock`; `FixedClock` in tests |
 | `IdGenerator` | `next(): string` | `CryptoIdGenerator`; `SequentialIdGenerator` in tests |
 
-`packages/core/src/testing` is not exported by `index.ts`.
+`packages/core/src/testing` is not exported by `index.ts`. Other packages import these helpers from the `@bytebank/core/testing` subpath (step 2.1), declared in `exports` in `packages/core/package.json`. Importing any other deep path from the core now fails.
 
 ### Use cases
+
+`GetChartData` keeps `byType` complete when `type` is given. The pie chart is what the user picks the type from, and the bar chart shows the months of that type, so filtering both would leave a single slice and no way to change the choice. This is what `CardCharts` already does on the client (step 2.4a).
 
 Classes with dependencies in the constructor and one `execute` method. Input and output are DTOs made of primitives (`amountInCents`, ISO `date`, `type` code). The presentation layer never receives or builds entities.
 
@@ -144,7 +146,7 @@ Classes with dependencies in the constructor and one `execute` method. Input and
 | `DeleteTransaction` | `{ id, userId }` | nothing | Looks up by owner first. |
 | `GetBalance` | `userId` | `{ amountInCents }` | Sum of `signedAmount()`. It can be negative. |
 | `GetStatement` | `userId` | `{ groups: [{ monthKey, transactions: TransactionDTO[] }] }` | Uses `groupByMonth`: newest month first, newest transaction first, years never mixed. |
-| `GetChartData` | `{ userId, period }`, where `period` is `3`, `6` or `'all'` | `{ byMonth: [{ monthKey, amountInCents }], byType: [{ type, amountInCents }] }` | Uses `filterByPeriod` with `Clock`, then `totalsByMonth` and `totalsByType`. Magnitudes only. |
+| `GetChartData` | `{ userId, period, type? }`, where `period` is `3`, `6` or `'all'`, and `type` narrows `byMonth` only | `{ byMonth: [{ monthKey, amountInCents }], byType: [{ type, amountInCents }] }` | Uses `filterByPeriod` with `Clock`, then `totalsByMonth` and `totalsByType`. Magnitudes only. |
 
 `ApplicationError` works like `DomainError`, with the codes `TRANSACTION_NOT_FOUND` and `TRANSACTION_DATE_IN_FUTURE`. A `DomainError` raised by the entity passes through the use cases unchanged.
 
@@ -176,9 +178,8 @@ Pure functions over `Transaction[]`, in `domain/transaction/aggregations.ts`. Th
 
 ## Pending items
 
-- **Data migration (step 1.5).** `db.json` still has the legacy format, with no `userId`, so `fromPrimitives` rejects today's records. `migrateTransactions` (step 1.3, see `infrastructure.md`) converts them and assigns the existing user's id (`"1"`). It runs on the real file in step 1.5.
 - **Dead code in `ModalEditTransaction.tsx`** (both zones, line 30). `.replace('-R$ ', '')` never has any effect: the previous `.replace('R$ ', '')` already consumes that text, so a negative value would become `-1000` instead of `1000`. Remove it when the form is rewritten. It was not changed in this step.
 
 ## Tests and coverage
 
-441 tests pass in total: 89 in `packages/utils`, 215 in `packages/core`, 131 in `packages/infrastructure` and 6 in `packages/design-system`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
+913 tests pass in total: 108 in `packages/utils`, 225 in `packages/core`, 172 in `packages/infrastructure`, 378 in `packages/bff`, 17 in `packages/store` and 13 in `packages/design-system`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.

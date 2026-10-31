@@ -2,17 +2,19 @@
 
 import { useState } from 'react'
 import { Button, Modal } from '@bytebank/design-system'
-import { capitalizeMonth } from '@bytebank/utils'
-import type { Transaction } from '@bytebank/types'
+import { transactionDirection, type TransactionDTO } from '@bytebank/core'
+import { TRANSACTION_TYPE_LABELS, formatDateBR, formatMonthKey, formatSignedCents } from '@bytebank/utils'
 
 interface ModalTransactionDetailProps {
-  transaction: Transaction | null
+  transaction: TransactionDTO | null
   onClose: () => void
 }
 
 export function ModalTransactionDetail({ transaction, onClose }: ModalTransactionDetailProps) {
-  const month = transaction ? capitalizeMonth(transaction.month) : ''
-  const date  = transaction ? (transaction.transactionDate ?? transaction.date) : ''
+  const type   = transaction ? TRANSACTION_TYPE_LABELS[transaction.type] : ''
+  const date   = transaction ? formatDateBR(transaction.date) : ''
+  const month  = transaction ? formatMonthKey(transaction.date.slice(0, 7)) : ''
+  const amount = transaction ? formatSignedCents(transaction.amountInCents, transactionDirection(transaction.type)) : ''
   const [showAttachment, setShowAttachment] = useState(false)
 
   return (
@@ -21,7 +23,7 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
       <dl className="flex flex-col gap-4 mt-6">
         <div className="flex justify-between items-center border-b border-success pb-4">
           <dt className="text-body text-text-secondary">Tipo</dt>
-          <dd className="text-body-semibold text-text-primary">{transaction?.label}</dd>
+          <dd className="text-body-semibold text-text-primary">{type}</dd>
         </div>
         <div className="flex justify-between items-center border-b border-success pb-4">
           <dt className="text-body text-text-secondary">Data</dt>
@@ -33,7 +35,7 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
         </div>
         <div className="flex justify-between items-center">
           <dt className="text-body text-text-secondary">Valor</dt>
-          <dd className="text-label text-text-primary">{transaction?.amount}</dd>
+          <dd className="text-label text-text-primary">{amount}</dd>
         </div>
       </dl>
 

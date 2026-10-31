@@ -7,7 +7,8 @@ import { NextResponse } from 'next/server'
 //   - otherwise                                      -> pass through, so the
 //     beforeFiles rewrite proxies the request to the zone (do NOT redirect)
 // Public routes (/, /forgot-password, /api/auth/*) aren't in the matcher, so this
-// never runs on them.
+// never runs on them. Neither do the zone APIs: their handlers answer 401 in JSON,
+// and a redirect would hand HTML to a client that expects JSON.
 export default auth((req) => {
   const { nextUrl } = req
   // Require a user, not just an auth object: an auth object can be populated
@@ -26,5 +27,5 @@ export default auth((req) => {
 })
 
 export const config = {
-  matcher: ['/dashboard', '/dashboard/:path*', '/transactions', '/transactions/:path*'],
+  matcher: ['/dashboard', '/dashboard/((?!api/).*)', '/transactions', '/transactions/((?!api/).*)'],
 }

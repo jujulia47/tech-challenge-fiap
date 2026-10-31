@@ -1,11 +1,4 @@
-import { configureStore } from '@reduxjs/toolkit'
-import transactionsReducer from './transactionsSlice'
+import { createTransactionsStore } from '@bytebank/store'
+import { transactionsApi } from './transactionsApi'
 
-export const store = configureStore({
-  reducer: {
-    transactions: transactionsReducer,
-  },
-})
-
-export type RootState = ReturnType<typeof store.getState>
-export type AppDispatch = typeof store.dispatch
+export const store = createTransactionsStore(transactionsApi)
