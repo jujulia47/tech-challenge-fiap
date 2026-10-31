@@ -1,3 +1,7 @@
 export { createTransactionsApi } from './createTransactionsApi'
 export type { TransactionsApi } from './createTransactionsApi'
 export { createTransactionsStore } from './createTransactionsStore'
+export { SEARCH_DEBOUNCE_MS, createStatementSearch } from './reactive/createStatementSearch'
+export type { StatementSearchInputs, StatementSearchOutputs } from './reactive/createStatementSearch'
+export { createObservableStore, useObservable } from './reactive/useObservable'
+export type { ObservableStore } from './reactive/useObservable'

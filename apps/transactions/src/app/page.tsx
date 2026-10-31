@@ -1,22 +1,26 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useDeleteTransactionMutation, useGetTransactionsQuery } from '@/store/transactionsApi'
+import { useStatementSearch } from '@/hooks/use-statement-search'
 import { useToast } from '@/hooks/use-toast'
 import { Toast, ModalConfirmDelete, Select } from '@bytebank/design-system'
 import { StatementResults } from '@/components/dashboard/StatementResults'
 import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
 import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
 import { PaginationControls } from '@/components/PaginationControls'
-import { transactionDirection, type TransactionDTO } from '@bytebank/core'
+import type { TransactionDTO } from '@bytebank/core'
 import {
   TRANSACTION_TYPE_LABELS,
   TRANSACTION_TYPE_OPTIONS,
-  formatDateBR,
   formatMonthKey,
-  formatSignedCents,
   groupDtosByMonth,
 } from '@bytebank/utils'
+
+const PAGE_SIZE = 5
+
+const resultsMessage = (count: number) =>
+  count === 1 ? '1 transação encontrada' : `${count} transações encontradas`
 
 export default function StatementPage() {
   const { data, isLoading, isError } = useGetTransactionsQuery()
@@ -26,26 +30,7 @@ export default function StatementPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingTx, setEditingTx] = useState<TransactionDTO | null>(null)
   const [detailTx, setDetailTx] = useState<TransactionDTO | null>(null)
-  const [filterType, setFilterType] = useState('')
-  const [filterMonth, setFilterMonth] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [page, setPage] = useState(1)
-  const PAGE_SIZE = 5
-
-  // Changing a filter resets pagination and search in the same update
-  function handleFilterTypeChange(value: string) {
-    if (value === filterType) return
-    setFilterType(value)
-    setPage(1)
-    setSearchQuery('')
-  }
-
-  function handleFilterMonthChange(value: string) {
-    if (value === filterMonth) return
-    setFilterMonth(value)
-    setPage(1)
-    setSearchQuery('')
-  }
+  const { text, filters, results, page, changeText, changeFilters, changePage } = useStatementSearch(transactions)
 
   const monthOptions = useMemo(() => {
     const monthKeys = [...new Set(transactions.map(tx => tx.date.slice(0, 7)))]
@@ -55,27 +40,10 @@ export default function StatementPage() {
     ]
   }, [transactions])
 
-  const filtered = useMemo(() => {
-    return transactions.filter(tx => {
-      const matchType = !filterType || tx.type === filterType
-      const matchMonth = !filterMonth || tx.date.startsWith(filterMonth)
-      return matchType && matchMonth
-    })
-  }, [transactions, filterType, filterMonth])
-
-  const searched = useMemo(() => {
-    if (!searchQuery.trim()) return filtered
-    const query = searchQuery.toLowerCase()
-    return filtered.filter(tx =>
-      TRANSACTION_TYPE_LABELS[tx.type].toLowerCase().includes(query) ||
-      formatSignedCents(tx.amountInCents, transactionDirection(tx.type)).includes(searchQuery) ||
-      formatDateBR(tx.date).includes(searchQuery)
-    )
-  }, [filtered, searchQuery])
-
-  const allTransactions = searched
-  const totalPages = Math.ceil(allTransactions.length / PAGE_SIZE)
-  const paginated = allTransactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages = Math.ceil(results.length / PAGE_SIZE)
+  // Deleting the last item of the last page must not leave an empty page
+  const currentPage = Math.min(page, Math.max(totalPages, 1))
+  const paginated = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
   const paginatedGroups = groupDtosByMonth(paginated)
   const deletingTx = transactions.find(t => t.id === deletingId)
 
@@ -125,8 +93,8 @@ export default function StatementPage() {
             <input
               type="search"
               placeholder="Buscar transação..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
+              value={text}
+              onChange={e => changeText(e.target.value)}
               aria-label="Buscar transações"
               className="h-12 w-full pl-10 pr-4 rounded-md border border-primary-900 bg-inverse text-body text-primary-800 focus:border-2 focus:border-primary-800 focus:outline-none"
             />
@@ -137,8 +105,8 @@ export default function StatementPage() {
             label="Tipo de transação"
             placeholder="Todos os tipos"
             options={[{ value: '', label: 'Todos os tipos' }, ...TRANSACTION_TYPE_OPTIONS]}
-            value={filterType}
-            onChange={handleFilterTypeChange}
+            value={filters.type}
+            onChange={type => changeFilters({ type })}
           />
         </div>
         <div className="w-full md:w-select-md">
@@ -146,14 +114,14 @@ export default function StatementPage() {
             label="Mês"
             placeholder="Todos os meses"
             options={monthOptions}
-            value={filterMonth}
-            onChange={handleFilterMonthChange}
+            value={filters.month}
+            onChange={month => changeFilters({ month })}
           />
         </div>
       </div>
 
       <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {allTransactions.length} transações encontradas
+        {!isLoading && resultsMessage(results.length)}
       </div>
 
       <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6 min-h-[400px]">
@@ -168,11 +136,11 @@ export default function StatementPage() {
       </div>
 
       <PaginationControls
-        page={page}
+        page={currentPage}
         totalPages={totalPages}
-        totalItems={allTransactions.length}
+        totalItems={results.length}
         pageSize={PAGE_SIZE}
-        onPageChange={setPage}
+        onPageChange={changePage}
       />
 
       <ModalTransactionDetail

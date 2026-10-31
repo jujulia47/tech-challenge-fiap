@@ -18,7 +18,7 @@ Both zones keep server data in RTK Query, built by the same factory: `createTran
 
 ## Where the code lives
 
-`@bytebank/store` holds `createTransactionsApi` and `createTransactionsStore`. It is its own package because it depends on Redux and React, and `@bytebank/bff` must not: the bff also runs on the server. The dependency points one way: `store → bff/client`.
+`@bytebank/store` also holds the RxJS search of the transactions zone (`docs/fase4/reactive-programming.md`). It holds `createTransactionsApi` and `createTransactionsStore`. It is its own package because it depends on Redux and React, and `@bytebank/bff` must not: the bff also runs on the server. The dependency points one way: `store → bff/client`.
 
 Each zone only has `store/transactionsApi.ts`, which picks the `basePath` and the hooks it uses, plus `store/store.ts` and `store/ReduxProvider.tsx`.
 

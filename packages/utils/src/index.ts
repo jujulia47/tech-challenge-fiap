@@ -1,6 +1,7 @@
 export * from './authLogger'
 export * from './cn'
 export * from './currency'
+export * from './filterTransactions'
 export * from './loginRetry'
 export * from './securityHeaders'
 export * from './sessionPolicy'

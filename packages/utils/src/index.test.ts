@@ -10,6 +10,7 @@ describe('@bytebank/utils public API', () => {
       'authLogger',
       'cn',
       'contentSecurityPolicy',
+      'filterTransactions',
       'formatCents',
       'formatDateBR',
       'formatMonthKey',
