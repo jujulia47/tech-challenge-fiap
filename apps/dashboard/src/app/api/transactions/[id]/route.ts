@@ -1,4 +1,4 @@
-import { getTransactionHandlers } from '@/server/transactionHandlers'
+import { getTransactionHandlers } from '@bytebank/auth/handlers'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'

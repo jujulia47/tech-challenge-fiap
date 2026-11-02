@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { extendTailwindMerge } from 'tailwind-merge'
 
-// Typography utilities from globals.css. tailwind-merge does not know them and would
+// Typography utilities from the theme of the design system. tailwind-merge does not know them and would
 // otherwise treat them as text colors, dropping them when a color follows.
 const twMerge = extendTailwindMerge({
   extend: {

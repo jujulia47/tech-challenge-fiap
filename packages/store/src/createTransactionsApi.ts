@@ -4,6 +4,7 @@ import {
   createTransactionsClient,
   type ChartDataFilters,
   type NewTransaction,
+  type PasswordChange,
   type TransactionChanges,
 } from '@bytebank/bff/client'
 import type { BalanceDTO, ChartDataDTO, PeriodInMonths, StatementDTO, TransactionDTO, TransactionType } from '@bytebank/core'
@@ -74,6 +75,13 @@ export function createTransactionsApi(basePath: string) {
       deleteTransaction: builder.mutation<null, string>({
         queryFn: id => toResult<null>(() => client.deleteTransaction(id).then(() => null)),
         invalidatesTags: [...TAGS],
+      }),
+      // The account touches no transaction, so it invalidates nothing
+      updateProfile: builder.mutation<{ name: string }, string>({
+        queryFn: name => toResult(() => client.updateProfile(name)),
+      }),
+      changePassword: builder.mutation<null, PasswordChange>({
+        queryFn: change => toResult<null>(() => client.changePassword(change).then(() => null)),
       }),
     }),
   })

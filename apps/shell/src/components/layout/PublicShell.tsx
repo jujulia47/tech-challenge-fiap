@@ -11,7 +11,7 @@ interface PublicModalContextValue {
   openSignup: () => void
 }
 
-export const PublicModalContext = createContext<PublicModalContextValue>({
+const PublicModalContext = createContext<PublicModalContextValue>({
   openLogin: () => {},
   openSignup: () => {},
 })

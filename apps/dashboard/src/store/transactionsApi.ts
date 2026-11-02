@@ -1,6 +1,8 @@
-import { createTransactionsApi } from '@bytebank/store'
+'use client'
 
-export const transactionsApi = createTransactionsApi('/dashboard')
+import { createTransactionsApi, createTransactionsProvider } from '@bytebank/store'
+
+const transactionsApi = createTransactionsApi('/dashboard')
 
 export const {
   useGetBalanceQuery,
@@ -10,4 +12,8 @@ export const {
   useUpdateTransactionMutation,
   useDeleteTransactionMutation,
   usePrefetch,
+  useUpdateProfileMutation,
+  useChangePasswordMutation,
 } = transactionsApi
+
+export const ReduxProvider = createTransactionsProvider(transactionsApi)

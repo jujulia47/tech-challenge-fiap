@@ -15,14 +15,18 @@ interface InputProps {
   autoFocus?: boolean
   max?: string
   autoComplete?: string
+  // A short note under the field, read with it by screen readers
+  hint?: string
   // Something to press at the end of the field
   trailing?: React.ReactNode
 }
 
-export function Input({ label, placeholder, value, onChange, error, disabled, suffixIcon, type = 'text', required, autoFocus, max, autoComplete, trailing }: InputProps) {
+export function Input({ label, placeholder, value, onChange, error, hint, disabled, suffixIcon, type = 'text', required, autoFocus, max, autoComplete, trailing }: InputProps) {
   const slug = label.toLowerCase().replace(/\s/g, '-')
   const inputId = `input-${slug}`
   const errorId = `error-${slug}`
+  const hintId = `hint-${slug}`
+  const describedBy = [hint && hintId, error && errorId].filter(Boolean).join(' ') || undefined
 
   return (
     <div className="flex flex-col gap-1">
@@ -39,7 +43,7 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
           max={max}
           autoComplete={autoComplete}
           aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={describedBy}
           onChange={e => onChange(e.target.value)}
           className={cn(
             'h-12 w-full rounded-md border bg-inverse text-body text-primary-800',
@@ -59,6 +63,7 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
           </span>
         )}
       </div>
+      {hint && <span id={hintId} className="text-meta text-text-secondary">{hint}</span>}
       {error && (
         <span
           id={errorId}

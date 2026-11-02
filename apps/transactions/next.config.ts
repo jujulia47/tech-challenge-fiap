@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../../"),
   transpilePackages: [
+    '@bytebank/auth',
     '@bytebank/bff',
     '@bytebank/core',
     '@bytebank/design-system',

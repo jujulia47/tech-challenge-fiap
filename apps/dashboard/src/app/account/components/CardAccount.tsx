@@ -1,59 +1,35 @@
 'use client'
 
-import { useState } from 'react'
-import { Button, Input } from '@bytebank/design-system'
+import { Toast, useToast } from '@bytebank/design-system'
+import { PasswordForm } from '@/app/account/components/PasswordForm'
+import { ProfileForm } from '@/app/account/components/ProfileForm'
 
 interface CardAccountProps {
   initialName: string
-  initialEmail: string
+  email: string
 }
 
-export function CardAccount({ initialName, initialEmail }: CardAccountProps) {
-  const [name, setName]         = useState(initialName)
-  const [email, setEmail]       = useState(initialEmail)
-  const [password, setPassword] = useState('••••••••')
-
-  function handleSave() {
-    // Save logic (future step)
-  }
+export function CardAccount({ initialName, email }: CardAccountProps) {
+  const { toast, showToast } = useToast()
 
   return (
-    <div className="relative bg-surface-form rounded-md p-6 overflow-hidden">
-      <h2 className="text-heading text-text-primary mb-6">Minha conta</h2>
+    <div className="relative bg-surface-form rounded-md p-6 overflow-hidden flex flex-col gap-8">
+      <h2 className="text-heading text-text-primary">Minha conta</h2>
 
-      <form onSubmit={(e) => { e.preventDefault(); handleSave() }} className="flex flex-col gap-4">
-        <Input
-          label="Nome"
-          placeholder="Seu nome completo"
-          value={name}
-          onChange={setName}
-          suffixIcon="edit"
-        />
-        <Input
-          label="Email"
-          type="email"
-          placeholder="Seu email"
-          value={email}
-          onChange={setEmail}
-          suffixIcon="edit"
-        />
-        <Input
-          label="Senha"
-          type="password"
-          placeholder="Sua senha"
-          value={password}
-          onChange={setPassword}
-          suffixIcon="edit"
-        />
+      <ProfileForm
+        initialName={initialName}
+        email={email}
+        onSuccess={message => showToast(message, 'success')}
+        onError={message => showToast(message, 'error')}
+      />
 
-        <div className="mt-4">
-          <Button
-            type="submit"
-            variant="success"
-            label="Salvar alterações"
-          />
-        </div>
-      </form>
+      <PasswordForm
+        email={email}
+        onSuccess={message => showToast(message, 'success')}
+        onError={message => showToast(message, 'error')}
+      />
+
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} />
     </div>
   )
 }

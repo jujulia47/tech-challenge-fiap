@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { auth } from '@/lib/auth'
+import { auth } from '@bytebank/auth/zone'
 import { CardAccount } from '@/app/account/components/CardAccount'
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export default async function AccountPage() {
   return (
     <div className="w-card-sm mx-auto md:w-card-md lg:w-full flex flex-col gap-4">
       <h1 className="sr-only">Minha conta</h1>
-      <CardAccount initialName={user.name} initialEmail={user.email} />
+      <CardAccount initialName={user.name} email={user.email} />
     </div>
   )
 }

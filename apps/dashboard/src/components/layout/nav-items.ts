@@ -1,15 +1,14 @@
-export interface NavItem {
-  label: string
-  href: string
-  // Cross-zone links point to another micro-frontend served under the shell
-  // origin. They must be plain <a> (root-relative) so Next's basePath is not
-  // prepended and the browser performs a hard navigation across zones.
-  external?: boolean
-}
+import type { NavItem, ProfileMenuItem } from '@bytebank/design-system'
 
-export const NAV_ITEMS: NavItem[] = [
+// Same-zone paths are relative to the basePath. Cross-zone ones are absolute and marked external.
+export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Início',          href: '/' },
   { label: 'Transações',      href: '/transactions', external: true },
   { label: 'Investimentos',   href: '/investments' },
   { label: 'Outros serviços', href: '/services' },
+]
+
+export const PROFILE_ITEMS: readonly ProfileMenuItem[] = [
+  { label: 'Minha conta',   href: '/account' },
+  { label: 'Configurações', href: '/coming-soon' },
 ]

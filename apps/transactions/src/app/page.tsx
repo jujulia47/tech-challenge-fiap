@@ -1,17 +1,18 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useDeleteTransactionMutation, useGetTransactionsQuery } from '@/store/transactionsApi'
+import { useDeleteTransactionMutation, useGetTransactionsQuery, useUpdateTransactionMutation } from '@/store/transactionsApi'
 import { useStatementSearch } from '@/hooks/use-statement-search'
-import { useToast } from '@/hooks/use-toast'
-import { Toast, Select } from '@bytebank/design-system'
-import { StatementResults } from '@/components/dashboard/StatementResults'
 import {
   LazyModalConfirmDelete,
   LazyModalEditTransaction,
   LazyModalTransactionDetail,
+  Select,
+  Toast,
   preloadActionModal,
-} from '@/components/dashboard/lazy-modals'
+  useToast,
+} from '@bytebank/design-system'
+import { StatementResults } from '@/components/dashboard/StatementResults'
 import { PaginationControls } from '@/components/PaginationControls'
 import type { TransactionDTO } from '@bytebank/core'
 import {
@@ -29,6 +30,7 @@ const resultsMessage = (count: number) =>
 export default function StatementPage() {
   const { data, isLoading, isError } = useGetTransactionsQuery()
   const [deleteTransaction] = useDeleteTransactionMutation()
+  const [updateTransaction] = useUpdateTransactionMutation()
   const transactions = useMemo(() => data ?? [], [data])
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -162,6 +164,7 @@ export default function StatementPage() {
 
       <LazyModalEditTransaction
         transaction={editingTx}
+        onSave={(id, changes) => updateTransaction({ id, changes }).unwrap()}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}
         onError={(message) => showToast(message, 'error')}

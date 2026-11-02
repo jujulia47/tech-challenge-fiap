@@ -29,6 +29,9 @@ const APPLICATION_ERROR_STATUS: Record<ApplicationErrorCode, number> = {
   EMAIL_ALREADY_REGISTERED: 409,
   RATE_LIMITED: 429,
   INVALID_RESET_TOKEN: 400,
+  // Not 401: the client reads 401 as an expired session and sends the browser to the login
+  INVALID_CURRENT_PASSWORD: 422,
+  PASSWORD_UNCHANGED: 422,
 }
 
 function validationResponse(issues: ValidationIssue[]): Response {

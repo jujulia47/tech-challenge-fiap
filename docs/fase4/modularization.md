@@ -182,6 +182,8 @@ Files that still exist in more than one app, as candidates for future steps. "Id
 
 **Dead code removed in step 2.3:** the transactions copies of `CardNewTransaction.tsx` and `CardStatement.tsx`. A search confirmed that no file referred to them. The dashboard keeps its own copies, which are in use.
 
+**Dead code removed in the code audit (step 7):** the shell copies of `use-currency-input.ts` and `use-toast.ts`, which no file imported, and the three `tailwind.config.ts`, which were empty and unread: Tailwind v4 is configured in the CSS. The copies of `use-currency-input.ts` and `use-toast.ts` in dashboard and transactions are in use and stay.
+
 **Copies that have diverged:**
 
 | File | Apps | Note |
@@ -192,3 +194,41 @@ Files that still exist in more than one app, as candidates for future steps. "Id
 | `lib/auth.ts` | shell, dashboard, transactions | Reads different environment variables |
 | `styles/globals.css` | shell, dashboard, transactions | The tokens are identical, and the `.material-icons` class differs in the dashboard. Candidate for a shared stylesheet in the design system. |
 | `app/not-found.tsx`, `app/layout.tsx` | shell, dashboard, transactions | Similar structure per zone |
+
+## Step 7a: no copies between the apps
+
+The apps only keep routes, pages, layouts and the wiring of the pieces. A difference between zones, such as the basePath, the paths of the menu or the text of a link, became a prop or a factory argument, never a copy. The tables above record the state before this step.
+
+### Where each copy went
+
+| Copy | Apps | Now |
+|---|---|---|
+| `hooks/use-toast.ts`, `hooks/use-currency-input.ts` | dashboard, transactions | `useToast`, `useCurrencyInput` in `@bytebank/design-system` |
+| `hooks/use-user.ts` | shell, dashboard, transactions | `useUser` in `@bytebank/design-system`, next to `IdleSessionGuard`, which also reads the session |
+| `components/dashboard/ModalEditTransaction.tsx` | dashboard, transactions | `ModalEditTransaction` in the design system. It saves through an `onSave` prop, so the design system does not depend on the store |
+| `components/dashboard/lazy-modals.ts` | dashboard, transactions | `transactionModals.ts` in the design system: the three lazy modals and `preloadActionModal` |
+| `components/layout/Header.tsx`, `MenuDrawer.tsx`, `MenuSidebar.tsx`, `MenuTabs.tsx` | shell, dashboard, transactions | `Header`, `MenuDrawer`, `MenuSidebar`, `MenuTabs` in `design-system/src/navigation`, with the items by prop. Each app keeps only its `nav-items.ts` |
+| `app/not-found.tsx` (content) | shell, dashboard, transactions | `NotFoundMessage` in the design system, with the destination and the text by prop |
+| `styles/globals.css` | shell, dashboard, transactions | `@bytebank/design-system/theme.css`, imported by the layouts and by Storybook |
+| `types/fontsource.d.ts` | dashboard, transactions | Gone: the theme loads Inter. The shell keeps its own, for the 600 and 700 weights |
+| `store/store.ts`, `store/ReduxProvider.tsx` | dashboard, transactions | `createTransactionsProvider(api)` in `@bytebank/store`, called in the `transactionsApi.ts` of each zone |
+| `server/transactionHandlers.ts` | dashboard, transactions | `createLazyTransactionHandlers(getUserId)` in `@bytebank/bff`. The bff does not import Next or NextAuth: the session comes in as a function |
+| `lib/auth.ts` | dashboard, transactions | `@bytebank/auth/zone`: the NextAuth instance of a zone |
+| `proxy.ts` (logic) | dashboard, transactions | `@bytebank/auth/zoneProxy`. The `proxy.ts` of each zone only exports it, with the matcher, which Next reads from that file |
+| Session config of `lib/auth.ts` | shell, dashboard, transactions | `baseAuthConfig` in `@bytebank/auth`. The shell adds its login provider to it |
+
+### The new package: `@bytebank/auth`
+
+Authentication of the zones on the server: the NextAuth instance (`./zone`), the proxy (`./zoneProxy`), the binding of the session to the handlers of the bff (`./handlers`), and the session config shared with the shell (main entry). It depends on `next-auth`, `next` (peers), `@bytebank/bff` and `server-only`.
+
+`./handlers` imports `server-only` and `./zoneProxy` does not, because the proxy is not built with the `react-server` condition that `server-only` requires.
+
+It follows the pattern of the other packages: `package.json` with `exports`, `tsconfig.json`, `lint`, tests in the root Vitest config, a `COPY` in the three Dockerfiles and an entry in `transpilePackages`.
+
+### What stays the same in more than one app, on purpose
+
+| File | Why |
+|---|---|
+| `app/api/*/route.ts` | Next needs one route per zone. They only call `getTransactionHandlers()` |
+| `proxy.ts` of the zones | Next reads `export default` and the `matcher` from this file, so it cannot come from a package |
+| `next-env.d.ts`, `postcss.config.mjs`, `eslint.config.mjs` of the zones | Configuration that each app needs in its own folder |

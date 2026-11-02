@@ -1,5 +1,5 @@
 import type { Preview } from '@storybook/nextjs-vite'
-import '../src/styles/globals.css'
+import '@bytebank/design-system/theme.css'
 
 const viewports = {
   mobile: {

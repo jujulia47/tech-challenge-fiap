@@ -1,7 +1,7 @@
 'use client'
 
 import { CardWelcome } from '@/components/dashboard/CardWelcome'
-import { useUser } from '@/hooks/use-user'
+import { useUser } from '@bytebank/design-system'
 import { useGetBalanceQuery } from '@/store/transactionsApi'
 import { formatSignedCents, getFirstName } from '@bytebank/utils'
 

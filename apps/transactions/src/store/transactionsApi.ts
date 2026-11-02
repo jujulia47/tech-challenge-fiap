@@ -1,5 +1,9 @@
-import { createTransactionsApi } from '@bytebank/store'
+'use client'
 
-export const transactionsApi = createTransactionsApi('/transactions')
+import { createTransactionsApi, createTransactionsProvider } from '@bytebank/store'
+
+const transactionsApi = createTransactionsApi('/transactions')
 
 export const { useGetTransactionsQuery, useUpdateTransactionMutation, useDeleteTransactionMutation } = transactionsApi
+
+export const ReduxProvider = createTransactionsProvider(transactionsApi)

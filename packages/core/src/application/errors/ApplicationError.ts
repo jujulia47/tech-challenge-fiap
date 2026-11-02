@@ -5,6 +5,8 @@ export type ApplicationErrorCode =
   | 'EMAIL_ALREADY_REGISTERED'
   | 'RATE_LIMITED'
   | 'INVALID_RESET_TOKEN'
+  | 'INVALID_CURRENT_PASSWORD'
+  | 'PASSWORD_UNCHANGED'
 
 export class ApplicationError extends Error {
   readonly code: ApplicationErrorCode

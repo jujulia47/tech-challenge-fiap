@@ -1,23 +1,11 @@
-import { requireEnv } from '@bytebank/bff/env'
-import { withContentSecurityPolicy } from '@bytebank/utils'
-import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { zoneProxy } from '@bytebank/auth/zoneProxy'
 
-// Protects the pages of this zone even when the shell is bypassed. Redirects to the shell,
-// where the login is: a relative "/" would stay inside the basePath of the zone.
-// /api/* is outside the matcher: the handlers answer 401 in JSON, and NextAuth stays reachable.
-export default auth((req) => {
-  // Require a user, not just an auth object: same criterion as apps/shell/src/proxy.ts
-  if (!req.auth?.user) return NextResponse.redirect(requireEnv('SHELL_URL'))
+export default zoneProxy
 
-  const { requestHeaders, policy } = withContentSecurityPolicy(req.headers)
-  const response = NextResponse.next({ request: { headers: requestHeaders } })
-  response.headers.set('Content-Security-Policy', policy)
-  return response
-})
-
-// Next prefixes the matcher with the basePath, so the second pattern needs a slash after it and
-// does not cover the root of the zone: without the explicit '/', that page would stay open
+// Next reads the matcher from this file, so it stays here. Next prefixes it with the basePath,
+// so the second pattern needs a slash after it and does not cover the root of the zone:
+// without the explicit '/', that page would stay open. /api/* is outside: the handlers
+// answer 401 in JSON, and NextAuth stays reachable.
 export const config = {
   matcher: ['/', '/((?!api/|_next/static|_next/image|favicon.ico).*)'],
 }

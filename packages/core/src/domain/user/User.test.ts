@@ -23,6 +23,7 @@ describe('User', () => {
   it.each([
     ['id', { ...props, id: ' ' }, 'USER_INVALID_ID'],
     ['name', { ...props, name: ' ' }, 'USER_INVALID_NAME'],
+    ['name over 100 characters', { ...props, name: 'a'.repeat(101) }, 'USER_INVALID_NAME'],
     ['email', { ...props, email: 'a@b' }, 'USER_INVALID_EMAIL'],
     ['hash', { ...props, passwordHash: '' }, 'USER_INVALID_PASSWORD_HASH'],
   ])('rejects an invalid %s', (_, data, code) => {

@@ -4,22 +4,23 @@ import { useMemo, useState } from 'react'
 import { CardNewTransaction } from '@/components/dashboard/CardNewTransaction'
 import { CardCharts } from '@/components/dashboard/CardCharts'
 import { CardStatement } from '@/components/dashboard/CardStatement'
-import { Toast } from '@bytebank/design-system'
 import {
   LazyModalConfirmDelete,
   LazyModalEditTransaction,
   LazyModalTransactionDetail,
+  Toast,
   preloadActionModal,
-} from '@/components/dashboard/lazy-modals'
-import { useDeleteTransactionMutation, useGetStatementQuery } from '@/store/transactionsApi'
+  useToast,
+} from '@bytebank/design-system'
+import { useDeleteTransactionMutation, useGetStatementQuery, useUpdateTransactionMutation } from '@/store/transactionsApi'
 import { TRANSACTION_TYPE_LABELS } from '@bytebank/utils'
-import { useToast } from '@/hooks/use-toast'
 import { DashboardWelcome } from '@/components/layout/DashboardWelcome'
 import type { TransactionDTO } from '@bytebank/core'
 
 export default function DashboardPage() {
   const { data: statement, isLoading, isError } = useGetStatementQuery()
   const [deleteTransaction] = useDeleteTransactionMutation()
+  const [updateTransaction] = useUpdateTransactionMutation()
   const { toast, showToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingTx, setEditingTx] = useState<TransactionDTO | null>(null)
@@ -90,6 +91,7 @@ export default function DashboardPage() {
       />
       <LazyModalEditTransaction
         transaction={editingTx}
+        onSave={(id, changes) => updateTransaction({ id, changes }).unwrap()}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}
         onError={(msg) => showToast(msg, 'error')}

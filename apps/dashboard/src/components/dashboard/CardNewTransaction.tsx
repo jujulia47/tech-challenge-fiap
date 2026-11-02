@@ -2,20 +2,34 @@
 
 import { useState } from 'react'
 import { MAX_ATTACHMENT_BYTES } from '@bytebank/bff/limits'
-import { Button, Input, Select } from '@bytebank/design-system'
-import { useCurrencyInput } from '@/hooks/use-currency-input'
+import { Button, Input, Select, useCurrencyInput } from '@bytebank/design-system'
 import { useCreateTransactionMutation } from '@/store/transactionsApi'
-import { isTransactionType, type TransactionType } from '@bytebank/core'
-import { TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_OPTIONS } from '@bytebank/utils'
+import {
+  ApplicationError,
+  CalendarDate,
+  assertDateNotInFuture,
+  isTransactionType,
+  suggestTransactionType,
+} from '@bytebank/core'
+import { BrowserClock, TRANSACTION_TYPE_LABELS, TRANSACTION_TYPE_OPTIONS } from '@bytebank/utils'
 
 interface CardNewTransactionProps {
   onSuccess?: (message: string) => void
   onError?: (message: string) => void
 }
 
-// The calendar day in São Paulo, as on the server. toISOString() is UTC: already tomorrow after 21:00.
-function today(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+// The day in São Paulo, by the same rule as the server
+const clock = new BrowserClock()
+const today = () => clock.today().toISO()
+
+// The rule of the core. A date it cannot read is left to the server, which answers it.
+function isInFuture(date: string): boolean {
+  try {
+    assertDateNotInFuture(CalendarDate.fromISO(date), clock)
+    return false
+  } catch (error) {
+    return error instanceof ApplicationError && error.code === 'TRANSACTION_DATE_IN_FUTURE'
+  }
 }
 
 export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionProps) {
@@ -28,9 +42,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
   const [errors, setErrors] = useState<{ type?: string; amount?: string; date?: string; attachment?: string }>({})
 
   const amountInCents = parseInt(digits, 10)
-  const suggestion: TransactionType | null = !type && amountInCents >= 100000 ? 'deposit'
-    : !type && amountInCents > 0 ? 'payment'
-    : null
+  const suggestion = type ? null : suggestTransactionType(amountInCents)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -53,7 +65,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
     const newErrors: Record<string, string> = {}
     if (!isTransactionType(type)) newErrors.type = 'Selecione o tipo de transação'
     if (amountInCents === 0) newErrors.amount = 'Informe um valor maior que zero'
-    if (date > today()) newErrors.date = 'A data não pode ser futura'
+    if (isInFuture(date)) newErrors.date = 'A data não pode ser futura'
     if (!isTransactionType(type) || Object.keys(newErrors).length > 0) {
       setErrors(prev => ({ ...prev, ...newErrors }))
       return

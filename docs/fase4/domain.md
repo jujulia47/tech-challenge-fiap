@@ -113,7 +113,7 @@ The rule above was approved for Phase 4, with the assumptions listed in the tabl
 The entity has no clock and no repository. These rules live outside it:
 
 - **"The date cannot be in the future"** and the **balance**: implemented in the use cases (see below).
-- **Category suggestion** (amount ≥ R$ 1.000 suggests deposit, otherwise payment): not implemented yet.
+- **Type suggestion** (amount ≥ R$ 1.000 suggests deposit, otherwise payment): since step 7b, `suggestTransactionType` in `domain/transaction/typeSuggestion.ts`. It is a hint for the form and decides nothing, so no use case calls it.
 - **Attachment size and format** (70 KB, image or PDF). The entity treats `attachment` as an opaque string. These rules are in `@bytebank/bff`, see `bff.md`.
 - **Search and pagination.**
 - **Formatting and labels** (`R$ 150,00`, Portuguese type names, month names).
@@ -127,7 +127,7 @@ The entity has no clock and no repository. These rules live outside it:
 | Port | Methods | Implemented by |
 |---|---|---|
 | `TransactionRepository` | `findAllByUser(userId)`, `findById(id, userId)`, `create(transaction)`, `update(transaction)`, `delete(id, userId)`. `create` returns the stored transaction, because a backend may assign its own id, as json-server does. | `HttpTransactionRepository`; `InMemoryTransactionRepository` in tests |
-| `Clock` | `today(): CalendarDate` | `SaoPauloClock`; `FixedClock` in tests |
+| `Clock` | `today(): CalendarDate` | `SaoPauloClock` on the server and `BrowserClock` (`@bytebank/utils`) on the screens, both through `bankDayOf`; `FixedClock` in tests |
 | `IdGenerator` | `next(): string` | `CryptoIdGenerator`; `SequentialIdGenerator` in tests |
 
 `packages/core/src/testing` is not exported by `index.ts`. Other packages import these helpers from the `@bytebank/core/testing` subpath (step 2.1), declared in `exports` in `packages/core/package.json`. Importing any other deep path from the core now fails.
@@ -148,7 +148,7 @@ Classes with dependencies in the constructor and one `execute` method. Input and
 | `GetStatement` | `userId` | `{ groups: [{ monthKey, transactions: TransactionDTO[] }] }` | Uses `groupByMonth`: newest month first, newest transaction first, years never mixed. |
 | `GetChartData` | `{ userId, period, type? }`, where `period` is `3`, `6` or `'all'`, and `type` narrows `byMonth` only | `{ byMonth: [{ monthKey, amountInCents }], byType: [{ type, amountInCents }] }` | Uses `filterByPeriod` with `Clock`, then `totalsByMonth` and `totalsByType`. Magnitudes only. |
 
-`ApplicationError` works like `DomainError`, with the codes `TRANSACTION_NOT_FOUND` and `TRANSACTION_DATE_IN_FUTURE`. A `DomainError` raised by the entity passes through the use cases unchanged.
+`ApplicationError` works like `DomainError`, with the codes `TRANSACTION_NOT_FOUND` and `TRANSACTION_DATE_IN_FUTURE` (and, since the later steps, the codes of authentication and of the account). A `DomainError` raised by the entity passes through the use cases unchanged.
 
 ### Not revealing transactions of other users
 
@@ -182,4 +182,25 @@ Pure functions over `Transaction[]`, in `domain/transaction/aggregations.ts`. Th
 
 ## Tests and coverage
 
-1294 tests pass in total: 177 in `packages/utils`, 301 in `packages/core`, 282 in `packages/infrastructure`, 431 in `packages/bff`, 41 in `packages/store` and 62 in `packages/design-system`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
+1345 tests pass in total: 181 in `packages/utils`, 323 in `packages/core`, 282 in `packages/infrastructure`, 447 in `packages/bff`, 41 in `packages/store`, 62 in `packages/design-system` and 9 in `packages/auth`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
+
+## Step 7b: rules that left the screens, and the account
+
+### Out of the screens
+
+| Rule | Before | Now |
+|---|---|---|
+| Type suggestion | An expression in `CardNewTransaction` | `suggestTransactionType(amountInCents)` in the domain, with `DEPOSIT_SUGGESTION_MIN_CENTS` |
+| "Today" in São Paulo | `toLocaleDateString` in `CardNewTransaction`, a copy of the rule of `SaoPauloClock` | `bankDayOf(instant)` in the domain. `SaoPauloClock` (server) and `BrowserClock` (`@bytebank/utils`, screens) both call it |
+| "The date cannot be in the future" | A string comparison in `CardNewTransaction` | The same `assertDateNotInFuture` of `CreateTransaction`, with the `BrowserClock` |
+
+`BrowserClock` exists because the screens cannot import `@bytebank/infrastructure`, which is server code. It holds no rule of its own.
+
+### The account
+
+| Use case | Input | Output | Rules |
+|---|---|---|---|
+| `UpdateUserProfile` | `{ userId, name }` | `UserDTO` | The name is trimmed and has from 1 to 100 characters, counted as characters. The rule lives in `User` (`withName`, and `create` since this step), so a registration and a profile agree. A user that no longer exists answers `INVALID_CREDENTIALS`. |
+| `ChangePassword` | `{ userId, currentPassword, newPassword }` | nothing | Consumes the limiter of the login by email, verifies the current password with the hasher, refuses a new password equal to the current one (`PASSWORD_UNCHANGED`) and applies the policy through `hashNewPassword`. Details in `security.md`. |
+
+`UserRepository` gained `updateName(id, name)`. Each update sends one field, so a change of the name cannot undo a change of the password made at the same time.

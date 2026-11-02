@@ -3,11 +3,9 @@ import { connection } from 'next/server'
 import { SessionProvider } from 'next-auth/react'
 import { IdleSessionGuard } from '@bytebank/design-system'
 import { iconFont } from '@bytebank/design-system/iconFont'
-import '@fontsource/inter'
-import '@fontsource/inter/400.css'
 import '@fontsource/inter/600.css'
 import '@fontsource/inter/700.css'
-import '@/styles/globals.css'
+import '@bytebank/design-system/theme.css'
 
 export const metadata: Metadata = {
   title: { default: 'Bytebank — Seu banco digital', template: '%s | Bytebank' },

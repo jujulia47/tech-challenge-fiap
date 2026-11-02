@@ -7,8 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./iconFont": "./src/iconFont.ts",
-    "./ModalConfirmDelete": "./src/ModalConfirmDelete.tsx",
-    "./ModalTransactionDetail": "./src/ModalTransactionDetail.tsx"
+    "./theme.css": "./src/styles/theme.css"
   },
   "sideEffects": false,
   "scripts": {
@@ -16,13 +15,16 @@
   },
   "dependencies": {
     "@bytebank/core": "*",
-    "@bytebank/utils": "*"
+    "@bytebank/utils": "*",
+    "@fontsource/inter": "^5.3.0"
   },
   "peerDependencies": {
+    "daisyui": "^5.7.50",
     "next": "^16",
     "next-auth": "5.0.0-beta.32",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4"
   },
   "devDependencies": {
     "@types/react": "^19.3.0"

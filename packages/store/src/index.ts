@@ -1,5 +1,6 @@
 export { chartDataFilters, createTransactionsApi } from './createTransactionsApi'
 export type { TransactionsApi } from './createTransactionsApi'
+export { createTransactionsProvider } from './createTransactionsProvider'
 export { createTransactionsStore } from './createTransactionsStore'
 export { SEARCH_DEBOUNCE_MS, createStatementSearch } from './reactive/createStatementSearch'
 export type { StatementSearchInputs, StatementSearchOutputs } from './reactive/createStatementSearch'

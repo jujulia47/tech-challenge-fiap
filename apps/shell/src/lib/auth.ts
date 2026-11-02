@@ -2,14 +2,13 @@ import NextAuth, { CredentialsSignin } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 import { clientIp } from '@bytebank/bff'
 import { ApplicationError, RateLimitedError } from '@bytebank/core'
-import { authLogger, rateLimitCode, readSessionPolicy } from '@bytebank/utils'
+import { baseAuthConfig } from '@bytebank/auth'
+import { rateLimitCode } from '@bytebank/utils'
 import { getAuthUseCases } from '@/server/authUseCases'
 
 // Ceilings for the request: a huge password must not reach the hash, nor a huge email the limiter
 const MAX_PASSWORD_LENGTH = 1024
 const MAX_EMAIL_LENGTH = 254
-
-const { maxAgeSeconds, updateAgeSeconds } = readSessionPolicy(process.env)
 
 // Auth.js puts this code in the answer: the only way to tell the screen how long to wait
 class RateLimitedSignin extends CredentialsSignin {
@@ -19,14 +18,8 @@ class RateLimitedSignin extends CredentialsSignin {
   }
 }
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
-  trustHost: true,
-  logger: authLogger,
-  session: { strategy: 'jwt', maxAge: maxAgeSeconds, updateAge: updateAgeSeconds },
-  pages: {
-    signIn: '/',
-  },
+export const { handlers, auth } = NextAuth({
+  ...baseAuthConfig(process.env),
   providers: [
     Credentials({
       credentials: {
@@ -51,22 +44,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.name = user.name
-        token.email = user.email
-      }
-      return token
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string
-        session.user.name = token.name as string
-        session.user.email = token.email as string
-      }
-      return session
-    },
-  },
 })

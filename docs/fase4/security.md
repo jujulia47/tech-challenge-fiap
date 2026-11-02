@@ -303,3 +303,38 @@ Outside Docker, `apps/shell/.env.local` points to `localhost:1025`, but that por
 - **The registration does not fully hide an email.** Someone can register a known email with a password of their choice and then try to log in with it: if that fails, the email already existed. Only a confirmation email closes this. A registered email also skips the final write to json-server, which is a few milliseconds faster.
 - **Two simultaneous registrations of the same email can both pass.** The lookup and the write are separate requests, and json-server has no unique index. A real database needs a unique constraint.
 - **The JWT cannot be revoked.** Logging out deletes the cookie, but a copy of the token still works until it expires, 30 minutes at most.
+
+## Step 7b: changing the name and the password
+
+"Minha conta", in the dashboard zone, now saves. The email is read only: it is the login, and changing it needs a confirmation by email that does not exist yet.
+
+### Routes
+
+| Route | Body | Answer |
+|---|---|---|
+| `PATCH /dashboard/api/account/profile` | `{ name }` | `200 { name }` |
+| `POST /dashboard/api/account/password` | `{ currentPassword, newPassword }` | `204` |
+
+Both follow the rules of the other writes of the bff: the `Origin` is checked before the session, the user is always the one of the session, and the body is a strict Zod object, so an `id` or an `email` in it is refused with `400`. An error answers a code only.
+
+### Changing the password
+
+`ChangePassword` in the core:
+
+1. Consumes one attempt of the limiter of the login, by email (5 every 15 minutes), before anything else.
+2. Verifies the current password with the hasher, which compares in constant time (`timingSafeEqual`), in NFKC like the login. A wrong one answers `422 INVALID_CURRENT_PASSWORD` and keeps the attempt; a right one gives it back.
+3. Refuses a new password equal to the current one, compared in NFKC: `422 PASSWORD_UNCHANGED`.
+4. Applies the policy of the registration and of the reset, through `hashNewPassword`.
+
+A wrong current password answers `422`, not `401`: the client reads `401` as an expired session and sends the browser to the login.
+
+The limiter has the values of the login but lives in the process of the dashboard zone, so its count is separate from the login of the shell. Someone can try 5 current passwords here and 5 logins there in the same 15 minutes. One shared count needs a shared store, the same open item as the in-memory limit of step 3.2.
+
+### The name in the session
+
+The name of the header comes from the JWT, which the three zones share as one cookie. After saving, the screen calls `update()` of Auth.js. The zone answers it in the `jwt` callback, with the `update` trigger, by reading the user again from json-server by the id of the token. What the browser sends with `update()` is ignored, so nobody can write a name, or another id, into their own token. The new cookie reaches the dashboard at once, and the shell and the extract on their next page.
+
+### Still open after step 7b
+
+- **Other sessions stay valid after a password change.** The session is a JWT: a browser that was logged in before the change keeps working until its token expires, 30 minutes at most. Ending them needs a version of the password in the token, checked on every request, or a list of revoked sessions.
+- **No email warns about a changed password.**

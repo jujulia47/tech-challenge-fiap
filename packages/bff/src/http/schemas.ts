@@ -82,6 +82,17 @@ export const registerBodySchema = z.strictObject(
   { error: BODY_ERROR },
 )
 
+export const profileBodySchema = z.strictObject(
+  { name: z.string({ error: NAME_ERROR }).trim().min(1, { error: NAME_ERROR }).max(100, { error: NAME_ERROR }) },
+  { error: BODY_ERROR },
+)
+
+// What a new password must be is a rule of the domain; this is only the ceiling of the request
+export const changePasswordBodySchema = z.strictObject(
+  { currentPassword: password, newPassword: password },
+  { error: BODY_ERROR },
+)
+
 export const passwordResetRequestSchema = z.strictObject({ email }, { error: BODY_ERROR })
 
 export const passwordResetConfirmSchema = z.strictObject(

@@ -1,53 +1,71 @@
 import { Meta, ColorPalette, ColorItem } from '@storybook/addon-docs/blocks'
+import theme from '@bytebank/design-system/theme.css?raw'
 
 <Meta title="Foundations/Colors" />
 
+export const TOKENS = Object.fromEntries(
+  [...theme.matchAll(/--color-([\w-]+):\s*(#[0-9A-Fa-f]{3,8})/g)].map(([, name, value]) => [name, value.toUpperCase()]),
+)
+
+export const Token = ({ name, subtitle }) => (
+  <ColorItem title={name} subtitle={subtitle} colors={{ [name]: TOKENS[name] ?? 'transparent' }} />
+)
+
 # Colors
 
-Todos os tokens de cor do Design System. Nenhum componente pode usar valores hex diretamente — apenas os tokens definidos aqui.
+Todos os tokens de cor do Design System, lidos de `packages/design-system/src/styles/theme.css`: um valor que muda no tema muda aqui também. Nenhum componente pode usar valores hex diretamente — apenas os tokens.
 
 ## App Tokens
 
 <ColorPalette>
-  <ColorItem title="primary-900" subtitle="Header, borders, primary fill" colors={{ 'primary-900': '#004D61' }} />
-  <ColorItem title="primary-800" subtitle="Button text on light, input stroke" colors={{ 'primary-800': '#024D60' }} />
-  <ColorItem title="primary-50" subtitle="Card text on dark, light button bg" colors={{ 'primary-50': '#DEE9EA' }} />
-  <ColorItem title="bg-base" subtitle="App background" colors={{ 'bg-base': '#E4EDE3' }} />
-  <ColorItem title="surface-card" subtitle="Statement card, sidebar bg" colors={{ 'surface-card': '#F5F5F5' }} />
-  <ColorItem title="surface-form" subtitle="Form/modal section bg" colors={{ 'surface-form': '#CBCBCB' }} />
-  <ColorItem title="surface-modal" subtitle="Modal panel background" colors={{ 'surface-modal': '#F8F8F8' }} />
-  <ColorItem title="surface-light" subtitle="Landing gradient endpoint" colors={{ 'surface-light': '#F0F0F0' }} />
-  <ColorItem title="surface-dark" subtitle="ProfileMenu dropdown bg" colors={{ 'surface-dark': '#000000' }} />
-  <ColorItem title="success" subtitle="Active nav, confirmation feedback" colors={{ 'success': '#47A138' }} />
-  <ColorItem title="error" subtitle="Form validation errors, destructive states" colors={{ 'error': '#BF1313' }} />
-  <ColorItem title="accent" subtitle="CTA emphasis, hamburger icon" colors={{ 'accent': '#FF5031' }} />
+  <Token name="primary-900" subtitle="Header, borders, primary fill, labels on light surfaces" />
+  <Token name="primary-800" subtitle="Button text on light, input stroke" />
+  <Token name="primary-50" subtitle="Text on dark cards, light button bg" />
+  <Token name="bg-base" subtitle="App background" />
+  <Token name="surface-card" subtitle="Statement card, sidebar bg" />
+  <Token name="surface-form" subtitle="Form section bg" />
+  <Token name="surface-modal" subtitle="Modal panel background" />
+  <Token name="surface-light" subtitle="Landing gradient endpoint" />
+  <Token name="surface-dark" subtitle="ProfileMenu dropdown bg" />
+</ColorPalette>
+
+## Feedback Tokens
+
+<ColorPalette>
+  <Token name="success" subtitle="Text and fills on light surfaces: active nav, confirmation, green buttons" />
+  <Token name="success-light" subtitle="Green on the black ProfileMenu, where the darker one would fail contrast" />
+  <Token name="error" subtitle="Form validation errors, destructive states" />
+  <Token name="accent" subtitle="Icons on the dark header: hamburger, avatar" />
+  <Token name="accent-strong" subtitle="Orange text and filled buttons on light surfaces" />
 </ColorPalette>
 
 ## Text Tokens
 
 <ColorPalette>
-  <ColorItem title="text-primary" subtitle="Default text, inactive nav labels" colors={{ 'text-primary': '#000000' }} />
-  <ColorItem title="text-secondary" subtitle="Dates, meta labels, disabled states" colors={{ 'text-secondary': '#8B8B8B' }} />
-  <ColorItem title="text-inverse" subtitle="Text on dark backgrounds" colors={{ 'text-inverse': '#FFFFFF' }} />
+  <Token name="text-primary" subtitle="Default text, inactive nav labels" />
+  <Token name="text-secondary" subtitle="Dates, meta labels, placeholders, disabled states" />
+  <Token name="inverse" subtitle="Text on dark backgrounds (text-inverse, bg-inverse)" />
 </ColorPalette>
 
 ## Public Tokens
 
 <ColorPalette>
-  <ColorItem title="public-accent" subtitle="Landing icons, nav links, CTA buttons" colors={{ 'public-accent': '#3AB44A' }} />
+  <Token name="public-accent" subtitle="Landing icons, links of the public modals, CTA buttons" />
 </ColorPalette>
 
 ## Chart Tokens
 
 <ColorPalette>
-  <ColorItem title="chart-blue" subtitle="Fundos de investimento" colors={{ 'chart-blue': '#2567F9' }} />
-  <ColorItem title="chart-purple" subtitle="Tesouro Direto" colors={{ 'chart-purple': '#8F3CFF' }} />
-  <ColorItem title="chart-pink" subtitle="Previdência Privada" colors={{ 'chart-pink': '#FF3C82' }} />
-  <ColorItem title="chart-orange" subtitle="Bolsa de Valores" colors={{ 'chart-orange': '#F1823D' }} />
+  <Token name="chart-blue" subtitle="Fundos de investimento" />
+  <Token name="chart-purple" subtitle="Tesouro Direto" />
+  <Token name="chart-pink" subtitle="Previdência Privada" />
+  <Token name="chart-orange" subtitle="Bolsa de Valores" />
 </ColorPalette>
 
 ## Design Decisions
 
-> `color-error` (`#BF1313`) e `color-accent` (`#FF5031`) são tokens separados com papéis semânticos distintos — error sinaliza problema, accent sinaliza ênfase.
+> Desde a Etapa 6b todas as cores de texto passam no WCAG AA (4,5:1). Por isso existem pares: `success` e `success-light`, `accent` e `accent-strong`. A cor clara serve a fundos escuros ou a ícones; a forte, a texto e preenchimentos em fundos claros. A tabela de contraste está em `docs/fase4/accessibility.md`.
+
+> `error` e `accent` são tokens separados com papéis semânticos distintos — error sinaliza problema, accent sinaliza ênfase.
 
 > `color-public-nav` foi descontinuado. NavbarPublic e Footer agora usam `color-primary-900` para unificar a identidade visual.

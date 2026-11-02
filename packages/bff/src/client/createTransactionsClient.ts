@@ -16,6 +16,11 @@ const UNAUTHENTICATED = 'UNAUTHENTICATED'
 export type NewTransaction = Pick<TransactionDTO, 'type' | 'amountInCents' | 'date' | 'attachment'>
 export type TransactionChanges = Pick<TransactionDTO, 'type' | 'amountInCents'>
 
+export interface PasswordChange {
+  currentPassword: string
+  newPassword: string
+}
+
 export interface ChartDataFilters {
   period: PeriodInMonths
   type?: TransactionType
@@ -29,6 +34,8 @@ export interface TransactionsClient {
   fetchBalance(): Promise<BalanceDTO>
   fetchStatement(): Promise<StatementDTO>
   fetchChartData(filters: ChartDataFilters): Promise<ChartDataDTO>
+  updateProfile(name: string): Promise<{ name: string }>
+  changePassword(change: PasswordChange): Promise<void>
 }
 
 export class TransactionsApiError extends Error {
@@ -96,6 +103,10 @@ export function createTransactionsClient(basePath: string): TransactionsClient {
       const query = new URLSearchParams({ period: String(period) })
       if (type !== undefined) query.set('type', type)
       return getJson(`${apiUrl}/chart-data?${query}`)
+    },
+    updateProfile: name => sendJson('PATCH', `${apiUrl}/account/profile`, { name }),
+    changePassword: async change => {
+      await request(`${apiUrl}/account/password`, { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(change) })
     },
   }
 }

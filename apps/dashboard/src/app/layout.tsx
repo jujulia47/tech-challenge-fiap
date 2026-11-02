@@ -1,14 +1,11 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
-import '@/styles/globals.css'
-import '@fontsource/inter'
+import '@bytebank/design-system/theme.css'
 import { SessionProvider } from 'next-auth/react'
-import { IdleSessionGuard } from '@bytebank/design-system'
+import { Header, IdleSessionGuard, MenuSidebar, MenuTabs } from '@bytebank/design-system'
 import { iconFont } from '@bytebank/design-system/iconFont'
-import { Header } from '@/components/layout/Header'
-import { MenuSidebar } from '@/components/layout/MenuSidebar'
-import { MenuTabs } from '@/components/layout/MenuTabs'
-import { ReduxProvider } from '@/store/ReduxProvider'
+import { NAV_ITEMS, PROFILE_ITEMS } from '@/components/layout/nav-items'
+import { ReduxProvider } from '@/store/transactionsApi'
 
 export const metadata: Metadata = {
   title: { default: 'Painel | Bytebank', template: '%s | Bytebank' },
@@ -26,11 +23,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SessionProvider basePath="/dashboard/api/auth">
           <ReduxProvider>
             <div className="min-h-screen bg-bg-base flex flex-col">
-              <Header />
-              <MenuTabs />
+              <Header navItems={NAV_ITEMS} profileItems={PROFILE_ITEMS} />
+              <MenuTabs items={NAV_ITEMS} />
               <div className="flex-1">
                 <div className="max-w-[1200px] mx-auto px-6 py-6 flex gap-6">
-                  <MenuSidebar />
+                  <MenuSidebar items={NAV_ITEMS} />
                   <main className="flex-1 min-w-0">{children}</main>
                 </div>
               </div>

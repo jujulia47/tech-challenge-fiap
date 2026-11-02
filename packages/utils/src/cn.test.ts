@@ -107,8 +107,8 @@ describe('cn', () => {
   })
 
   describe('typography tokens', () => {
-    it('lists exactly the typography utilities defined in globals.css', () => {
-      const css = readFileSync(new URL('../../../apps/shell/src/styles/globals.css', import.meta.url), 'utf8')
+    it('lists exactly the typography utilities defined in the theme', () => {
+      const css = readFileSync(new URL('../../design-system/src/styles/theme.css', import.meta.url), 'utf8')
       const defined = [...css.matchAll(/^\s*\.(text-[a-z-]+)\s*\{\s*font-size:/gm)].map(match => match[1])
 
       expect([...defined].sort()).toEqual([...TYPOGRAPHY_TOKENS].sort())

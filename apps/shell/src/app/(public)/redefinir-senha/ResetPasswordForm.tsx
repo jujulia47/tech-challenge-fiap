@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Button, Link, PasswordField } from '@bytebank/design-system'
-import { passwordErrorMessage } from '@/lib/passwordErrors'
+import { passwordErrorMessage } from '@bytebank/utils'
 
 interface ResetPasswordFormProps {
   token: string

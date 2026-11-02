@@ -58,11 +58,20 @@ export class HttpUserRepository implements UserRepository {
   }
 
   async updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+    await this.patch(id, { passwordHash })
+  }
+
+  async updateName(id: string, name: string): Promise<void> {
+    await this.patch(id, { name })
+  }
+
+  // One field at a time: a PATCH never carries the whole record, so it cannot undo another change
+  private async patch(id: string, changes: Partial<UserProps>): Promise<void> {
     const url = `${this.collectionUrl}/${encodeURIComponent(id)}`
     const response = await send(url, this.timeoutMs, {
       method: 'PATCH',
       headers: JSON_HEADERS,
-      body: JSON.stringify({ passwordHash }),
+      body: JSON.stringify(changes),
     })
     assertOk(response, url)
   }

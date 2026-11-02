@@ -13,6 +13,8 @@ interface PasswordFieldProps {
   context?: PasswordContext
   refusedAsCommon?: boolean
   required?: boolean
+  // A refusal that the criteria below do not show, such as "the same as the current one"
+  error?: string
 }
 
 const BAR_CLASSES: Record<PasswordStrength, string> = {
@@ -31,6 +33,7 @@ export function PasswordField({
   context = EMPTY_CONTEXT,
   refusedAsCommon = false,
   required,
+  error,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false)
   const strength = passwordStrength(value, context, refusedAsCommon)
@@ -51,6 +54,7 @@ export function PasswordField({
         value={value}
         onChange={onChange}
         required={required}
+        error={error}
         trailing={
           <button
             type="button"

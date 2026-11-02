@@ -4,6 +4,7 @@ import * as utils from './index'
 describe('@bytebank/utils public API', () => {
   it('re-exports every module', () => {
     expect(Object.keys(utils).sort()).toEqual([
+      'BrowserClock',
       'SESSION_POLICY',
       'TRANSACTION_TYPE_LABELS',
       'TRANSACTION_TYPE_OPTIONS',
@@ -21,6 +22,7 @@ describe('@bytebank/utils public API', () => {
       'minutesLeft',
       'msUntilNextMinute',
       'onIntent',
+      'passwordErrorMessage',
       'preloadable',
       'rateLimitCode',
       'readSessionPolicy',

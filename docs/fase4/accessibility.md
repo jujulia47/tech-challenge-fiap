@@ -4,7 +4,7 @@ An automatic audit opened every route and modal of the three apps, at 375 px and
 
 ## Contrast
 
-Target: WCAG AA, 4.5:1 for normal text and 3:1 for large text and icons. Everything was fixed through tokens, in `globals.css` of the three apps, and through classes that use them.
+Target: WCAG AA, 4.5:1 for normal text and 3:1 for large text and icons. Everything was fixed through tokens, in `globals.css` of the three apps (since step 7a, the single `theme.css` of the design system), and through classes that use them.
 
 ### Token changes
 

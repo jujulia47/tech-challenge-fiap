@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button, Input, Checkbox, Modal, PasswordField } from '@bytebank/design-system'
-import { passwordErrorMessage } from '@/lib/passwordErrors'
+import { passwordErrorMessage } from '@bytebank/utils'
 
 interface ModalCadastroProps {
   isOpen: boolean

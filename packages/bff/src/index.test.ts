@@ -6,8 +6,11 @@ describe('@bytebank/bff public API', () => {
   it('exports the composition functions and the handlers', () => {
     expect(Object.keys(bff).sort()).toEqual([
       'clientIp',
+      'createAccountHandlers',
       'createJsonServerAuthUseCases',
       'createJsonServerUseCases',
+      'createLazyAccountHandlers',
+      'createLazyTransactionHandlers',
       'createPasswordResetHandlers',
       'createRegisterHandler',
       'createTransactionHandlers',
