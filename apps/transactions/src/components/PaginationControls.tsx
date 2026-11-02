@@ -19,7 +19,7 @@ export function PaginationControls({ page, totalPages, totalItems, pageSize, onP
       return acc
     }, [])
   return (
-    <div className="flex items-center justify-between mt-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-4">
       <span className="text-meta text-text-secondary">
         Mostrando {start}–{end} de {totalItems} transações
       </span>
@@ -27,7 +27,7 @@ export function PaginationControls({ page, totalPages, totalItems, pageSize, onP
         <button
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page === 1}
-          className="h-8 px-3 rounded-md text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
+          className="h-8 px-3 rounded-md whitespace-nowrap text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
         >
           ‹ Anterior
         </button>
@@ -49,7 +49,7 @@ export function PaginationControls({ page, totalPages, totalItems, pageSize, onP
         <button
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
-          className="h-8 px-3 rounded-md text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
+          className="h-8 px-3 rounded-md whitespace-nowrap text-meta text-text-secondary disabled:opacity-30 hover:bg-primary-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
         >
           Próxima ›
         </button>

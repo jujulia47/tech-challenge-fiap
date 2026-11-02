@@ -15,7 +15,7 @@ interface ButtonProps {
 const variantClasses: Record<ButtonVariant, string> = {
   primary:          'bg-primary-900 text-inverse border-primary-900',
   light:            'bg-primary-50 text-primary-800 border-primary-50',
-  accent:           'bg-accent text-inverse border-accent',
+  accent:           'bg-accent-strong text-inverse border-accent-strong',
   outline:          'bg-transparent text-inverse border-inverse',
   'error-outline':  'bg-transparent text-error border-error',
   'success':        'bg-success text-inverse border-success',

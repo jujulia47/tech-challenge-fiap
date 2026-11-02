@@ -22,7 +22,7 @@ export function CardBill({ data, cardLabel }: CardBillProps) {
   return (
     <div className="bg-surface-card rounded-md p-6 flex flex-col gap-6">
       <div className="flex items-center gap-2">
-        <span className="material-icons text-success text-icon-sm">receipt</span>
+        <span className="material-icons text-success text-icon-sm" aria-hidden="true">receipt</span>
         <h2 className="text-heading font-bold text-text-primary">
           Fatura — {cardLabel}
         </h2>
@@ -43,7 +43,7 @@ export function CardBill({ data, cardLabel }: CardBillProps) {
         </div>
         <div className="bg-primary-900 rounded-md p-4 flex flex-col gap-1">
           <span className="text-meta text-primary-50">Limite disponível</span>
-          <span className="text-label font-normal text-success">{data.availableLimit}</span>
+          <span className="text-label font-normal text-inverse">{data.availableLimit}</span>
         </div>
       </div>
 

@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { NavbarPublic } from '@/components/layout/NavbarPublic'
-import { ModalLogin } from '@/app/(public)/components/ModalLogin'
-import { ModalCadastro } from '@/app/(public)/components/ModalCadastro'
+import { LazyModalCadastro, LazyModalLogin } from '@/app/(public)/components/lazy-modals'
 
 type OpenModal = 'login' | 'signup' | null
 
@@ -40,11 +39,11 @@ export function PublicShell({ children }: PublicShellProps) {
         onSignupClick={controls.openSignup}
       />
       {children}
-      <ModalLogin
+      <LazyModalLogin
         isOpen={openModal === 'login'}
         onClose={() => setOpenModal(null)}
       />
-      <ModalCadastro
+      <LazyModalCadastro
         isOpen={openModal === 'signup'}
         onClose={() => setOpenModal(null)}
       />

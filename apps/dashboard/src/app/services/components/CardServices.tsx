@@ -27,7 +27,7 @@ const baseClass = 'flex flex-col items-center gap-2 rounded-md p-4 transition-al
 export function CardServices() {
   return (
     <div className="relative bg-surface-form rounded-md p-6 overflow-hidden">
-      <h2 className="text-heading text-primary-50 mb-6">
+      <h2 className="text-heading text-primary-900 mb-6">
         Confira os serviços disponíveis
       </h2>
 
@@ -35,7 +35,7 @@ export function CardServices() {
         {SERVICES.map((service) => {
           const content = (
             <>
-              <span className="material-icons text-icon-md text-success">{service.icon}</span>
+              <span className="material-icons text-icon-md text-success" aria-hidden="true">{service.icon}</span>
               <span className="text-body-semibold text-text-primary text-center">{service.label}</span>
             </>
           )

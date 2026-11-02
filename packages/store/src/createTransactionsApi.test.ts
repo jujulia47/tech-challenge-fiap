@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createTransactionsApi } from './createTransactionsApi'
+import { chartDataFilters, createTransactionsApi } from './createTransactionsApi'
 import { createTransactionsStore } from './createTransactionsStore'
 
-const transactionsApi = createTransactionsApi('/dashboard')
-const { endpoints } = transactionsApi
+// New for each test: the client remembers an expired session
+let transactionsApi = createTransactionsApi('/dashboard')
+let { endpoints } = transactionsApi
 const balance = { amountInCents: 115000 }
 const chartData = { byMonth: [], byType: [] }
 const statement = { groups: [] }
@@ -35,6 +36,8 @@ const ROUTES = {
 }
 
 beforeEach(() => {
+  transactionsApi = createTransactionsApi('/dashboard')
+  endpoints = transactionsApi.endpoints
   fetchMock.mockReset()
   location.href = 'http://localhost:3000/dashboard'
   vi.stubGlobal('fetch', fetchMock)
@@ -195,6 +198,53 @@ describe('createTransactionsApi', () => {
       const result = createStore().dispatch(endpoints.deleteTransaction.initiate('1')).unwrap()
 
       await expect(result).rejects.toEqual({ code: 'UPSTREAM_ERROR' })
+    })
+  })
+
+  describe('prefetch of the chart data', () => {
+    beforeEach(() => respond(ROUTES))
+
+    const prefetch = (store: TestStore, filters: ReturnType<typeof chartDataFilters>) =>
+      store.dispatch(transactionsApi.util.prefetch('getChartData', filters, {}))
+
+    it('asks the server for the period in advance', async () => {
+      prefetch(createStore(), chartDataFilters(6, null))
+      await settle()
+
+      expect(callsTo('/dashboard/api/chart-data')).toHaveLength(1)
+      expect(String(fetchMock.mock.calls[0][0])).toContain('period=6')
+    })
+
+    it('leaves the data where the query finds it, so the click needs no request', async () => {
+      const store = createStore()
+      prefetch(store, chartDataFilters(6, null))
+      await settle()
+
+      const { data } = await store.dispatch(endpoints.getChartData.initiate(chartDataFilters(6, null)))
+
+      expect(data).toEqual(chartData)
+      expect(callsTo('/dashboard/api/chart-data')).toHaveLength(1)
+    })
+
+    it('does not repeat the request when the pointer passes again', async () => {
+      const store = createStore()
+      prefetch(store, chartDataFilters(6, null))
+      prefetch(store, chartDataFilters(6, null))
+      await settle()
+      prefetch(store, chartDataFilters(6, null))
+      await settle()
+
+      expect(callsTo('/dashboard/api/chart-data')).toHaveLength(1)
+    })
+
+    it('keeps the type filter apart: other filters are other data', async () => {
+      const store = createStore()
+      prefetch(store, chartDataFilters(6, null))
+      await settle()
+
+      await store.dispatch(endpoints.getChartData.initiate(chartDataFilters(6, 'deposit')))
+
+      expect(callsTo('/dashboard/api/chart-data')).toHaveLength(2)
     })
   })
 })

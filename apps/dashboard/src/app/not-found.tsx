@@ -1,7 +1,11 @@
-'use client'
-
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@bytebank/design-system'
+
+export const metadata: Metadata = {
+  title: 'Página não encontrada',
+  description: 'A página que você procura não existe ou foi movida.',
+}
 
 export default function NotFound() {
   return (
@@ -10,7 +14,7 @@ export default function NotFound() {
       {/* Animated 404 */}
       <div className="flex flex-col items-center gap-4">
         <span
-          className="material-icons text-primary-900 animate-float text-[80px]!"
+          className="material-icons text-primary-900 animate-float text-[80px]!" aria-hidden="true"
         >
           search_off
         </span>

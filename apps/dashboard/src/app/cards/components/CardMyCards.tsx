@@ -24,7 +24,7 @@ function CardVisual({ bgClass, holderName, maskedNumber, selected, onClick, labe
     >
       <div className="flex justify-between items-start">
         <span className="text-body-semibold text-inverse">Bytebank</span>
-        <span className="material-icons text-icon-sm text-primary-50">credit_card</span>
+        <span className="material-icons text-icon-sm text-primary-50" aria-hidden="true">credit_card</span>
       </div>
       <div className="flex flex-col gap-1">
         <span className="text-meta text-inverse opacity-70">

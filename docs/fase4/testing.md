@@ -53,16 +53,16 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 
 ## Scope
 
-**Tested now:** every export of `packages/utils/src`, `packages/core/src`, `packages/infrastructure/src` and `packages/bff/src`, plus `ProfileMenu` and `TransactionItem` from the design system, 1248 tests in 71 files.
+**Tested now:** every export of `packages/utils/src`, `packages/core/src`, `packages/infrastructure/src` and `packages/bff/src`, plus `ProfileMenu`, `TransactionItem`, `MountOnceOpen`, the focus of the modals and the list of the icon font from the design system, 1294 tests in 77 files.
 
 | Package | Test files | Tests | Kind |
 |---|---|---|---|
-| `packages/utils` | 10 | 161 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
+| `packages/utils` | 12 | 177 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
 | `packages/core` | 20 | 301 | Specification |
 | `packages/infrastructure` | 20 | 282 | Specification (unit, CLI, integration and timeout against real servers) |
-| `packages/bff` | 14 | 429 | Specification (handlers with real `Request` objects, and end to end) |
-| `packages/design-system` | 4 | 38 | Specification (static rendering of `ProfileMenu` and `TransactionItem`) |
-| `packages/store` | 3 | 37 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
+| `packages/bff` | 14 | 431 | Specification (handlers with real `Request` objects, and end to end) |
+| `packages/design-system` | 8 | 62 | Specification (static rendering of `ProfileMenu`, `TransactionItem` and `MountOnceOpen`, and the rule of `moveFocusInto`) |
+| `packages/store` | 3 | 41 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
 
 `packages/core`:
 
@@ -230,7 +230,7 @@ Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMon
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 71 test files, 1248 tests, all passing, in about 6 s.
+Result: 77 test files, 1294 tests, all passing, in about 6 s.
 
 The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
 

@@ -67,7 +67,7 @@ export default function EsqueciSenhaPage() {
             <>
               <div className="flex flex-col items-center gap-4 text-center">
                 {/* text-icon-xl (48px) não existe como token DS — exceção documentada no skill-forgot-password.md */}
-                <span className="material-icons text-success text-[48px]!">
+                <span className="material-icons text-success text-[48px]!" aria-hidden="true">
                   mark_email_read
                 </span>
                 <h2 className="text-heading font-bold text-text-primary">

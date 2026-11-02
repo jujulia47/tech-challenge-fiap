@@ -1,13 +1,19 @@
+import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import '@/styles/globals.css'
 import '@fontsource/inter'
-import '@fontsource/material-icons'
 import { SessionProvider } from 'next-auth/react'
 import { IdleSessionGuard } from '@bytebank/design-system'
+import { iconFont } from '@bytebank/design-system/iconFont'
 import { Header } from '@/components/layout/Header'
 import { MenuSidebar } from '@/components/layout/MenuSidebar'
 import { MenuTabs } from '@/components/layout/MenuTabs'
 import { ReduxProvider } from '@/store/ReduxProvider'
+
+export const metadata: Metadata = {
+  title: { default: 'Extrato | Bytebank', template: '%s | Bytebank' },
+  description: 'Busque, filtre e consulte todas as suas transações no Bytebank.',
+}
 
 export default async function RootLayout({
   children,
@@ -18,7 +24,7 @@ export default async function RootLayout({
   await connection()
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={iconFont.variable}>
       <head />
       <body>
         <SessionProvider basePath="/transactions/api/auth">

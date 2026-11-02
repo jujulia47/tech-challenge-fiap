@@ -63,6 +63,11 @@ export function formatMonthKey(monthKey: string): string {
   return `${MONTH_NAMES[Number(month) - 1]} de ${year}`
 }
 
+export function formatMonthShort(monthKey: string): string {
+  const [year, month] = monthKey.split('-')
+  return `${MONTH_NAMES[Number(month) - 1].slice(0, 3).toLowerCase()}/${year.slice(2)}`
+}
+
 export function formatSignedCents(amountInCents: number, direction: TransactionDirection): string {
   const formatted = `R$ ${formatCents(amountInCents)}`
   return direction === 'expense' ? `-${formatted}` : formatted

@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import { PublicShell } from '@/components/layout/PublicShell'
 import { ResetPasswordForm } from '@/app/(public)/redefinir-senha/ResetPasswordForm'
+
+export const metadata: Metadata = {
+  title: 'Redefinir senha',
+  description: 'Crie uma nova senha para acessar sua conta do Bytebank.',
+}
 
 interface ResetPasswordPageProps {
   searchParams: Promise<{ token?: string | string[] }>

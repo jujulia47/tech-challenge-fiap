@@ -1,5 +1,7 @@
 'use client'
 
+import { onIntent } from '@bytebank/utils'
+import { preloadLoginModal, preloadSignupModal } from '@/app/(public)/components/lazy-modals'
 import { usePublicModal } from '@/components/layout/PublicShell'
 
 export function HeroSection() {
@@ -19,6 +21,7 @@ export function HeroSection() {
           <button
             type="button"
             onClick={openSignup}
+            {...onIntent(preloadSignupModal)}
             className="h-12 px-6 rounded-md border text-body-semibold bg-public-accent text-inverse border-public-accent hover:opacity-90 active:scale-95 transition-all"
           >
             Abrir minha conta
@@ -26,7 +29,8 @@ export function HeroSection() {
           <button
             type="button"
             onClick={openLogin}
-            className="h-12 px-6 rounded-md border text-body-semibold bg-primary-900 text-public-accent border-public-accent hover:opacity-90 active:scale-95 transition-all"
+            {...onIntent(preloadLoginModal)}
+            className="h-12 px-6 rounded-md border text-body-semibold bg-primary-900 text-inverse border-inverse hover:opacity-90 active:scale-95 transition-all"
           >
             Já tenho conta
           </button>

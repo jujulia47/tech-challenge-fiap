@@ -1,9 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Modal } from '@bytebank/design-system'
 import { transactionDirection, type TransactionDTO } from '@bytebank/core'
-import { TRANSACTION_TYPE_LABELS, formatDateBR, formatMonthKey, formatSignedCents } from '@bytebank/utils'
+import { TRANSACTION_TYPE_LABELS, formatDateBR, formatMonthKey, formatSignedCents, onIntent, preloadable } from '@bytebank/utils'
+import { Button } from './Button'
+import { lazyModal } from './lazy'
+import { Modal } from './Modal'
+
+const attachmentViewer = preloadable(() => import('./AttachmentViewer').then(module => module.AttachmentViewer))
+const LazyAttachmentViewer = lazyModal(attachmentViewer, () => true)
 
 interface ModalTransactionDetailProps {
   transaction: TransactionDTO | null
@@ -17,9 +22,14 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
   const amount = transaction ? formatSignedCents(transaction.amountInCents, transactionDirection(transaction.type)) : ''
   const [showAttachment, setShowAttachment] = useState(false)
 
+  function handleClose() {
+    setShowAttachment(false)
+    onClose()
+  }
+
   return (
     <>
-    <Modal isOpen={transaction !== null} onClose={onClose} title="Detalhes da transação">
+    <Modal isOpen={transaction !== null} onClose={handleClose} title="Detalhes da transação">
       <dl className="flex flex-col gap-4 mt-6">
         <div className="flex justify-between items-center border-b border-success pb-4">
           <dt className="text-body text-text-secondary">Tipo</dt>
@@ -46,9 +56,9 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
             <button
               type="button"
               onClick={() => setShowAttachment(true)}
+              {...onIntent(attachmentViewer.preload)}
               className="w-full rounded-md overflow-hidden border border-primary-900 hover:opacity-80 transition-opacity"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element -- attachment is a base64 data URL; next/image does not optimize data URLs */}
               <img
                 src={transaction.attachment}
                 alt="Preview do anexo"
@@ -59,9 +69,10 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
             <button
               type="button"
               onClick={() => setShowAttachment(true)}
+              {...onIntent(attachmentViewer.preload)}
               className="flex items-center gap-3 h-12 px-4 rounded-md border border-primary-900 hover:opacity-80 transition-opacity"
             >
-              <span className="material-icons text-icon-md text-text-secondary">picture_as_pdf</span>
+              <span className="material-icons text-icon-md text-text-secondary" aria-hidden="true">picture_as_pdf</span>
               <span className="text-body text-text-secondary">Ver anexo (PDF)</span>
             </button>
           )}
@@ -73,48 +84,16 @@ export function ModalTransactionDetail({ transaction, onClose }: ModalTransactio
       )}
 
       <div className="mt-8">
-        <Button variant="light" label="Fechar" onClick={onClose} fullWidth />
+        <Button variant="light" label="Fechar" onClick={handleClose} fullWidth />
       </div>
     </Modal>
 
     {showAttachment && transaction?.attachment && (
-      <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70">
-        <div className="relative bg-inverse rounded-md p-6 max-w-2xl w-full mx-4 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-heading font-bold text-text-primary">Anexo da transação</p>
-            <button
-              type="button"
-              onClick={() => setShowAttachment(false)}
-              className="text-text-secondary hover:text-text-primary transition-colors"
-              aria-label="Fechar visualização do anexo"
-            >
-              <span className="material-icons text-icon-md">close</span>
-            </button>
-          </div>
-          {transaction.attachment.startsWith('data:image') ? (
-            // eslint-disable-next-line @next/next/no-img-element -- attachment is a base64 data URL; next/image does not optimize data URLs
-            <img
-              src={transaction.attachment}
-              alt="Anexo da transação"
-              className="w-full rounded-md object-contain max-h-[60vh]"
-            />
-          ) : (
-            <iframe
-              src={transaction.attachment}
-              className="w-full h-[60vh] rounded-md"
-              title="Anexo PDF da transação"
-            />
-          )}
-          <a
-            href={transaction.attachment}
-            download={`anexo-${transaction.id}`}
-            className="flex items-center justify-center gap-2 h-12 rounded-md bg-primary-900 text-inverse text-body-semibold hover:opacity-90 transition-opacity"
-          >
-            <span className="material-icons text-icon-md">download</span>
-            Baixar anexo
-          </a>
-        </div>
-      </div>
+      <LazyAttachmentViewer
+        attachment={transaction.attachment}
+        transactionId={transaction.id}
+        onClose={() => setShowAttachment(false)}
+      />
     )}
     </>
   )

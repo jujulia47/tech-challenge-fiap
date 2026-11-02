@@ -5,6 +5,7 @@ import {
   TRANSACTION_TYPE_OPTIONS,
   formatDateBR,
   formatMonthKey,
+  formatMonthShort,
   formatSignedCents,
   groupDtosByMonth,
 } from './transactionPresentation'
@@ -72,6 +73,17 @@ describe('formatDateBR', () => {
 
   it.each(['2026-01-01', '2025-12-31'])('does not move %s to another day', date => {
     expect(formatDateBR(date).split('/').reverse().join('-')).toBe(date)
+  })
+})
+
+describe('formatMonthShort', () => {
+  it.each([
+    ['2022-11', 'nov/22'],
+    ['2026-01', 'jan/26'],
+    ['2026-03', 'mar/26'],
+    ['2026-12', 'dez/26'],
+  ])('%s is %s', (monthKey, label) => {
+    expect(formatMonthShort(monthKey)).toBe(label)
   })
 })
 

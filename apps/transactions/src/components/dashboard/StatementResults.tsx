@@ -1,6 +1,6 @@
 import type { TransactionMonthGroup } from '@bytebank/utils'
 import { formatMonthKey } from '@bytebank/utils'
-import { TransactionItem } from '@bytebank/design-system'
+import { TransactionItem, type TransactionAction } from '@bytebank/design-system'
 
 interface StatementResultsProps {
   groups: TransactionMonthGroup[]
@@ -9,9 +9,10 @@ interface StatementResultsProps {
   onDetail: (id: string) => void
   onEdit: (id: string) => void
   onDelete: (id: string) => void
+  onActionIntent: (action: TransactionAction) => void
 }
 
-export function StatementResults({ groups, loading, loadFailed, onDetail, onEdit, onDelete }: StatementResultsProps) {
+export function StatementResults({ groups, loading, loadFailed, onDetail, onEdit, onDelete, onActionIntent }: StatementResultsProps) {
   if (loadFailed) {
     return (
       <p role="alert" aria-live="polite" className="text-body text-error">
@@ -39,6 +40,7 @@ export function StatementResults({ groups, loading, loadFailed, onDetail, onEdit
           onDetail={onDetail}
           onEdit={onEdit}
           onDelete={onDelete}
+          onActionIntent={onActionIntent}
         />
       ))}
     </div>

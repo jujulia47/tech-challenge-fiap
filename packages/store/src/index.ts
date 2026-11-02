@@ -1,4 +1,4 @@
-export { createTransactionsApi } from './createTransactionsApi'
+export { chartDataFilters, createTransactionsApi } from './createTransactionsApi'
 export type { TransactionsApi } from './createTransactionsApi'
 export { createTransactionsStore } from './createTransactionsStore'
 export { SEARCH_DEBOUNCE_MS, createStatementSearch } from './reactive/createStatementSearch'

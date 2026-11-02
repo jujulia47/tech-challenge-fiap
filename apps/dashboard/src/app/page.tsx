@@ -4,9 +4,13 @@ import { useMemo, useState } from 'react'
 import { CardNewTransaction } from '@/components/dashboard/CardNewTransaction'
 import { CardCharts } from '@/components/dashboard/CardCharts'
 import { CardStatement } from '@/components/dashboard/CardStatement'
-import { ModalConfirmDelete, Toast } from '@bytebank/design-system'
-import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
-import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
+import { Toast } from '@bytebank/design-system'
+import {
+  LazyModalConfirmDelete,
+  LazyModalEditTransaction,
+  LazyModalTransactionDetail,
+  preloadActionModal,
+} from '@/components/dashboard/lazy-modals'
 import { useDeleteTransactionMutation, useGetStatementQuery } from '@/store/transactionsApi'
 import { TRANSACTION_TYPE_LABELS } from '@bytebank/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -70,20 +74,21 @@ export default function DashboardPage() {
               onDetail={handleDetail}
               onEdit={handleEdit}
               onDelete={handleDeleteClick}
+              onActionIntent={preloadActionModal}
               limit={4}
               showViewMore
             />
           </div>
         </div>
       </div>
-      <ModalTransactionDetail transaction={detailTx} onClose={() => setDetailTx(null)} />
-      <ModalConfirmDelete
+      <LazyModalTransactionDetail transaction={detailTx} onClose={() => setDetailTx(null)} />
+      <LazyModalConfirmDelete
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDeleteConfirm}
         transactionLabel={deletingTx && TRANSACTION_TYPE_LABELS[deletingTx.type]}
       />
-      <ModalEditTransaction
+      <LazyModalEditTransaction
         transaction={editingTx}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}

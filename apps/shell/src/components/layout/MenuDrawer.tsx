@@ -3,12 +3,14 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useModalFocus } from '@bytebank/design-system'
 import { cn } from '@bytebank/utils'
 import { NAV_ITEMS } from '@/components/layout/nav-items'
 
 export function MenuDrawer() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
+  const panelRef = useModalFocus<HTMLDivElement>(isOpen)
 
   return (
     <div className={cn('md:hidden')}>
@@ -19,7 +21,7 @@ export function MenuDrawer() {
         aria-label="Abrir menu de navegação"
         aria-expanded={isOpen}
       >
-        <span className="material-icons text-accent text-icon-md">menu</span>
+        <span className="material-icons text-accent text-icon-md" aria-hidden="true">menu</span>
       </button>
 
       {isOpen && (
@@ -31,13 +33,17 @@ export function MenuDrawer() {
       )}
 
       <div
+        ref={panelRef}
+        tabIndex={-1}
+        inert={!isOpen}
+        onKeyDown={e => { if (e.key === 'Escape') setIsOpen(false) }}
         role="dialog"
         aria-modal="true"
         aria-label="Menu de navegação"
         aria-hidden={!isOpen}
         className={cn(
           'fixed inset-y-0 left-0 z-50 w-drawer bg-bg-base',
-          'flex flex-col p-4',
+          'flex flex-col p-4 outline-none',
           'transition-transform duration-200 ease-in-out',
           isOpen ? 'translate-x-0' : '-translate-x-full',
         )}
@@ -48,7 +54,7 @@ export function MenuDrawer() {
           aria-label="Fechar menu"
           className="text-success self-start mb-4"
         >
-          <span className="material-icons text-icon-sm">close</span>
+          <span className="material-icons text-icon-sm" aria-hidden="true">close</span>
         </button>
 
         <nav>
@@ -66,7 +72,7 @@ export function MenuDrawer() {
                 className={cn(
                   'block py-4 border-b',
                   isActive
-                    ? 'text-nav-bold text-accent border-success'
+                    ? 'text-nav-bold text-accent-strong border-success'
                     : 'text-nav text-text-primary border-text-primary',
                 )}
               >

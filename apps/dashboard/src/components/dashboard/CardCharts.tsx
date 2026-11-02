@@ -1,14 +1,25 @@
 'use client'
-import { useState } from 'react'
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts'
+import { useEffect, useState } from 'react'
 import type { PeriodInMonths, TransactionType } from '@bytebank/core'
-import { TRANSACTION_TYPE_LABELS, formatMonthKey } from '@bytebank/utils'
-import { useGetChartDataQuery } from '@/store/transactionsApi'
+import { lazyPart } from '@bytebank/design-system'
+import { chartDataFilters } from '@bytebank/store'
+import {
+  TRANSACTION_TYPE_LABELS,
+  formatMonthKey,
+  formatMonthShort,
+  onIntent,
+  preloadable,
+  toggleTypeFilter,
+  typeFilterMessage,
+} from '@bytebank/utils'
+import { ChartsSkeleton } from '@/components/dashboard/ChartsSkeleton'
+import { useGetChartDataQuery, usePrefetch } from '@/store/transactionsApi'
 
-const COLORS = ['#004D61','#47A138','#FF5031','#0077A8','#7B5EA7','#F9A825','#F1823D']
+const financialCharts = preloadable(() =>
+  import('@/components/dashboard/FinancialCharts').then(module => module.FinancialCharts),
+)
+
+const LazyFinancialCharts = lazyPart(financialCharts, ChartsSkeleton)
 
 const PERIODS: Array<{ value: PeriodInMonths; label: string }> = [
   { value: 3, label: '3 meses' },
@@ -16,18 +27,27 @@ const PERIODS: Array<{ value: PeriodInMonths; label: string }> = [
   { value: 'all', label: 'Tudo' },
 ]
 
-const formatCurrency = (value: unknown) =>
-  Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-
 export function CardCharts() {
   const [period, setPeriod] = useState<PeriodInMonths>('all')
   const [typeFilter, setTypeFilter] = useState<TransactionType | null>(null)
-  const { data, isLoading, isError } = useGetChartDataQuery({ period, type: typeFilter ?? undefined })
+  const { data, isLoading, isError } = useGetChartDataQuery(chartDataFilters(period, typeFilter))
+  const prefetchChartData = usePrefetch('getChartData')
+  const [filterMessage, setFilterMessage] = useState('')
+
+  function changeTypeFilter(type: TransactionType | null) {
+    const next = toggleTypeFilter(typeFilter, type)
+    setTypeFilter(next)
+    setFilterMessage(typeFilterMessage(next))
+  }
+
+  // Starts together with the data, instead of waiting for it
+  useEffect(() => financialCharts.preload(), [])
 
   // No transactions at all. An empty period keeps the card: its buttons are the way out of it.
   if (data?.byType.length === 0 && period === 'all') return null
 
   const barData = data?.byMonth.map(({ monthKey, amountInCents }) => ({
+    axisLabel: formatMonthShort(monthKey),
     month: formatMonthKey(monthKey),
     total: amountInCents / 100,
   })) ?? []
@@ -41,13 +61,15 @@ export function CardCharts() {
   return (
     <div className="bg-surface-card rounded-md p-6 flex flex-col gap-6">
       <h2 className="text-heading font-bold text-text-primary">Análise financeira</h2>
+      <p className="sr-only" aria-live="polite">{filterMessage}</p>
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           {PERIODS.map(({ value, label }) => (
             <button
               key={value}
               onClick={() => setPeriod(value)}
-              className={`px-3 py-1 rounded-md text-meta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 ${
+              {...onIntent(() => prefetchChartData(chartDataFilters(value, typeFilter)))}
+              className={`min-h-7 px-3 py-1 rounded-md text-meta transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 ${
                 period === value
                   ? 'bg-primary-900 text-inverse'
                   : 'bg-primary-50 text-primary-900 hover:opacity-80'
@@ -59,8 +81,8 @@ export function CardCharts() {
         </div>
         {typeFilter && (
           <button
-            onClick={() => setTypeFilter(null)}
-            className="text-meta text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
+            onClick={() => changeTypeFilter(null)}
+            className="text-meta text-accent-strong hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
           >
             Limpar filtro: {TRANSACTION_TYPE_LABELS[typeFilter]} ×
           </button>
@@ -71,52 +93,16 @@ export function CardCharts() {
           Não foi possível carregar os gráficos. Tente novamente.
         </p>
       ) : isLoading ? (
-        <p className="text-body text-text-secondary">Carregando gráficos...</p>
+        <ChartsSkeleton />
       ) : pieData.length === 0 ? (
         <p className="text-body text-text-secondary">Nenhuma transação neste período</p>
       ) : (
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-1">
-            <p className="text-meta-semibold text-primary-900 mb-3">Movimentação por mês (R$)</p>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={barData}>
-                <XAxis dataKey="month" tick={{fontSize:11}} />
-                <YAxis tick={{fontSize:11}} width={60} />
-                <Tooltip formatter={formatCurrency} />
-                <Bar dataKey="total" fill={COLORS[0]} radius={[4,4,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex-1">
-            <p className="text-meta-semibold text-primary-900 mb-3">Distribuição por tipo</p>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="45%"
-                  outerRadius={75}
-                  dataKey="value"
-                  activeShape={{ outerRadius: 88 }}
-                  onClick={(_: unknown, index: number) => {
-                    const type = pieData[index]?.type ?? null
-                    setTypeFilter(prev => prev === type ? null : type)
-                  }}
-                >
-                  {pieData.map((entry, i) => (
-                    <Cell
-                      key={entry.type}
-                      fill={COLORS[i % COLORS.length]}
-                      opacity={typeFilter && typeFilter !== entry.type ? 0.3 : 1}
-                    />
-                  ))}
-                </Pie>
-                <Legend />
-                <Tooltip formatter={formatCurrency} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <LazyFinancialCharts
+          barData={barData}
+          pieData={pieData}
+          typeFilter={typeFilter}
+          onTypeClick={changeTypeFilter}
+        />
       )}
     </div>
   )

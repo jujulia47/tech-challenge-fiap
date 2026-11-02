@@ -57,7 +57,7 @@ export function ModalEditTransaction({ transaction, onClose, onSuccess, onError 
           onChange={setType}
         />
         <div className="flex flex-col gap-1">
-          <label htmlFor="edit-transaction-valor" className="text-body-semibold text-primary-50">Valor</label>
+          <label htmlFor="edit-transaction-valor" className="text-body-semibold text-primary-900">Valor</label>
           <input
             id="edit-transaction-valor"
             type="text"

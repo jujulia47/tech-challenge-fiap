@@ -48,7 +48,7 @@ export function CardInvestments() {
   return (
     <div className="relative bg-surface-form rounded-md p-6 overflow-hidden">
       <h2 className="text-heading text-text-primary">Investimentos</h2>
-      <p className="text-heading font-normal text-success mt-1 mb-6">Total: R$ 50.000,00</p>
+      <p className="text-heading font-normal text-primary-900 mt-1 mb-6">Total: R$ 50.000,00</p>
 
       <ul className="grid grid-cols-2 gap-3 mb-6">
         {INVESTMENT_TYPES.map((item) => (
@@ -108,8 +108,8 @@ export function CardInvestments() {
       <div className="bg-primary-900 rounded-md p-4 mt-6">
         <p className="text-body text-primary-50 mb-1">Rentabilidade do mês</p>
         <div className="flex items-center gap-3">
-          <span className="material-icons text-success text-icon-sm">trending_up</span>
-          <p className="text-heading font-normal text-success">
+          <span className="material-icons text-inverse text-icon-sm" aria-hidden="true">trending_up</span>
+          <p className="text-heading font-normal text-inverse">
             +{MONTHLY_RETURN.percentage}%
           </p>
           <p className="text-body text-primary-50">{MONTHLY_RETURN.amount}</p>
@@ -125,7 +125,7 @@ export function CardInvestments() {
                 <span className="text-body text-text-primary">{item.label}</span>
                 <span className="text-meta text-text-secondary">{item.date}</span>
               </div>
-              <span className="text-body-semibold text-success shrink-0">{item.amount}</span>
+              <span className="text-body-semibold text-primary-900 shrink-0">{item.amount}</span>
             </li>
           ))}
         </ul>

@@ -75,7 +75,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
 
   return (
     <div className="relative bg-surface-form rounded-md overflow-hidden p-6 md:p-8 lg:p-6">
-      <h2 className="text-heading font-bold text-primary-50 mb-8 text-center md:text-left">
+      <h2 className="text-heading font-bold text-primary-900 mb-8 text-center md:text-left">
         Nova transação
       </h2>
 
@@ -91,7 +91,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
           {errors.type && <span role="alert" aria-live="polite" className="text-meta text-error">{errors.type}</span>}
           {suggestion && (
             <button type="button" onClick={() => setType(suggestion)}
-              className="text-meta text-accent hover:underline self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 rounded">
+              className="text-meta text-primary-900 underline hover:no-underline self-start min-h-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900 rounded">
               Sugestão: {TRANSACTION_TYPE_LABELS[suggestion]}
             </button>
           )}
@@ -108,7 +108,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
         </div>
 
         <div className="w-full md:w-button-md flex flex-col gap-1">
-          <label htmlFor="new-transaction-valor" className="text-body-semibold text-primary-50">Valor</label>
+          <label htmlFor="new-transaction-valor" className="text-body-semibold text-primary-900">Valor</label>
           <input
             id="new-transaction-valor"
             type="text"
@@ -122,12 +122,12 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
         </div>
 
         <div className="w-full md:w-button-md flex flex-col gap-1">
-          <label htmlFor="attachment-input" className="text-body-semibold text-primary-50">
+          <label htmlFor="attachment-input" className="text-body-semibold text-primary-900">
             Anexo (opcional)
           </label>
           <span className="text-meta text-text-secondary">Máximo {MAX_ATTACHMENT_BYTES / 1024}KB. Formatos: imagem ou PDF</span>
-          <label className="flex items-center gap-3 h-12 px-4 rounded-md border border-primary-900 bg-inverse cursor-pointer hover:opacity-90">
-            <span className="material-icons text-icon-md text-primary-800">attach_file</span>
+          <label className="flex items-center gap-3 h-12 px-4 rounded-md border border-primary-900 bg-inverse cursor-pointer hover:opacity-90 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary-900">
+            <span className="material-icons text-icon-md text-primary-800" aria-hidden="true">attach_file</span>
             <span className="text-body text-primary-800 truncate">
               {attachmentName || 'Selecionar arquivo'}
             </span>
@@ -136,7 +136,7 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
               type="file"
               accept="image/png,image/jpeg,image/webp,application/pdf"
               onChange={handleFileChange}
-              className="hidden"
+              className="sr-only"
             />
           </label>
           {attachmentName && attachment?.startsWith('data:image') && (

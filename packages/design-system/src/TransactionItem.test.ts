@@ -1,7 +1,26 @@
-import { createElement } from 'react'
+import { Children, createElement, isValidElement, type ReactElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { TransactionItem } from './TransactionItem'
+
+interface ButtonProps {
+  'aria-label'?: string
+  children?: ReactNode
+  onPointerEnter?: () => void
+  onFocus?: () => void
+}
+
+// No DOM here, so the button is found in the tree that the component returns
+function findButton(node: ReactNode, label: string): ButtonProps | null {
+  for (const child of Children.toArray(node)) {
+    if (!isValidElement(child)) continue
+    const { props } = child as ReactElement<ButtonProps>
+    if (props['aria-label'] === label) return props
+    const found = findButton(props.children, label)
+    if (found) return found
+  }
+  return null
+}
 
 const expense = { id: '1', userId: '1', type: 'payment', amountInCents: 35000, date: '2026-01-20' } as const
 const income = { ...expense, type: 'deposit' } as const
@@ -45,5 +64,32 @@ describe('TransactionItem', () => {
 
     expect(html).toContain(`aria-label="${label}"`)
     expect(html.match(/<button/g)).toHaveLength(1)
+  })
+
+  it.each([
+    ['Ver detalhes', 'detail'],
+    ['Editar transação', 'edit'],
+    ['Excluir transação', 'delete'],
+  ])('tells the intent of %s on hover and on focus', (label, action) => {
+    const onActionIntent = vi.fn()
+    const tree = TransactionItem({
+      transaction: income,
+      onDetail: vi.fn(),
+      onEdit: vi.fn(),
+      onDelete: vi.fn(),
+      onActionIntent,
+    })
+
+    const button = findButton(tree, label)
+    button?.onPointerEnter?.()
+    button?.onFocus?.()
+
+    expect(onActionIntent.mock.calls).toEqual([[action], [action]])
+  })
+
+  it('does not need a listener for the intent', () => {
+    const tree = TransactionItem({ transaction: income, onDetail: vi.fn() })
+
+    expect(() => findButton(tree, 'Ver detalhes')?.onPointerEnter?.()).not.toThrow()
   })
 })

@@ -9,4 +9,5 @@ export const {
   useCreateTransactionMutation,
   useUpdateTransactionMutation,
   useDeleteTransactionMutation,
+  usePrefetch,
 } = transactionsApi

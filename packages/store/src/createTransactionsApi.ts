@@ -6,7 +6,7 @@ import {
   type NewTransaction,
   type TransactionChanges,
 } from '@bytebank/bff/client'
-import type { BalanceDTO, ChartDataDTO, StatementDTO, TransactionDTO } from '@bytebank/core'
+import type { BalanceDTO, ChartDataDTO, PeriodInMonths, StatementDTO, TransactionDTO, TransactionType } from '@bytebank/core'
 
 interface TransactionsApiFailure {
   code: string
@@ -31,6 +31,10 @@ async function toResult<T>(call: () => Promise<T>): Promise<Result<T>> {
     return { error: { code: error instanceof TransactionsApiError ? error.code : 'NETWORK_ERROR' } }
   }
 }
+
+// The query and its prefetch use this, because the cache only matches on equal filters
+export const chartDataFilters = (period: PeriodInMonths, type: TransactionType | null): ChartDataFilters =>
+  ({ period, type: type ?? undefined })
 
 // One API per zone, because each zone reaches the BFF through its own basePath.
 // An array of tags also invalidates after a failure, which is what a write needs here:

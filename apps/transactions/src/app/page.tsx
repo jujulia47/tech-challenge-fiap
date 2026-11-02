@@ -4,10 +4,14 @@ import { useMemo, useState } from 'react'
 import { useDeleteTransactionMutation, useGetTransactionsQuery } from '@/store/transactionsApi'
 import { useStatementSearch } from '@/hooks/use-statement-search'
 import { useToast } from '@/hooks/use-toast'
-import { Toast, ModalConfirmDelete, Select } from '@bytebank/design-system'
+import { Toast, Select } from '@bytebank/design-system'
 import { StatementResults } from '@/components/dashboard/StatementResults'
-import { ModalEditTransaction } from '@/components/dashboard/ModalEditTransaction'
-import { ModalTransactionDetail } from '@/components/dashboard/ModalTransactionDetail'
+import {
+  LazyModalConfirmDelete,
+  LazyModalEditTransaction,
+  LazyModalTransactionDetail,
+  preloadActionModal,
+} from '@/components/dashboard/lazy-modals'
 import { PaginationControls } from '@/components/PaginationControls'
 import type { TransactionDTO } from '@bytebank/core'
 import {
@@ -63,7 +67,7 @@ export default function StatementPage() {
       <nav aria-label="breadcrumb">
         <ol className="flex items-center gap-2">
           <li>
-            <a href="/dashboard" className="text-body text-text-secondary hover:text-text-primary transition-colors">
+            <a href="/dashboard" className="inline-flex items-center min-h-6 text-body text-text-secondary hover:text-text-primary transition-colors">
               Início
             </a>
           </li>
@@ -132,6 +136,7 @@ export default function StatementPage() {
           onDetail={(id) => setDetailTx(transactions.find(t => t.id === id) ?? null)}
           onEdit={(id) => setEditingTx(transactions.find(t => t.id === id) ?? null)}
           onDelete={setDeletingId}
+          onActionIntent={preloadActionModal}
         />
       </div>
 
@@ -143,19 +148,19 @@ export default function StatementPage() {
         onPageChange={changePage}
       />
 
-      <ModalTransactionDetail
+      <LazyModalTransactionDetail
         transaction={detailTx}
         onClose={() => setDetailTx(null)}
       />
 
-      <ModalConfirmDelete
+      <LazyModalConfirmDelete
         isOpen={!!deletingId}
         onClose={() => setDeletingId(null)}
         onConfirm={handleDeleteConfirm}
         transactionLabel={deletingTx && TRANSACTION_TYPE_LABELS[deletingTx.type]}
       />
 
-      <ModalEditTransaction
+      <LazyModalEditTransaction
         transaction={editingTx}
         onClose={() => setEditingTx(null)}
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}

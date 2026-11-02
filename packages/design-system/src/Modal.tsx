@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useModalFocus } from './modalFocus'
 
 interface ModalProps {
   isOpen: boolean
@@ -30,6 +31,7 @@ export function Modal({
   describedBy,
 }: ModalProps) {
   const titleId = `modal-title-${toSlug(title)}`
+  const boxRef = useModalFocus<HTMLDivElement>(isOpen)
 
   useEffect(() => {
     if (!isOpen) return
@@ -50,7 +52,7 @@ export function Modal({
         onClick={onClose}
         aria-label="Fechar modal"
       />
-      <div className="modal-box bg-surface-modal rounded-md w-full max-w-lg p-6 relative">
+      <div ref={boxRef} tabIndex={-1} className="modal-box bg-surface-modal rounded-md w-full max-w-lg p-6 relative outline-none">
         {showCloseButton && (
           <button
             type="button"
@@ -58,7 +60,7 @@ export function Modal({
             aria-label="Fechar"
             className="absolute top-4 right-4 text-text-primary hover:opacity-70 transition-opacity"
           >
-            <span className="material-icons text-icon-md">close</span>
+            <span className="material-icons text-icon-md" aria-hidden="true">close</span>
           </button>
         )}
         <h2 id={titleId} className="text-heading font-bold text-text-primary">

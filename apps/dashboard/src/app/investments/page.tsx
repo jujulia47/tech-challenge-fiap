@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import { CardInvestments } from '@/app/investments/components/CardInvestments'
 import { DashboardWelcome } from '@/components/layout/DashboardWelcome'
+
+export const metadata: Metadata = {
+  title: 'Investimentos',
+  description: 'Acompanhe o total investido, a rentabilidade e suas metas.',
+}
 
 export default function InvestmentsPage() {
   return (

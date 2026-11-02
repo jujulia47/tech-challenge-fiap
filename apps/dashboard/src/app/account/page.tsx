@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import { auth } from '@/lib/auth'
 import { CardAccount } from '@/app/account/components/CardAccount'
+
+export const metadata: Metadata = {
+  title: 'Minha conta',
+  description: 'Consulte e atualize os dados da sua conta do Bytebank.',
+}
 
 export const dynamic = 'force-dynamic'
 

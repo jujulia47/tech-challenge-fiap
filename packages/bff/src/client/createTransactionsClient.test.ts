@@ -14,7 +14,7 @@ const transaction = {
 
 const fetchMock = vi.fn<typeof fetch>()
 const location = { href: 'http://localhost:3000/transactions' }
-const client = createTransactionsClient('/transactions')
+let client = createTransactionsClient('/transactions')
 
 function respondWith(body: unknown, status = 200) {
   fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(body), { status }))
@@ -25,6 +25,7 @@ const lastBody = () => JSON.parse(String(lastCall()[1]?.body)) as unknown
 
 beforeEach(() => {
   fetchMock.mockReset()
+  client = createTransactionsClient('/transactions')
   location.href = 'http://localhost:3000/transactions'
   vi.stubGlobal('fetch', fetchMock)
   vi.stubGlobal('window', { location })
@@ -132,6 +133,28 @@ describe('createTransactionsClient', () => {
       respondWith({ error: 'UNAUTHENTICATED' }, 401)
 
       await expect(client.fetchTransactions()).rejects.toMatchObject({ code: 'UNAUTHENTICATED' })
+    })
+
+    it('redirects only once when several requests fail together', async () => {
+      respondWith({ error: 'UNAUTHENTICATED' }, 401)
+      const redirects = vi.fn()
+      Object.defineProperty(location, 'href', { configurable: true, get: () => 'http://localhost:3000/transactions', set: redirects })
+
+      await Promise.allSettled([client.fetchTransactions(), client.fetchBalance(), client.fetchStatement()])
+
+      Object.defineProperty(location, 'href', { configurable: true, writable: true, value: 'http://localhost:3000/transactions' })
+      expect(redirects).toHaveBeenCalledTimes(1)
+    })
+
+    it('stops asking the server after a 401, so a refetch cannot start another redirect', async () => {
+      respondWith({ error: 'UNAUTHENTICATED' }, 401)
+      const expired = createTransactionsClient('/transactions')
+      await expired.fetchTransactions().catch(() => undefined)
+      const calls = fetchMock.mock.calls.length
+
+      await expect(expired.fetchBalance()).rejects.toMatchObject({ code: 'UNAUTHENTICATED' })
+
+      expect(fetchMock.mock.calls).toHaveLength(calls)
     })
   })
 

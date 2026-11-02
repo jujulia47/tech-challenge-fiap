@@ -53,14 +53,13 @@ export function Select({ label, placeholder, options, value, onChange }: SelectP
           className={cn(
             'w-full h-12 px-4 rounded-md border bg-inverse text-body text-primary-800',
             'flex items-center justify-between',
-            'focus:outline-none',
             isOpen ? 'border-2 border-primary-800' : 'border-primary-900',
           )}
         >
-          <span className={cn('truncate', !selected && 'text-text-secondary')}>
+          <span className={cn('min-w-0 text-left', !selected && 'text-text-secondary')}>
             {selected ? selected.label : placeholder}
           </span>
-          <span className="material-icons text-primary-900 text-icon-md select-none">
+          <span className="material-icons text-primary-900 text-icon-md select-none" aria-hidden="true">
             {isOpen ? 'arrow_drop_up' : 'arrow_drop_down'}
           </span>
         </button>

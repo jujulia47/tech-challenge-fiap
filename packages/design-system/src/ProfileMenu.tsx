@@ -53,7 +53,7 @@ export function ProfileMenu({ items = DEFAULT_ITEMS, isOpen, onClose, onLogout, 
         <button
           type="button"
           onClick={onClose}
-          className="text-success text-body-semibold leading-none hover:opacity-70 transition-opacity"
+          className="min-w-6 min-h-6 text-success-light text-body-semibold leading-none hover:opacity-70 transition-opacity"
           aria-label="Fechar menu"
         >
           ×
@@ -64,7 +64,7 @@ export function ProfileMenu({ items = DEFAULT_ITEMS, isOpen, onClose, onLogout, 
         const className = [
           'block px-4 py-2 hover:opacity-80 transition-opacity',
           activePath === item.href
-            ? 'text-body-semibold text-success'
+            ? 'text-body-semibold text-success-light'
             : 'text-body text-inverse',
         ].join(' ')
 

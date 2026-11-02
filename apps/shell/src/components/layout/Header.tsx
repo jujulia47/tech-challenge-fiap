@@ -31,7 +31,7 @@ export function Header() {
           aria-label="Abrir menu de perfil"
           aria-expanded={isProfileMenuOpen}
         >
-          <span className="material-icons text-icon-md text-accent">account_circle</span>
+          <span className="material-icons text-icon-md text-accent" aria-hidden="true">account_circle</span>
         </button>
 
         <ProfileMenu

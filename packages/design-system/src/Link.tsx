@@ -23,7 +23,7 @@ export function Link({ href, children, context = 'app', size = 'body', className
       className={cn(
         colorClass,
         sizeClass,
-        'hover:opacity-80 transition-opacity',
+        'inline-flex items-center min-h-6 hover:opacity-80 transition-opacity',
         className,
       )}
     >

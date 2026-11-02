@@ -4,6 +4,8 @@
 @plugin "daisyui" {
   themes: false;
   base: false;
+  /* Without this, words such as "menu" and "tab" in the code bring whole components to the CSS */
+  include: modal, progress;
 }
 
 @theme {
@@ -15,14 +17,16 @@
   --color-surface-card:   #F5F5F5;
   --color-surface-form:   #CBCBCB;
   --color-text-primary:   #000000;
-  --color-text-secondary: #8B8B8B;
+  --color-text-secondary: #565656;
   --color-inverse:        #FFFFFF;
-  --color-success:        #47A138;
-  --color-error:          #BF1313;
-  --color-accent:         #FF5031;
+  --color-success:        #267018;
+  --color-success-light:  #47A138;
+  --color-error:          #A50F0F;
+  --color-accent:         #FF6A4D;
+  --color-accent-strong:  #B8341A;
 
   /* ── Public context tokens ── */
-  --color-public-accent:  #3AB44A;
+  --color-public-accent:  #267018;
   --color-surface-modal:  #F8F8F8;
   --color-surface-dark:   #000000;
   --color-surface-light:  #F0F0F0;
@@ -118,6 +122,20 @@
     -webkit-text-size-adjust: 100%;
   }
 
+  input::placeholder {
+    color: var(--color-text-secondary);
+    opacity: 1;
+  }
+
+  /* Two colors, so the focus shows on the light surfaces and on the dark ones.
+     The calendar button of a date field holds the focus inside it, where only :focus-within sees it. */
+  :focus-visible,
+  input:focus-within {
+    outline: 2px solid var(--color-primary-900);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px var(--color-inverse);
+  }
+
   body {
     background-color: var(--color-bg-base);
     font-family: var(--font-sans);
@@ -130,7 +148,7 @@
 /* ── Material Icons class — self-hosted via @fontsource/material-icons ── */
 @layer base {
   .material-icons {
-    font-family: 'Material Icons';
+    font-family: var(--font-icons, 'Material Icons');
     font-style: normal;
     font-weight: normal;
     font-display: block;

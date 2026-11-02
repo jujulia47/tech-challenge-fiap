@@ -33,7 +33,7 @@ export function BenefitsSection() {
             key={item.title}
             className="flex flex-col items-center gap-4 p-6 bg-inverse rounded-md"
           >
-            <span className="material-icons text-icon-md text-public-accent">
+            <span className="material-icons text-icon-md text-public-accent" aria-hidden="true">
               {item.icon}
             </span>
             <h3 className="text-body-semibold text-text-primary text-center">

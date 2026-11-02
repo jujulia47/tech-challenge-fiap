@@ -1,4 +1,4 @@
-import { TransactionItem } from '@bytebank/design-system'
+import { TransactionItem, type TransactionAction } from '@bytebank/design-system'
 import { formatMonthKey, type TransactionMonthGroup } from '@bytebank/utils'
 
 interface CardStatementProps {
@@ -8,6 +8,7 @@ interface CardStatementProps {
   onDetail?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  onActionIntent?: (action: TransactionAction) => void
   limit?: number
   showViewMore?: boolean
 }
@@ -19,6 +20,7 @@ export function CardStatement({
   onDetail,
   onEdit,
   onDelete,
+  onActionIntent,
   limit,
   showViewMore,
 }: CardStatementProps) {
@@ -62,6 +64,7 @@ export function CardStatement({
                   onDetail={onDetail}
                   onEdit={onEdit}
                   onDelete={onDelete}
+                  onActionIntent={onActionIntent}
                 />
               ))}
             </div>
@@ -71,7 +74,7 @@ export function CardStatement({
 
       {showViewMore && (
         <div className="mt-4 text-center">
-          <a href="/transactions" className="text-success text-body hover:opacity-80 transition-opacity">
+          <a href="/transactions" className="inline-flex items-center min-h-6 text-success text-body hover:opacity-80 transition-opacity">
             Ver todas as transações →
           </a>
         </div>

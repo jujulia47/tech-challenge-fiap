@@ -27,9 +27,9 @@ export function CardWelcome({ name, date, balance, accountType }: CardWelcomePro
               type="button"
               onClick={toggle}
               aria-label={isVisible ? 'Ocultar saldo' : 'Exibir saldo'}
-              className="text-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-900 rounded-md"
+              className="flex items-center justify-center min-w-6 min-h-6 text-accent rounded-md"
             >
-              <span className="material-icons text-icon-xs leading-none">
+              <span className="material-icons text-icon-xs leading-none" aria-hidden="true">
                 {isVisible ? 'visibility' : 'visibility_off'}
               </span>
             </button>

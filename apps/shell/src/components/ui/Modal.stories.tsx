@@ -10,7 +10,7 @@ const meta: Meta<typeof Modal> = {
     docs: {
       description: {
         component:
-          'Componente primitivo para todos os modais do projeto. Renderiza overlay + painel centralizado com título padronizado e botão de fechar opcional. Centraliza comportamento (ESC, click no backdrop) e acessibilidade (role=dialog, aria-labelledby). O conteúdo do corpo é responsabilidade do chamador via children.',
+          'Componente primitivo para todos os modais do projeto. Renderiza overlay + painel centralizado com título padronizado e botão de fechar opcional. Centraliza comportamento (ESC, click no backdrop) e acessibilidade (role=dialog, aria-labelledby, foco que entra no modal ao abrir, fica nele com Tab e volta ao botão de origem ao fechar). O conteúdo do corpo é responsabilidade do chamador via children.',
       },
     },
   },

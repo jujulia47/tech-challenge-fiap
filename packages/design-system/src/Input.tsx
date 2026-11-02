@@ -26,7 +26,7 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
 
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={inputId} className="text-body-semibold text-primary-50">{label}</label>
+      <label htmlFor={inputId} className="text-body-semibold text-primary-900">{label}</label>
       <div className="relative">
         <input
           id={inputId}
@@ -43,7 +43,7 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
           onChange={e => onChange(e.target.value)}
           className={cn(
             'h-12 w-full rounded-md border bg-inverse text-body text-primary-800',
-            'focus:border-2 focus:border-primary-800 focus:outline-none',
+            'focus:border-2 focus:border-primary-800',
             'disabled:bg-surface-card disabled:border-text-secondary disabled:text-text-secondary disabled:cursor-not-allowed',
             suffixIcon || trailing ? 'px-4 pr-10' : 'px-4',
             error ? 'border-error' : 'border-primary-900',
@@ -55,7 +55,7 @@ export function Input({ label, placeholder, value, onChange, error, disabled, su
             className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-800"
             aria-hidden="true"
           >
-            <span className="material-icons text-icon-sm">{suffixIcon}</span>
+            <span className="material-icons text-icon-sm" aria-hidden="true">{suffixIcon}</span>
           </span>
         )}
       </div>

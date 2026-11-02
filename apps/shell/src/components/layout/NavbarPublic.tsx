@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { cn } from '@bytebank/utils'
+import { cn, onIntent } from '@bytebank/utils'
+import { preloadLoginModal, preloadSignupModal } from '@/app/(public)/components/lazy-modals'
 
 interface NavbarPublicProps {
   onLoginClick?: () => void
@@ -23,22 +24,22 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
         aria-expanded={menuOpen}
         aria-controls="navbar-mobile-menu"
       >
-        <span className="material-icons text-icon-md">menu</span>
+        <span className="material-icons text-icon-md" aria-hidden="true">menu</span>
       </button>
 
       <Link
         href="/"
-        className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2 text-body-semibold text-inverse"
+        className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 flex items-center gap-2 min-h-6 text-body-semibold text-inverse"
       >
-        <span className="material-icons text-icon-sm">account_balance</span>
+        <span className="material-icons text-icon-sm" aria-hidden="true">account_balance</span>
         Bytebank
       </Link>
 
       <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2">
-        <Link href="/sobre" className="text-body text-inverse hover:opacity-80 transition-opacity">
+        <Link href="/sobre" prefetch className="inline-flex items-center min-h-6 text-body text-inverse hover:opacity-80 transition-opacity">
           Sobre
         </Link>
-        <Link href="#servicos" className="text-body text-inverse hover:opacity-80 transition-opacity">
+        <Link href="#servicos" className="inline-flex items-center min-h-6 text-body text-inverse hover:opacity-80 transition-opacity">
           Serviços
         </Link>
       </div>
@@ -47,6 +48,7 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
         <button
           type="button"
           onClick={onSignupClick}
+          {...onIntent(preloadSignupModal)}
           className="h-12 px-6 rounded-md border text-body-semibold bg-public-accent text-inverse border-public-accent hover:opacity-90 active:scale-95 transition-all"
         >
           Abrir minha conta
@@ -54,6 +56,7 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
         <button
           type="button"
           onClick={onLoginClick}
+          {...onIntent(preloadLoginModal)}
           className="h-12 px-6 rounded-md border text-body-semibold bg-primary-900 text-inverse border-inverse hover:opacity-90 active:scale-95 transition-all"
         >
           Já tenho conta
@@ -70,14 +73,15 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
         >
           <Link
             href="/sobre"
-            className="text-body text-inverse hover:opacity-80"
+            prefetch
+            className="inline-flex items-center min-h-6 text-body text-inverse hover:opacity-80"
             onClick={() => setMenuOpen(false)}
           >
             Sobre
           </Link>
           <Link
             href="#servicos"
-            className="text-body text-inverse hover:opacity-80"
+            className="inline-flex items-center min-h-6 text-body text-inverse hover:opacity-80"
             onClick={() => setMenuOpen(false)}
           >
             Serviços
@@ -85,6 +89,7 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
           <button
             type="button"
             onClick={() => { setMenuOpen(false); onSignupClick?.() }}
+            {...onIntent(preloadSignupModal)}
             className="h-12 px-6 rounded-md border text-body-semibold bg-public-accent text-inverse border-public-accent hover:opacity-90 active:scale-95 transition-all w-full"
           >
             Abrir minha conta
@@ -92,6 +97,7 @@ export function NavbarPublic({ onLoginClick, onSignupClick }: NavbarPublicProps)
           <button
             type="button"
             onClick={() => { setMenuOpen(false); onLoginClick?.() }}
+            {...onIntent(preloadLoginModal)}
             className="h-12 px-6 rounded-md border text-body-semibold bg-transparent text-inverse border-inverse hover:opacity-90 active:scale-95 transition-all w-full"
           >
             Já tenho conta

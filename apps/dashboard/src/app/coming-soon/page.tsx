@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Button } from '@bytebank/design-system'
+
+export const metadata: Metadata = {
+  title: 'Em breve',
+  description: 'Esta função do Bytebank está chegando.',
+}
 
 export default function ComingSoonPage() {
   return (
@@ -7,7 +13,7 @@ export default function ComingSoonPage() {
 
       {/* Main content — centered */}
       <div className="flex flex-col items-center justify-center gap-6 text-center">
-        <span className="material-icons text-text-secondary animate-float text-[64px]!">
+        <span className="material-icons text-text-secondary animate-float text-[64px]!" aria-hidden="true">
           rocket_launch
         </span>
         <div className="flex flex-col gap-2">
@@ -39,9 +45,9 @@ export default function ComingSoonPage() {
             const itemClassName = 'flex items-center gap-3 p-3 rounded-md hover:bg-bg-base transition-colors'
             const content = (
               <>
-                <span className="material-icons text-success text-icon-sm">{item.icon}</span>
+                <span className="material-icons text-success text-icon-sm" aria-hidden="true">{item.icon}</span>
                 <span className="text-body text-text-primary">{item.label}</span>
-                <span className="material-icons text-text-secondary text-icon-sm ml-auto">chevron_right</span>
+                <span className="material-icons text-text-secondary text-icon-sm ml-auto" aria-hidden="true">chevron_right</span>
               </>
             )
             return item.external ? (

@@ -21,7 +21,7 @@ export function Toast({ message, type, visible }: ToastProps) {
       aria-live="polite"
     >
       <div className="flex items-center gap-2 p-4">
-        <span className="material-icons text-icon-sm">
+        <span className="material-icons text-icon-sm" aria-hidden="true">
           {type === 'success' ? 'check_circle' : 'error'}
         </span>
         {message}

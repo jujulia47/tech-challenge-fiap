@@ -4,7 +4,7 @@ import { TRANSACTION_TYPE_LABELS } from '@bytebank/utils'
 import { PublicShell } from '@/components/layout/PublicShell'
 
 export const metadata: Metadata = {
-  title: 'Sobre o Bytebank',
+  title: 'Sobre',
   description: 'Conheça o Bytebank, seu banco digital moderno.',
 }
 
