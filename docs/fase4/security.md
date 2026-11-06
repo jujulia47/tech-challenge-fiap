@@ -338,3 +338,7 @@ The name of the header comes from the JWT, which the three zones share as one co
 
 - **Other sessions stay valid after a password change.** The session is a JWT: a browser that was logged in before the change keeps working until its token expires, 30 minutes at most. Ending them needs a version of the password in the token, checked on every request, or a list of revoked sessions.
 - **No email warns about a changed password.**
+
+### Since step D1
+
+With `DATA_BACKEND=supabase`, the rate limits are counters in Postgres, shared by every app and instance. The password change of the dashboard and the login of the shell then count in the same namespace, so the separate count described in step 7b only applies to json-server. See `deploy.md`.

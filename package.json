@@ -8,6 +8,9 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "db:reset": "npm run db:reset --workspace=@bytebank/shell",
+    "db:seed:supabase": "node --env-file=.env packages/infrastructure/scripts/supabase-demo.mjs seed",
+    "db:clean:supabase": "node --env-file=.env packages/infrastructure/scripts/supabase-demo.mjs clean",
+    "db:reset:supabase": "node --env-file=.env packages/infrastructure/scripts/supabase-demo.mjs reset",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

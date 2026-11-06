@@ -43,11 +43,22 @@ describe('HttpPasswordResetTokenRepository', () => {
 
   it('marks one token as used', async () => {
     respondWith(record)
+    respondWith({ ...record, used: true })
 
     await repository.markUsed('1')
 
-    expect(fetchMock.mock.calls[0][0]).toBe(`${URL_BASE}/1`)
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'PATCH', body: '{"used":true}' })
+    expect(fetchMock.mock.calls[1][0]).toBe(`${URL_BASE}/1`)
+    expect(fetchMock.mock.calls[1][1]).toMatchObject({ method: 'PATCH', body: '{"used":true}' })
+  })
+
+  it.each([
+    ['already used', () => respondWith({ ...record, used: true })],
+    ['missing', () => respondWith({}, 404)],
+  ])('refuses to mark a token that is %s, as a used link', async (_, respond) => {
+    respond()
+
+    await expect(repository.markUsed('1')).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('invalidates only the open tokens of the user', async () => {

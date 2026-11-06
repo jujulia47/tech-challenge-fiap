@@ -1,6 +1,7 @@
 import { parseAllowedOrigins, requireEnv } from '../env'
 import { createTransactionHandlers, type TransactionHandlers } from '../http/createTransactionHandlers'
-import { createJsonServerUseCases } from './createJsonServerUseCases'
+import { createStoredUseCases } from './createJsonServerUseCases'
+import { createDataAdapters } from './dataAdapters'
 
 const logger = {
   // console.error on purpose: this only runs on the server, so this goes to the server log
@@ -16,8 +17,8 @@ export function createLazyTransactionHandlers(getUserId: () => Promise<string | 
   return () => {
     handlers ??= createTransactionHandlers({
       getUserId,
-      useCases: createJsonServerUseCases({
-        baseUrl: requireEnv('JSON_SERVER_URL'),
+      useCases: createStoredUseCases({
+        transactions: createDataAdapters().transactions,
         attachmentKey: requireEnv('ATTACHMENT_ENCRYPTION_KEY'),
         logger,
       }),

@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { isTransactionType } from '@bytebank/core'
+import { createDataAdapters } from '@bytebank/bff'
 import { TRANSACTION_TYPE_LABELS } from '@bytebank/utils'
 import { PublicShell } from '@/components/layout/PublicShell'
 
@@ -8,23 +8,20 @@ export const metadata: Metadata = {
   description: 'Conheça o Bytebank, seu banco digital moderno.',
 }
 
-// Read on each request: the build has no json-server, and it would freeze a page without the numbers
+// Read on each request: the build has no database, and it would freeze a page without the numbers
 export const dynamic = 'force-dynamic'
 
 const NO_STATS = { total: 0, types: [] as string[] }
 
+// json-server or Supabase, by DATA_BACKEND. A page that only informs: with the database down
+// it shows no numbers instead of an error.
 async function getStats() {
-  const baseUrl = process.env.JSON_SERVER_URL
-  if (!baseUrl) return NO_STATS
   try {
-    const res = await fetch(`${baseUrl}/transactions`)
-    if (!res.ok) return NO_STATS
-    const transactions = (await res.json()) as Array<{ type: string }>
-    const types = [...new Set(transactions.map(t => t.type))]
-      .filter(isTransactionType)
-      .map(type => TRANSACTION_TYPE_LABELS[type])
-    return { total: transactions.length, types }
-  } catch {
+    const { total, types } = await createDataAdapters().statistics.summary()
+    return { total, types: types.map(type => TRANSACTION_TYPE_LABELS[type]) }
+  } catch (error) {
+    // console.error on purpose: this is a Server Component, so this goes to the server log
+    console.error(error)
     return NO_STATS
   }
 }

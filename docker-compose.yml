@@ -28,8 +28,14 @@ services:
       - "3000:3000"
     environment:
       - NEXTAUTH_URL=http://localhost:3000
+      # The public address of the shell, for the link of the reset email
+      - SHELL_URL=http://localhost:3000
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
+      # json-server by default; supabase uses the project of .env: docs/fase4/deploy.md
       - JSON_SERVER_URL=http://json-server:3001
+      - DATA_BACKEND=${DATA_BACKEND:-json-server}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
       - ALLOWED_ORIGINS=http://localhost:3000
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
@@ -55,7 +61,11 @@ services:
     environment:
       - NEXTAUTH_URL=http://localhost:3003
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
+      # json-server by default; supabase uses the project of .env: docs/fase4/deploy.md
       - JSON_SERVER_URL=http://json-server:3001
+      - DATA_BACKEND=${DATA_BACKEND:-json-server}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
       - ALLOWED_ORIGINS=http://localhost:3000
       - SHELL_URL=http://localhost:3000
       - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing ATTACHMENT_ENCRYPTION_KEY, copy .env.example to .env and fill it in}
@@ -74,7 +84,11 @@ services:
     environment:
       - NEXTAUTH_URL=http://localhost:3002
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
+      # json-server by default; supabase uses the project of .env: docs/fase4/deploy.md
       - JSON_SERVER_URL=http://json-server:3001
+      - DATA_BACKEND=${DATA_BACKEND:-json-server}
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
       - ALLOWED_ORIGINS=http://localhost:3000
       - SHELL_URL=http://localhost:3000
       - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing ATTACHMENT_ENCRYPTION_KEY, copy .env.example to .env and fill it in}

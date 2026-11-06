@@ -1,9 +1,8 @@
 {
-  "buildCommand": "cd ../.. && npx turbo build --filter=@bytebank/shell",
-  "rewrites": [
-    { "source": "/dashboard", "destination": "https://bytebank-dashboard.vercel.app/dashboard" },
-    { "source": "/dashboard/:path*", "destination": "https://bytebank-dashboard.vercel.app/dashboard/:path*" },
-    { "source": "/transactions", "destination": "https://bytebank-transactions-virid.vercel.app/transactions" },
-    { "source": "/transactions/:path*", "destination": "https://bytebank-transactions-virid.vercel.app/transactions/:path*" }
-  ]
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "iad1"
+  ],
+  "installCommand": "cd ../.. && npm ci",
+  "buildCommand": "cd ../.. && npx turbo build --filter=@bytebank/shell"
 }

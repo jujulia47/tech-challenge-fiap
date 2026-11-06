@@ -1,4 +1,4 @@
-import type { PasswordResetToken, PasswordResetTokenRepository } from '@bytebank/core'
+import { ApplicationError, type PasswordResetToken, type PasswordResetTokenRepository } from '@bytebank/core'
 import { InfrastructureError } from '../errors/InfrastructureError'
 import { DEFAULT_TIMEOUT_MS, JSON_HEADERS, assertOk, readJson, send } from './http'
 
@@ -12,6 +12,8 @@ function isTokenRecord(value: unknown): value is PasswordResetToken {
     typeof record.used === 'boolean'
   )
 }
+
+const usedToken = () => new ApplicationError('INVALID_RESET_TOKEN', 'Invalid password reset token')
 
 export class HttpPasswordResetTokenRepository implements PasswordResetTokenRepository {
   private readonly collectionUrl: string
@@ -37,7 +39,25 @@ export class HttpPasswordResetTokenRepository implements PasswordResetTokenRepos
     return records.find(record => record.tokenHash === tokenHash) ?? null
   }
 
+  // A token is claimed once. json-server has no transaction, so two calls at the same time can
+  // both pass this read: only the Supabase adapter holds under concurrency (docs/fase4/deploy.md).
   async markUsed(id: string): Promise<void> {
+    const url = `${this.collectionUrl}/${encodeURIComponent(id)}`
+    const current = await send(url, this.timeoutMs)
+    if (current.status === 404) throw usedToken()
+    assertOk(current, url)
+    const record = await readJson(current, url)
+    if (!isTokenRecord(record) || record.used) throw usedToken()
+    await this.patchUsed(id)
+  }
+
+  async invalidateAllOfUser(userId: string): Promise<void> {
+    const records = await this.where({ userId: { eq: userId } })
+    const open = records.filter(record => record.userId === userId && !record.used)
+    await Promise.all(open.map(record => this.patchUsed(record.id)))
+  }
+
+  private async patchUsed(id: string): Promise<void> {
     const url = `${this.collectionUrl}/${encodeURIComponent(id)}`
     const response = await send(url, this.timeoutMs, {
       method: 'PATCH',
@@ -45,12 +65,6 @@ export class HttpPasswordResetTokenRepository implements PasswordResetTokenRepos
       body: JSON.stringify({ used: true }),
     })
     assertOk(response, url)
-  }
-
-  async invalidateAllOfUser(userId: string): Promise<void> {
-    const records = await this.where({ userId: { eq: userId } })
-    const open = records.filter(record => record.userId === userId && !record.used)
-    await Promise.all(open.map(record => this.markUsed(record.id)))
   }
 
   // Errors name the collection only: the query has values that must not reach the log

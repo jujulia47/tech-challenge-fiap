@@ -38,9 +38,9 @@ Em desenvolvimento local, o shell faz proxy via `next.config.ts`:
 - `/dashboard/*` → `http://localhost:3003`
 - `/transactions/*` → `http://localhost:3002`
 
-Em produção (Vercel), o proxy é feito via `vercel.json` do shell:
+Em produção (Vercel), o mesmo `next.config.ts` faz o proxy, com os hosts lidos de `DASHBOARD_URL` e `TRANSACTIONS_URL` (`packages/utils/src/zoneRewrites.ts`). O `vercel.json` não tem mais rewrites:
 - `/dashboard/*` → `https://bytebank-dashboard.vercel.app`
-- `/transactions/*` → `https://bytebank-transactions.vercel.app`
+- `/transactions/*` → `https://bytebank-transactions-virid.vercel.app`
 
 ## Autenticação
 
@@ -81,8 +81,7 @@ shell (:3000), json-server (:3001), transactions (:3002), dashboard (:3003).
 |---|---|---|
 | shell | Vercel | https://bytebank-shell.vercel.app |
 | dashboard | Vercel | https://bytebank-dashboard.vercel.app |
-| transactions | Vercel | https://bytebank-transactions.vercel.app |
-| json-server | Railway | https://glistening-recreation-production-63c0.up.railway.app |
+| transactions | Vercel | https://bytebank-transactions-virid.vercel.app |
+| banco | Supabase (Postgres, us-east-1) | só pelo servidor, com a secret key |
 
-O json-server no Railway usa um Dockerfile dedicado (`apps/shell/Dockerfile.jsonserver`)
-que instala o json-server globalmente e serve na porta 3001 um `db.json` copiado da semente `apps/shell/data/db.seed.json`.
+Desde a Etapa D1, produção usa o Supabase (`DATA_BACKEND=supabase`), e o json-server ficou só para o desenvolvimento local, no Docker. O json-server do Railway não é mais usado. Configuração e passo a passo: `docs/fase4/deploy.md`.

@@ -18,7 +18,7 @@ The repository now has a GitHub Actions pipeline (`.github/workflows/ci.yml`) an
 | 2 | Setup Node (with npm cache) | `actions/setup-node@v7`, `node-version: 22`, `cache: npm` | Same Node major as the Dockerfiles (`node:22-alpine`), so CI matches production. json-server 1.0.0-beta.15 requires Node >= 22.12. The npm cache is keyed on `package-lock.json`, so unchanged dependencies are not downloaded again. |
 | 3 | Install | `npm ci` | Clean install that follows `package-lock.json` exactly and fails if it is out of sync with `package.json`. This catches lockfile mistakes before deploy. |
 | 4 | Lint | `npx turbo lint` | ESLint in all 9 workspaces (shell, dashboard, transactions, core, infrastructure, bff, store, design-system, utils). The baseline is 0 errors and 0 warnings (steps 0.2 and 0.3). Note that warnings do not fail ESLint, only errors do. |
-| 5 | Unit tests | `npm test` | Runs the Vitest unit tests (`packages/**/src/**/*.test.ts`, 1345 tests today, including integration and end-to-end tests against a real json-server). Any change in pinned behavior during the refactor fails here. See `testing.md`. |
+| 5 | Unit tests | `npm test` | Runs the Vitest unit tests (`packages/**/src/**/*.test.ts`, 1383 tests today, plus 22 that run only against Supabase or need its guarantees, including integration and end-to-end tests against a real json-server). Any change in pinned behavior during the refactor fails here. See `testing.md`. |
 | 6 | Build | `npx turbo build` | Production build of the three Next.js apps, including TypeScript checks. Proves the code deploys. |
 | 7 | Security audit (production) | `npm audit --omit=dev --audit-level=high` | **Blocking.** Fails if any production dependency has a known vulnerability of severity high or critical. |
 | 8 | Security audit (full) | `npm audit --audit-level=high` + `continue-on-error: true` | **Informational.** Reports vulnerabilities in all dependencies, including dev tooling, without failing the pipeline. |
@@ -103,7 +103,7 @@ The commands from steps 3 to 8 were run at the repository root, in order:
 |---|---|---|
 | 3 | `npm ci` | ❌ Locally: `EPERM: operation not permitted, unlink ...lightningcss.win32-x64-msvc.node`. The local `next dev` servers (`npm run dev`) had the native binary loaded, and Windows does not allow deleting a file in use. The tree was restored with `npm install`. This is a local-machine condition: on the CI runner nothing else is running. Run `npm ci` locally only with the dev servers stopped. |
 | 4 | `npx turbo lint` | ✅ exit 0, 6 of 6 tasks |
-| 5 | `npm test` | ✅ exit 0, 82 files, 1345 tests passed (updated in step 3.2) |
+| 5 | `npm test` | ✅ exit 0, 88 files, 1383 tests passed and 22 skipped (updated in step 3.2) |
 | 6 | `npx turbo build` | ✅ exit 0, 3 of 3 apps (Next.js 16.4.3) |
 | 7 | `npm audit --omit=dev --audit-level=high` | ✅ exit 0, found 0 vulnerabilities |
 | 8 | `npm audit --audit-level=high` | ✅ exit 0, found 0 vulnerabilities |

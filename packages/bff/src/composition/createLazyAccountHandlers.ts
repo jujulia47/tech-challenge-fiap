@@ -1,8 +1,9 @@
 import { ChangePassword, UpdateUserProfile } from '@bytebank/core'
-import { HttpUserRepository, InMemoryRateLimiter, ScryptPasswordHasher, StaticCommonPasswordList } from '@bytebank/infrastructure'
+import { ScryptPasswordHasher, StaticCommonPasswordList } from '@bytebank/infrastructure'
 import { parseAllowedOrigins, requireEnv } from '../env'
 import { createAccountHandlers, type AccountHandlers } from '../http/createAccountHandlers'
-import { LOGIN_BY_EMAIL } from './rateLimits'
+import { createDataAdapters } from './dataAdapters'
+import { LIMIT_NAMESPACES, LOGIN_BY_EMAIL } from './rateLimits'
 
 const logger = {
   // console.error on purpose: this only runs on the server, so this goes to the server log
@@ -10,14 +11,15 @@ const logger = {
 }
 
 // The account routes of a zone, built on the first request, like the transaction handlers.
-// The limiter has the values of the login. It lives in this process, so its count is not
-// shared with the login of the shell: docs/fase4/security.md.
+// The limiter has the values and the namespace of the login: in memory it counts on its own;
+// in Postgres it is the same count as the login of the shell. See docs/fase4/security.md.
 export function createLazyAccountHandlers(getUserId: () => Promise<string | null>): () => AccountHandlers {
   let handlers: AccountHandlers | undefined
 
   return () => {
     if (!handlers) {
-      const users = new HttpUserRepository(requireEnv('JSON_SERVER_URL'))
+      const adapters = createDataAdapters()
+      const { users } = adapters
       handlers = createAccountHandlers({
         getUserId,
         updateUserProfile: new UpdateUserProfile(users),
@@ -25,7 +27,7 @@ export function createLazyAccountHandlers(getUserId: () => Promise<string | null
           users,
           hasher: new ScryptPasswordHasher(),
           commonPasswords: new StaticCommonPasswordList(),
-          limiterByEmail: new InMemoryRateLimiter(LOGIN_BY_EMAIL),
+          limiterByEmail: adapters.rateLimiter(LIMIT_NAMESPACES.loginByEmail, LOGIN_BY_EMAIL),
         }),
         allowedOrigins: parseAllowedOrigins(requireEnv('ALLOWED_ORIGINS')),
         logger,

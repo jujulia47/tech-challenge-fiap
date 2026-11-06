@@ -127,6 +127,23 @@ describe('ResetPassword', () => {
     expect(context.loginLimiterByEmail.resetKeys).toEqual([EMAIL])
   })
 
+  it('changes nothing when another call claimed the same link first', async () => {
+    const context = setup()
+    const token = await requested(context)
+    // Both calls read the token as open; the other one wins the claim in between
+    const open = context.tokens.all()[0]
+    const findByHash = context.tokens.findByHash.bind(context.tokens)
+    context.tokens.findByHash = async hash => {
+      const found = await findByHash(hash)
+      await context.tokens.markUsed(open.id)
+      return found && { ...found, used: false }
+    }
+
+    await expect(context.reset.execute({ token, password: STRONG })).rejects.toMatchObject({ code: 'INVALID_RESET_TOKEN' })
+    expect((await context.users.findById('1'))?.passwordHash).toBe('hashed:old')
+    expect(context.loginLimiterByEmail.resetKeys).toEqual([])
+  })
+
   it('refuses an unknown token', async () => {
     await expect(setup().reset.execute({ token: 'invented', password: STRONG })).rejects.toMatchObject({
       code: 'INVALID_RESET_TOKEN',

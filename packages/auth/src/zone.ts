@@ -1,11 +1,11 @@
 import NextAuth from 'next-auth'
-import { requireEnv } from '@bytebank/bff/env'
 import { baseAuthConfig } from './sessionConfig'
 
-// Loaded on demand: the proxy imports this file and has no use for the repository
+// Loaded on demand: the proxy imports this file and has no use for the repository.
+// The backend is the one of DATA_BACKEND, like everywhere else.
 async function findUser(id: string): Promise<{ name: string } | null> {
-  const { HttpUserRepository } = await import('@bytebank/infrastructure')
-  const user = await new HttpUserRepository(requireEnv('JSON_SERVER_URL')).findById(id)
+  const { createDataAdapters } = await import('@bytebank/bff')
+  const user = await createDataAdapters().users.findById(id)
   return user && { name: user.name }
 }
 

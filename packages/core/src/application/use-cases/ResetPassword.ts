@@ -41,8 +41,10 @@ export class ResetPassword {
     // The policy comes before using the token, so a refused password can try again with the same link
     const passwordHash = await hashNewPassword(password, user, commonPasswords, hasher)
 
-    await users.updatePasswordHash(user.id, passwordHash)
+    // Claimed before the password changes: of two calls with the same link, the one that loses
+    // the claim stops here, so its password is never saved
     await tokens.markUsed(stored.id)
+    await users.updatePasswordHash(user.id, passwordHash)
     await loginLimiterByEmail.reset(user.email)
   }
 }

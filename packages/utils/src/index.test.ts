@@ -32,6 +32,7 @@ describe('@bytebank/utils public API', () => {
       'toggleTypeFilter',
       'typeFilterMessage',
       'withContentSecurityPolicy',
+      'zoneRewrites',
     ])
   })
 })

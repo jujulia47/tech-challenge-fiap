@@ -17,7 +17,7 @@ em Front-End Engineering da FIAP POSTECH.
 - **Redux Toolkit** — gestão de estado global
 - **NextAuth v5** — autenticação com JWT
 - **Docker + Docker Compose** — containerização
-- **Vercel + Railway** — deploy em cloud
+- **Vercel + Supabase** — deploy em cloud (`docs/fase4/deploy.md`)
 - **Recharts** — gráficos financeiros
 
 ---

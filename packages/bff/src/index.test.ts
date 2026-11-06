@@ -7,14 +7,18 @@ describe('@bytebank/bff public API', () => {
     expect(Object.keys(bff).sort()).toEqual([
       'clientIp',
       'createAccountHandlers',
+      'createAuthUseCases',
+      'createDataAdapters',
       'createJsonServerAuthUseCases',
       'createJsonServerUseCases',
       'createLazyAccountHandlers',
       'createLazyTransactionHandlers',
       'createPasswordResetHandlers',
       'createRegisterHandler',
+      'createStoredUseCases',
       'createTransactionHandlers',
       'createUseCases',
+      'readDataBackend',
     ])
   })
 })

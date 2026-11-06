@@ -46,6 +46,7 @@ export type {
 export type { DataCipher } from './application/ports/DataCipher'
 export type { IdGenerator } from './application/ports/IdGenerator'
 export type { TransactionRepository } from './application/ports/TransactionRepository'
+export type { TransactionStatistics, TransactionSummary } from './application/ports/TransactionStatistics'
 export type { PasswordHasher } from './application/ports/PasswordHasher'
 export type { RateLimiter, RateLimitResult } from './application/ports/RateLimiter'
 export type { UserRepository } from './application/ports/UserRepository'
