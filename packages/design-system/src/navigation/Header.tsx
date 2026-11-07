@@ -1,11 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { signOut } from 'next-auth/react'
 import { Button } from '../Button'
 import { useUser } from '../hooks/useUser'
 import { Modal } from '../Modal'
 import { ProfileMenu, type ProfileMenuItem } from '../ProfileMenu'
+import { signOutCompletely } from '../session/zoneSession'
 import { MenuDrawer } from './MenuDrawer'
 import type { NavItem } from './navItems'
 
@@ -22,7 +22,7 @@ export function Header({ navItems, profileItems }: HeaderProps) {
   const avatarRef = useRef<HTMLButtonElement>(null)
 
   async function handleLogout() {
-    await signOut({ redirect: false })
+    await signOutCompletely()
     // The login is at the root of the shell, a full page load away from any zone
     window.location.href = '/'
   }

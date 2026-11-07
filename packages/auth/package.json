@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./zone": "./src/zone.ts",
     "./zoneProxy": "./src/zoneProxy.ts",
-    "./handlers": "./src/zoneHandlers.ts"
+    "./handlers": "./src/zoneHandlers.ts",
+    "./sessionProvider": "./src/ZoneSessionProvider.tsx"
   },
   "scripts": {
     "lint": "eslint src/"

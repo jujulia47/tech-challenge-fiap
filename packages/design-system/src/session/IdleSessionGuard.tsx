@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { getSession, signOut, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 import { SESSION_POLICY } from '@bytebank/utils'
 import { Button } from '../Button'
 import { Modal } from '../Modal'
 import { createIdleMonitor, type IdleMonitor } from './idleMonitor'
 import { createStorageIdleChannel } from './storageIdleChannel'
+import { readSession, signOutCompletely } from './zoneSession'
 
 interface IdlePolicy {
   idleTimeoutSeconds: number
@@ -31,7 +32,7 @@ async function loadPolicy(): Promise<IdlePolicy> {
 }
 
 async function endSession(): Promise<void> {
-  await signOut({ redirect: false }).catch(() => undefined)
+  await signOutCompletely().catch(() => undefined)
   // A full load: the login is in the shell, outside the zones
   window.location.assign('/?reason=idle')
 }
@@ -66,7 +67,7 @@ export function IdleSessionGuard() {
         onChange: state => setRemainingSeconds(state.phase === 'warning' ? state.remainingSeconds : null),
         onExpire: () => void endSession(),
         // Reading the session renews it. The API routes do not, so a long stay on one screen would expire.
-        onRenew: () => void getSession(),
+        onRenew: () => void readSession().catch(() => undefined),
       })
       const handleActivity = () => monitor.recordActivity()
       const options = { capture: true, passive: true }

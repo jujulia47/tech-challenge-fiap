@@ -38,6 +38,7 @@ From the repository root:
 | `npm test` | `vitest run` | Run the unit tests once |
 | `npm run test:watch` | `vitest` | Re-run on file changes during development |
 | `npm run test:coverage` | `vitest run --coverage` | Run once and print coverage (v8) |
+| `npm run test:session-race` | `node apps/shell/scripts/session-race.mjs` | The browser regression test of the session race, against a running app (below) |
 
 Configuration is in `vitest.config.mts` at the root:
 
@@ -61,9 +62,9 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 | `packages/core` | 22 | 324 | Specification |
 | `packages/infrastructure` | 23 | 302 | Specification (unit, CLI, integration and timeout against real servers) |
 | `packages/bff` | 17 | 459 | Specification (handlers with real `Request` objects, and end to end) |
-| `packages/design-system` | 8 | 62 | Specification (static rendering of `ProfileMenu`, `TransactionItem` and `MountOnceOpen`, and the rule of `moveFocusInto`) |
+| `packages/design-system` | 9 | 67 | Specification (static rendering of `ProfileMenu`, `TransactionItem` and `MountOnceOpen`, the rule of `moveFocusInto`, and the order of the session writes) |
 | `packages/store` | 3 | 41 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
-| `packages/auth` | 1 | 9 | Specification (the session config shared by the shell and the zones: secret, policy, the shape of the token and the refresh of the name) |
+| `packages/auth` | 2 | 11 | Specification (the session config shared by the shell and the zones: secret, policy, the shape of the token and the refresh of the name; and the props of the session provider of the zones) |
 
 `packages/core`:
 
@@ -231,9 +232,35 @@ Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMon
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 88 test files, 1383 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
+Result: 90 test files, 1390 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
 
 The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
+
+## Browser regression: the session race
+
+Added in step D3. `apps/shell/scripts/session-race.mjs` proves the fix of the session race (`security.md`, "The session race") in a real browser. It is not part of `npm test`, because it needs a running app and Chrome, and Vitest runs in `node` with no DOM. What `npm test` covers instead:
+
+- `packages/design-system/src/session/sessionWrites.test.ts`: a read in flight is waited for before the sign-out, a sign-out undone by a late read is done again, at most twice, and a failed read does not block anything. A fake cookie and a fake server that answers when told to play the slow network.
+- `packages/auth/src/zoneSessionProps.test.ts`: the provider of the zones starts with the session of the server and does not read it on focus.
+
+The script logs in, then holds every `GET` of the session in the browser for 3 s after the server answered, so the real answer comes late. It starts reads the way a page does (the load, `visibilitychange` and `focus`), then saves the name and logs out. It checks that the header and the session keep the new name, and that after the logout no session is left and `/dashboard` goes back to the login. It runs 3 rounds of each by default, and puts the original name back.
+
+```sh
+# Local (Docker up), with the demonstration user of the README
+E2E_EMAIL=... E2E_PASSWORD=... npm run test:session-race
+
+# Production, through the shell
+SHELL_URL=https://bytebank-shell.vercel.app E2E_EMAIL=... E2E_PASSWORD=... npm run test:session-race
+```
+
+`ROUNDS` changes the number of rounds. The script prints statuses and names, never a password or a cookie, and uses the Chrome installed on the machine (`channel: 'chrome'`), like the Storybook tests.
+
+Results:
+
+| Where | Before the fix | After the fix |
+|---|---|---|
+| Production | 8 of 8 checks failed (2 rounds) | pending: run after the deploy |
+| Docker, local | not run | 12 of 12 passed (3 rounds) |
 
 ## Known instabilities
 

@@ -252,5 +252,6 @@ On https://bytebank-shell.vercel.app, in a private window:
 6. Check the headers: `curl -sI https://bytebank-shell.vercel.app/ | grep -i strict-transport-security` shows HSTS.
 7. Check the region: in Vercel → Logs, the functions run in `iad1`.
 8. Log out, and open `/dashboard`: the login comes back.
+9. Run the regression test of the session race against production, from a local machine: `SHELL_URL=https://bytebank-shell.vercel.app E2E_EMAIL=... E2E_PASSWORD=... npm run test:session-race` (`testing.md`). It changes the name of the demonstration user and puts it back; finish with `npm run db:reset:supabase`.
 
 A Preview deployment uses the variables of the Preview environment, which this checklist does not set: test on Production.

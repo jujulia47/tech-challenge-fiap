@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { connection } from 'next/server'
 import '@bytebank/design-system/theme.css'
-import { SessionProvider } from 'next-auth/react'
-import { Header, IdleSessionGuard, MenuSidebar, MenuTabs } from '@bytebank/design-system'
+import { ZoneSessionProvider } from '@bytebank/auth/sessionProvider'
+import { Header, IdleSessionGuard, MenuSidebar, MenuTabs, SHELL_ICONS } from '@bytebank/design-system'
 import { iconFont } from '@bytebank/design-system/iconFont'
 import { NAV_ITEMS, PROFILE_ITEMS } from '@/components/layout/nav-items'
 import { ReduxProvider } from '@/store/transactionsApi'
@@ -10,6 +10,7 @@ import { ReduxProvider } from '@/store/transactionsApi'
 export const metadata: Metadata = {
   title: { default: 'Painel | Bytebank', template: '%s | Bytebank' },
   description: 'Acompanhe seu saldo, seus gráficos e suas últimas transações no Bytebank.',
+  icons: SHELL_ICONS,
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -20,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR" className={iconFont.variable}>
       <head />
       <body>
-        <SessionProvider basePath="/dashboard/api/auth">
+        <ZoneSessionProvider basePath="/dashboard/api/auth">
           <ReduxProvider>
             <div className="min-h-screen bg-bg-base flex flex-col">
               <Header navItems={NAV_ITEMS} profileItems={PROFILE_ITEMS} />
@@ -34,7 +35,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </ReduxProvider>
           <IdleSessionGuard />
-        </SessionProvider>
+        </ZoneSessionProvider>
       </body>
     </html>
   )

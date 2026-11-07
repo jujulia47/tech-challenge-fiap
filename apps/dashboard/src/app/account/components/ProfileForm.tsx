@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { USER_NAME_MAX_LENGTH } from '@bytebank/core'
-import { Button, Input } from '@bytebank/design-system'
+import { Button, Input, waitForSessionReads } from '@bytebank/design-system'
 import { errorCodeOf } from '@/app/account/components/accountErrors'
 import { useUpdateProfileMutation } from '@/store/transactionsApi'
 
@@ -36,6 +36,8 @@ export function ProfileForm({ initialName, email, onSuccess, onError }: ProfileF
       setName(saved.name)
       // Without data, update() only reads the session. With any data it asks for a new token,
       // and the server reads the name from the store: what is sent here is ignored.
+      // A read still in flight would answer after it with the old name (docs/fase4/security.md).
+      await waitForSessionReads()
       await update({})
       onSuccess('Nome atualizado com sucesso')
     } catch (caught) {

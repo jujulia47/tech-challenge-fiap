@@ -25,6 +25,8 @@ export { ProfileMenu } from './ProfileMenu'
 export type { ProfileMenuItem } from './ProfileMenu'
 export { Select } from './Select'
 export { IdleSessionGuard } from './session/IdleSessionGuard'
+export { signOutCompletely, waitForSessionReads } from './session/zoneSession'
+export { SHELL_ICONS } from './shellIcons'
 export { Toast } from './Toast'
 export {
   LazyModalConfirmDelete,

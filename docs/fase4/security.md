@@ -342,3 +342,32 @@ The name of the header comes from the JWT, which the three zones share as one co
 ### Since step D1
 
 With `DATA_BACKEND=supabase`, the rate limits are counters in Postgres, shared by every app and instance. The password change of the dashboard and the login of the shell then count in the same namespace, so the separate count described in step 7b only applies to json-server. See `deploy.md`.
+
+## Step D3: the session race
+
+Found by the first test of the production deployment. Fixed in the same step.
+
+### The problem
+
+Every answer of `GET /api/auth/session` writes the session cookie again: with JWT sessions, Auth.js signs a new token on each read, with a later expiry. A read sends the cookie the browser has when it leaves. So when a read leaves before a write and its answer arrives after it, the browser stores the old token over the new one:
+
+- **Saving the name:** the `POST` of `update()` writes a token with the new name, and the late read puts the old name back, in the header and in the cookie.
+- **Logging out:** the `POST` of the sign-out clears the cookie, and the late read writes it back. The user lands on the login, but the session is alive: `/dashboard` opens with no password.
+
+The reads came from the session provider of the zones, which reads the session when the page loads and when the window gets the focus back, and from the renewal of the inactivity guard. Locally the answers take a few milliseconds and the window is too short to hit. In production every answer crosses to `iad1`, and a cold function takes seconds, so a click right after a page load hit it. The first run in production failed once on each flow.
+
+### Evidence
+
+`apps/shell/scripts/session-race.mjs` holds the reads in the browser for 3 s after the server answered, so the request is the real one, and only its arrival is late. Against production before the fix, 8 of 8 checks failed: the header and the session went back to the old name, and after the logout the session was still there and `/dashboard` opened. See `testing.md`, "Browser regression: the session race".
+
+### The fix
+
+Two parts, so that no write is left with a read behind it:
+
+1. **The zones do not read the session on their own.** `ZoneSessionProvider` (`packages/auth/src/ZoneSessionProvider.tsx`) reads the session on the server, in the layout, and starts the provider with it, with `refetchOnWindowFocus` off. Given a session, the provider does not read it again on load. The layouts were already rendered per request, for the nonce of the CSP, so this costs one decode of the JWT and no query. As a bonus, the name is in the header from the first paint.
+2. **The writes wait for the reads.** The only read left is the renewal of the inactivity guard, so it goes through `readSession` (`packages/design-system/src/session/zoneSession.ts`), which keeps track of the reads in flight. `signOutCompletely`, used by the header and by the inactivity logout, waits for them, signs out, and reads the session to check. If a read from elsewhere, such as another tab, brought it back, it signs out once more. The form of the name calls `waitForSessionReads` before `update()`.
+
+### What is left
+
+- **Another tab.** After a write, Auth.js tells the other tabs, which read the session. Those reads leave after the write, so they carry the new cookie. A read that another tab had started before the write, and that answers after it, can still bring the old token back, since the tabs share the cookie. The check after the sign-out catches it only when it lands before the check. It needs two tabs and a read in flight in the second one at the moment of the click.
+- **Revocation on the server.** The robust fix is a mark on the user, such as "sessions valid after", checked on every request, so that an old token is refused wherever it comes from. It costs one query per check of the session, and it would also end the other sessions after a password change, the open item of step 7b. It was left for later.
