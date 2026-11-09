@@ -1,6 +1,8 @@
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '@bytebank/core'
+
 const MESSAGES: Record<string, string> = {
-  PASSWORD_TOO_SHORT: 'Use pelo menos 15 caracteres',
-  PASSWORD_TOO_LONG: 'Use no máximo 128 caracteres',
+  PASSWORD_TOO_SHORT: `Use pelo menos ${PASSWORD_MIN_LENGTH} caracteres`,
+  PASSWORD_TOO_LONG: `Use no máximo ${PASSWORD_MAX_LENGTH} caracteres`,
   PASSWORD_TOO_COMMON: 'Senha muito comum',
   PASSWORD_HAS_PERSONAL_CONTEXT: 'Não use seu nome, seu e-mail ou "bytebank" na senha',
   PASSWORD_UNCHANGED: 'A nova senha precisa ser diferente da atual',

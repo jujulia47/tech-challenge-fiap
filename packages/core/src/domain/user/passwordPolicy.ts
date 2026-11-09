@@ -1,7 +1,8 @@
 import { DomainError, type DomainErrorCode } from '../errors/DomainError'
 
-// NIST SP 800-63B rev. 4 for a password used alone. No composition rules, on purpose.
-export const PASSWORD_MIN_LENGTH = 15
+// OWASP ASVS 5.0, 6.2.1: at least 8 characters (15 recommended). No composition rules (6.2.5), on
+// purpose. Why 8 and not the 15 of NIST for a password used alone: docs/fase4/security.md.
+export const PASSWORD_MIN_LENGTH = 8
 export const PASSWORD_MAX_LENGTH = 128
 
 const CONTEXT_WORDS = ['bytebank']
@@ -37,7 +38,8 @@ export function comparablePassword(password: string): string {
   return comparable(password).replace(/\s/gu, '')
 }
 
-function contextWords({ name, email }: PasswordContext): string[] {
+// The words a password must not contain. The strength indicator uses them too.
+export function passwordContextWords({ name, email }: PasswordContext): string[] {
   const [local = '', domain = ''] = comparable(email).split('@')
   const parts = [...comparable(name).split(/\s+/u), ...local.split(/[._+-]/), domain.split('.')[0]]
   return [...CONTEXT_WORDS, ...parts.filter(part => [...part].length >= MIN_PART_LENGTH)]
@@ -51,7 +53,7 @@ export function findPasswordIssue(
 ): PasswordIssue | null {
   const compact = comparablePassword(password)
   if (isListed || REPEATED.test(compact)) return 'PASSWORD_TOO_COMMON'
-  if (contextWords(context).some(word => compact.includes(word))) return 'PASSWORD_HAS_PERSONAL_CONTEXT'
+  if (passwordContextWords(context).some(word => compact.includes(word))) return 'PASSWORD_HAS_PERSONAL_CONTEXT'
 
   const length = passwordLength(password)
   if (length < PASSWORD_MIN_LENGTH) return 'PASSWORD_TOO_SHORT'

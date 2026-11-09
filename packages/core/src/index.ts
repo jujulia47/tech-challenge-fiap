@@ -27,6 +27,7 @@ export {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   findPasswordIssue,
+  passwordContextWords,
   passwordLength,
 } from './domain/user/passwordPolicy'
 export type { PasswordContext, PasswordIssue } from './domain/user/passwordPolicy'

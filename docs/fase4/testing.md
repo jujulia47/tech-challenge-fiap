@@ -59,10 +59,10 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 | Package | Test files | Tests | Kind |
 |---|---|---|---|
 | `packages/utils` | 14 | 186 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
-| `packages/core` | 22 | 324 | Specification |
-| `packages/infrastructure` | 23 | 302 | Specification (unit, CLI, integration and timeout against real servers) |
+| `packages/core` | 22 | 325 | Specification |
+| `packages/infrastructure` | 23 | 318 | Specification (unit, CLI, integration and timeout against real servers) |
 | `packages/bff` | 17 | 459 | Specification (handlers with real `Request` objects, and end to end) |
-| `packages/design-system` | 9 | 67 | Specification (static rendering of `ProfileMenu`, `TransactionItem` and `MountOnceOpen`, the rule of `moveFocusInto`, and the order of the session writes) |
+| `packages/design-system` | 11 | 109 | Specification (static rendering of `ProfileMenu`, `TransactionItem`, `MountOnceOpen` and the password fields, the rule of `moveFocusInto`, the order of the session writes, and the strength estimate) |
 | `packages/store` | 3 | 41 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
 | `packages/auth` | 2 | 11 | Specification (the session config shared by the shell and the zones: secret, policy, the shape of the token and the refresh of the name; and the props of the session provider of the zones) |
 
@@ -232,7 +232,7 @@ Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMon
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 90 test files, 1390 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
+Result: 92 test files, 1449 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
 
 The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
 

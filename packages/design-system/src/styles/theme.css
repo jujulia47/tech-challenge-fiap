@@ -27,6 +27,9 @@
   --color-error:          #A50F0F;
   --color-accent:         #FF6A4D;
   --color-accent-strong:  #B8341A;
+  /* The two middle levels of the password strength, between error (weak) and success (strong) */
+  --color-strength-fair:  #8A5A00;
+  --color-strength-good:  #4F6F00;
 
   /* ── Public context tokens ── */
   --color-public-accent:  #267018;

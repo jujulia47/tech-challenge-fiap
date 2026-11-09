@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { PASSWORD_MIN_LENGTH, findPasswordIssue, type PasswordContext } from '@bytebank/core'
 import { cn } from '@bytebank/utils'
-import { Input } from './Input'
+import { PasswordInput } from './PasswordInput'
 import { PASSWORD_STRENGTH_LABELS, passwordStrength, type PasswordStrength } from './password/passwordStrength'
 
 interface PasswordFieldProps {
@@ -17,9 +16,13 @@ interface PasswordFieldProps {
   error?: string
 }
 
+// From red to green, each at least 3:1 against the track and the gray card. The level is always
+// written next to the bar, in text-primary: as text, the colors would fail 4.5:1 on the gray card.
+// See docs/fase4/accessibility.md
 const BAR_CLASSES: Record<PasswordStrength, string> = {
-  weak: 'w-1/3 bg-error',
-  good: 'w-2/3 bg-accent',
+  weak: 'w-1/4 bg-error',
+  fair: 'w-1/2 bg-strength-fair',
+  good: 'w-3/4 bg-strength-good',
   strong: 'w-full bg-success',
 }
 
@@ -35,7 +38,6 @@ export function PasswordField({
   required,
   error,
 }: PasswordFieldProps) {
-  const [visible, setVisible] = useState(false)
   const strength = passwordStrength(value, context, refusedAsCommon)
   const issue = value === '' ? null : findPasswordIssue(value, context, refusedAsCommon)
 
@@ -47,34 +49,20 @@ export function PasswordField({
 
   return (
     <div className="flex flex-col gap-2">
-      <Input
+      <PasswordInput
         label={label}
-        type={visible ? 'text' : 'password'}
-        autoComplete="new-password"
         value={value}
         onChange={onChange}
         required={required}
         error={error}
-        trailing={
-          <button
-            type="button"
-            onClick={() => setVisible(current => !current)}
-            aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
-            aria-pressed={visible}
-            className="flex text-primary-800 rounded-md focus-visible:outline-2 focus-visible:outline-primary-900"
-          >
-            <span className="material-icons text-icon-sm" aria-hidden="true">
-              {visible ? 'visibility_off' : 'visibility'}
-            </span>
-          </button>
-        }
+        autoComplete="new-password"
       />
 
       <div aria-hidden="true" className="flex items-center gap-2">
         <div className="h-1 flex-1 bg-surface-form rounded-md overflow-hidden">
           <div className={cn('h-full transition-all', strength ? BAR_CLASSES[strength] : 'w-0')} />
         </div>
-        <span className="text-meta text-text-secondary min-w-10 text-right">
+        <span className="text-meta-semibold text-text-primary min-w-16 text-right">
           {strength && PASSWORD_STRENGTH_LABELS[strength]}
         </span>
       </div>

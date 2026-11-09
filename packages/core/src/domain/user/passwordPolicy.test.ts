@@ -13,9 +13,14 @@ const issue = (password: string, isListed = false) => findPasswordIssue(password
 
 describe('password policy', () => {
   describe('length', () => {
-    it('refuses 14 characters and accepts 15', () => {
-      expect(issue('correct horse.')).toBe('PASSWORD_TOO_SHORT')
-      expect(issue('correct horse..')).toBeNull()
+    it('refuses 7 characters and accepts 8', () => {
+      expect(issue('k7#vQm2')).toBe('PASSWORD_TOO_SHORT')
+      expect(issue('k7#vQm2x')).toBeNull()
+    })
+
+    it('refuses a listed password of 8 characters or more, however long', () => {
+      expect(issue('senha12345', true)).toBe('PASSWORD_TOO_COMMON')
+      expect(issue('password123', true)).toBe('PASSWORD_TOO_COMMON')
     })
 
     it('accepts the maximum and refuses one more', () => {

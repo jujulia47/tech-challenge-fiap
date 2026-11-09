@@ -20,7 +20,7 @@ const meta: Meta<typeof PasswordField> = {
     docs: {
       description: {
         component:
-          'Campo para criar uma senha, com a política do NIST: indicador de força, critérios visíveis e botão para mostrar ou ocultar. Colar é permitido, e `autocomplete="new-password"` deixa o gerenciador de senhas sugerir uma. A força é anunciada só quando o nível muda.',
+          'Campo para criar uma senha: indicador de força em 4 níveis, critérios visíveis e o botão de mostrar e ocultar do `PasswordInput`. A força estima a entropia (comprimento × log2 do conjunto de caracteres, com descontos para sequências, repetições e palavras do contexto) e só mede: quem recusa é a regra do domínio. Colar é permitido, e `autocomplete="new-password"` deixa o gerenciador de senhas sugerir uma. A força é anunciada só quando o nível muda.',
       },
     },
   },
@@ -39,6 +39,27 @@ export const TooShort: Story = {
   args: { value: 'abc123' },
   parameters: {
     docs: { description: { story: 'Abaixo do mínimo: o critério de tamanho fica em vermelho.' } },
+  },
+}
+
+export const Fair: Story = {
+  args: { value: 'k7#vQm2x' },
+  parameters: {
+    docs: { description: { story: '8 caracteres aleatórios: aceita, e razoável.' } },
+  },
+}
+
+export const Sequence: Story = {
+  args: { value: 'abcdefgh12345678' },
+  parameters: {
+    docs: { description: { story: 'Longa, mas feita de sequências: o indicador desconta e mostra fraca.' } },
+  },
+}
+
+export const Generated: Story = {
+  args: { value: 'Xk9mQ2pR7tLw3Zb' },
+  parameters: {
+    docs: { description: { story: 'Como um gerenciador de senhas gera: 15 letras e dígitos aleatórios, força máxima.' } },
   },
 }
 

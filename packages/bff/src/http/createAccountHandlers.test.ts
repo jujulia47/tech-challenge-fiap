@@ -79,7 +79,7 @@ describe('createAccountHandlers', () => {
 
     it.each([
       ['a wrong current password', { currentPassword: 'outra senha qualquer longa', newPassword: NEW }, 'INVALID_CURRENT_PASSWORD'],
-      ['a weak new password', { currentPassword: CURRENT, newPassword: 'curta demais' }, 'PASSWORD_TOO_SHORT'],
+      ['a weak new password', { currentPassword: CURRENT, newPassword: 'curta7' }, 'PASSWORD_TOO_SHORT'],
       ['the same password', { currentPassword: CURRENT, newPassword: CURRENT }, 'PASSWORD_UNCHANGED'],
     ])('refuses %s with 422 and only a code, never 401', async (_, body, code) => {
       const { handlers } = setup()

@@ -245,30 +245,70 @@ Before this step, one damaged attachment made the list of its owner answer 502, 
 
 ### Password policy
 
-It follows NIST SP 800-63B rev. 4 for a password used alone. It applies to new passwords only, in `RegisterUser` and `ResetPassword`, through `hashNewPassword`. **The rule is in the domain** (`passwordPolicy.ts`). The BFF only limits the size of the request, and the screens mirror the rule.
+It follows OWASP ASVS 5.0, chapter 6.2, and applies to new passwords only: `RegisterUser`, `ResetPassword` and, since step 7b, `ChangePassword`, all through `hashNewPassword`. **The rule is in the domain** (`passwordPolicy.ts`). The BFF only limits the size of the request, and the screens mirror the rule.
 
-| Rule | Value | Why |
-|---|---|---|
-| Length | 15 to 128 characters | Counted in characters, so an emoji counts as one |
-| Composition | None | NIST advises against it: it leads to predictable patterns, such as `Senha123!` |
-| Normalization | NFKC before the hash | Two spellings of one character must give one password |
-| Common passwords | The 10,000 most common, without case, spaces or accents | Checked before the length, so `password` says what is wrong with it |
-| Repetition | One piece repeated, such as `passwordpassword` | NIST also asks to refuse repetitive values, and these pass the length |
-| Context | `bytebank`, and parts of the name and of the email with 3 or more characters | The first guesses of anyone who knows the person |
+| Rule | Value | ASVS 5.0 | Why |
+|---|---|---|---|
+| Length | 8 to 128 characters | 6.2.1: at least 8, 15 recommended | Counted in characters, so an emoji counts as one |
+| Composition | None | 6.2.5: no rule on kinds of characters | It leads to predictable patterns, such as `Senha123!` |
+| Common passwords | The 10,000 most common, a short list in Portuguese, and a listed word with digits or symbols around it | 6.2.4: checked against the most common passwords | Checked before the length, so `password` says what is wrong with it |
+| Repetition | One piece repeated, such as `passwordpassword` | 6.2.4 | Repetitive values are as easy to guess as the piece |
+| Context | `bytebank`, and parts of the name and of the email with 3 or more characters | 6.2.11: words of the context | The first guesses of anyone who knows the person |
+| Normalization | NFKC before the hash | | Two spellings of one character must give one password |
 
 The login also normalizes with NFKC, or a password with such a character could never log in again. For the passwords that already exist, which are ASCII, nothing changes. The login does not apply the policy, so `bytebank123`, the password of the demonstration, still works.
 
-**The list does little by itself.** Only 1 of its 10,000 entries has 15 characters or more, so the minimum length already refuses the others. It stays because it gives the right message, and it catches a listed password written with spaces. Most of the protection comes from the length.
+**Why 8 and not 15.** Until this change the minimum was 15, from NIST SP 800-63B rev. 4, which asks for 15 when the password is the only factor, as it is here. ASVS 5.0 sets 8 as the minimum and recommends 15, and this project follows ASVS. The distance to NIST is made up for by:
 
-The list is `10k-most-common.txt` from [SecLists](https://github.com/danielmiessler/SecLists), by Daniel Miessler and contributors, MIT license. It is in `packages/infrastructure/src/password/common-passwords.json`, in lower case, and only server code reads it.
+- **the list of common passwords**, which now does most of the work: 2,087 of its 10,000 entries have 8 characters or more, and the word-and-digits rule covers `password123`, `senha12345` and the like;
+- **the block after 5 wrong attempts** in 15 minutes, by email and by IP (step 3.2), which keeps an online attack to a few guesses;
+- **the scrypt hash** (step 3.1), which makes each guess slow if the database leaks.
 
-**The screens do not have the list.** The strength indicator uses the length, the repetition and the context words, and it shows a password as common only after the server refuses it.
+What stays open: an 8-character password that is not on the list, such as a name and a year that the list lacks, is accepted. The strength indicator shows it as weak or fair, and only that.
+
+**The list.** `10k-most-common.txt` from [SecLists](https://github.com/danielmiessler/SecLists), by Daniel Miessler and contributors, MIT license, is in `packages/infrastructure/src/password/common-passwords.json`, in lower case. It is in English: `senha` and the names of football clubs are not in it, so `common-passwords-pt.json` adds 34 Portuguese words (4 of them were already in the English list), chosen by hand for this project and not taken from a measured source. A password is also refused when what is left after removing the digits and symbols around it is a listed word of 4 letters or more: `password123`, `senha12345`, `2024brasil!`. Shorter words are left alone, so a random password does not fail on three letters that happen to make a word. Only server code reads the lists.
+
+**The screens do not have the list.** They check the length, the repetition and the context words, and they show a password as common only after the server refuses it.
+
+### Strength indicator
+
+The bar under a new password measures; it does not decide. A password the domain accepts may show as weak, and one it refuses always shows as weak. The indicator does not add rules of composition.
+
+It estimates the entropy: the characters that count, times log2 of the size of the pool of characters used (`packages/design-system/src/password/passwordEntropy.ts`).
+
+| Class in the password | Adds to the pool |
+|---|---|
+| Lower case `a-z` | 26 |
+| Upper case `A-Z` | 26 |
+| Digits | 10 |
+| ASCII symbols | 32 |
+| Space | 1 |
+| Anything else (accents, other scripts, emoji) | 32, a low guess |
+
+Discounts, so that a pattern counts as one character:
+
+- **A run of 3 or more with one step:** the same character (`aaaa`), the next or the previous one (`abc`, `321`), or the next key on the keyboard (`qwerty`, `asdf`, `7890`). Case does not matter. A change of direction (`aba`) is not a run, and two in a row are left alone: random passwords have those by chance.
+- **A piece of 3 or more that already appeared** (`Xk9mXk9m`).
+- **A word of the context**, the same words the domain refuses.
+
+Levels, from the lowest estimate of each:
+
+| Level | Bits | Example |
+|---|---|---|
+| Fraca | below 40 | `aaaaaaaaaa` (5 bits), `12345678` (3 bits), anything the domain refuses |
+| Razoável | 40 | 8 random characters with symbols, about 52 bits |
+| Boa | 60 | 11 random letters and digits, about 65 bits |
+| Forte | 70 | 15 random letters and digits, about 89 bits |
+
+The limits were chosen on measurements of random passwords: of 20,000 passwords of 15 random letters and digits, as the password manager of Google makes them, 99.9% reach 70 bits even with a run in them by chance. A passphrase of four words also reaches Forte. The estimate is rough by design: it does not know dictionary words other than the context, so `password123` can show as fair until the server refuses it, and then it shows as weak.
+
+Colors and contrast: `accessibility.md`, "Password strength colors".
 
 ### Recovery
 
 1. `/forgot-password` always shows "Se o e-mail estiver cadastrado, enviamos um link". The answer leaves before the work starts, with `after()`, so its time does not depend on the email either: measured at 88 ms for an unknown email and 76 ms for a registered one.
 2. The server generates a random token of 32 bytes and stores only its SHA-256, with the user id, the expiry of 30 minutes and whether it was used, in the `passwordResetTokens` collection. Earlier tokens of the user stop working.
-3. The link in the email uses `NEXTAUTH_URL`, never the `Host` of the request, which a client could forge to send the token to another site.
+3. The link in the email uses `SHELL_URL` (`NEXTAUTH_URL` until step D2), never the `Host` of the request, which a client could forge to send the token to another site.
 4. `/redefinir-senha` removes the token from the address bar as soon as it opens.
 5. On success, the new hash is saved, the token is marked as used and the login attempts of that email are cleared.
 

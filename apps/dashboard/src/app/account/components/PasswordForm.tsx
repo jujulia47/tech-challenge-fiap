@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, Input, PasswordField, useUser } from '@bytebank/design-system'
+import { Button, PasswordField, PasswordInput, useUser } from '@bytebank/design-system'
 import { passwordErrorMessage } from '@bytebank/utils'
 import { errorCodeOf } from '@/app/account/components/accountErrors'
 import { useChangePasswordMutation } from '@/store/transactionsApi'
@@ -44,14 +44,12 @@ export function PasswordForm({ email, onSuccess, onError }: PasswordFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-labelledby="password-title">
       <h3 id="password-title" className="text-label text-text-primary">Alterar senha</h3>
-      {/* The current password is typed, not created: a plain field, filled by a password manager */}
-      <Input
+      {/* The current password is typed, not created: no strength, filled by a password manager */}
+      <PasswordInput
         label="Senha atual"
-        type="password"
         value={currentPassword}
         onChange={setCurrentPassword}
         error={currentError}
-        autoComplete="current-password"
         required
       />
       <PasswordField

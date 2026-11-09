@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { Link, Button, Input, Modal } from '@bytebank/design-system'
+import { Link, Button, Input, Modal, PasswordInput } from '@bytebank/design-system'
 import { retryAfterMsFrom, retryMessage } from '@bytebank/utils'
 import { useLoginBlock } from '@/hooks/use-login-block'
 
@@ -64,9 +64,8 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
           required
           autoFocus
         />
-        <Input
+        <PasswordInput
           label="Senha"
-          type="password"
           placeholder="••••••••"
           value={password}
           onChange={setPassword}

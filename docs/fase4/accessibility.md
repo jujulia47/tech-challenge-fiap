@@ -18,6 +18,19 @@ Target: WCAG AA, 4.5:1 for normal text and 3:1 for large text and icons. Everyth
 | `accent-strong` | new | `#B8341A` | For text and for filled buttons on light surfaces |
 | `error` | `#BF1313` | `#A50F0F` | Error messages on the gray card |
 
+### Password strength colors
+
+The bar of the strength indicator goes from red to green in four levels. Two tokens were added for the middle ones. The bar is a graphic, so its target is 3:1 against what is next to it: the gray track and, on Minha conta, the gray card (`surface-form`, `#CBCBCB`), where the track disappears.
+
+| Level | Token | Color | On the track or the gray card `#CBCBCB` | On a modal `#F8F8F8` |
+|---|---|---|---|---|
+| Fraca | `error` | `#A50F0F` | 4.84 | 7.39 |
+| Razoável | `strength-fair` (new) | `#8A5A00` | 3.65 | 5.58 |
+| Boa | `strength-good` (new) | `#4F6F00` | 3.59 | 5.48 |
+| Forte | `success` | `#267018` | 3.79 | 5.79 |
+
+The level is always written next to the bar ("Fraca", "Razoável", "Boa", "Forte"), so the color is never the only cue. The text is `text-primary`, not the color of the level: as text, the three last colors would fail 4.5:1 on the gray card. The bar is `aria-hidden`, and a screen reader hears "Força da senha: …" when the level changes.
+
 The `COLORS` array of Recharts did not change. The legend of the pie chart used those colors as text. It is now a row of buttons, with the color in a small square and the text in `text-primary`.
 
 Placeholders had no color of their own, so the browser used a pale version of the text. They now use `text-secondary`, in a base rule.

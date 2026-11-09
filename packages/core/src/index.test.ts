@@ -38,6 +38,7 @@ describe('@bytebank/core public API', () => {
       'groupByMonth',
       'isTransactionType',
       'normalizeEmail',
+      'passwordContextWords',
       'passwordLength',
       'sortNewestFirst',
       'suggestTransactionType',

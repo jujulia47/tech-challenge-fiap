@@ -92,7 +92,7 @@ describe('ChangePassword', () => {
   })
 
   it.each([
-    ['too short', 'curta demais'],
+    ['too short', 'curta7'],
     ['with the name of the user', 'joana silva e uma senha longa'],
   ])('refuses a weak new password: %s', async (_, newPassword) => {
     const { useCase, storedHash } = setup()
