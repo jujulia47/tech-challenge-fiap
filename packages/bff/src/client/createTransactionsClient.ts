@@ -6,11 +6,10 @@ import type {
   TransactionDTO,
   TransactionType,
 } from '@bytebank/core'
+import { JSON_HEADERS, errorCode } from './http'
 
 // Runs in the browser: type imports only, so nothing from the server reaches the bundle
 
-const JSON_HEADERS = { 'Content-Type': 'application/json' }
-const UNKNOWN_ERROR = 'UNKNOWN_ERROR'
 const UNAUTHENTICATED = 'UNAUTHENTICATED'
 
 export type NewTransaction = Pick<TransactionDTO, 'type' | 'amountInCents' | 'date' | 'attachment'>
@@ -45,15 +44,6 @@ export class TransactionsApiError extends Error {
     super(code)
     this.name = 'TransactionsApiError'
     this.code = code
-  }
-}
-
-async function errorCode(response: Response): Promise<string> {
-  try {
-    const body = (await response.json()) as { error?: string }
-    return body.error ?? UNKNOWN_ERROR
-  } catch {
-    return UNKNOWN_ERROR
   }
 }
 

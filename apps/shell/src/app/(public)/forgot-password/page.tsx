@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { createShellClient } from '@bytebank/bff/client'
 import { PublicShell } from '@/components/layout/PublicShell'
 import { Link, Input, Button } from '@bytebank/design-system'
+
+const shell = createShellClient()
 
 export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('')
@@ -13,13 +16,10 @@ export default function EsqueciSenhaPage() {
     e.preventDefault()
     setError('')
 
-    const response = await fetch('/api/password-reset/request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    }).catch(() => null)
-
-    if (!response?.ok) {
+    try {
+      await shell.requestPasswordReset(email)
+    } catch {
+      // The same message for a refusal and for no answer at all
       setError('Não foi possível concluir agora. Tente novamente.')
       return
     }

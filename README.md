@@ -6,12 +6,16 @@ Banco digital fictício desenvolvido como Tech Challenge da pós-graduação em 
 
 **App publicado:** https://bytebank-shell.vercel.app
 
+**Vídeo de demonstração:** (link em breve)
+
 | Usuário de demonstração | Senha |
 |---|---|
 | `julia@bytebank.com` (com 7 transações) | `bytebank123` |
 | `test@bytebank.com` (sem transações) | `bytebank123` |
 
 A senha é um dado de demonstração, pública de propósito. O banco guarda só o hash scrypt dela. Em "Abrir minha conta" você cria um usuário seu.
+
+A política de senha vale só para senhas novas, no cadastro, na redefinição e na troca de senha. Por isso `bytebank123` continua entrando, mas uma senha nova parecida seria recusada, porque contém "bytebank" e é comum. É o esperado.
 
 ---
 
@@ -51,7 +55,7 @@ As apps são finas. O código fica nos packages:
 | `utils` | Funções puras compartilhadas: formatação, política de sessão, rewrites das zonas |
 | `design-system` | Componentes de UI, tema, cabeçalho e menus, documentados no Storybook |
 
-Detalhes em [docs/architecture.md](docs/architecture.md), nas decisões de [docs/adr/](docs/adr/) e na documentação da fase em [docs/fase4/](docs/fase4/).
+Detalhes em [docs/architecture.md](docs/architecture.md), nas decisões de [docs/adr/](docs/adr/) e na documentação da fase em [docs/fase4/](docs/fase4/). As regras de código (camadas, imports, testes, estilo, commits) estão em [docs/conventions.md](docs/conventions.md).
 
 ---
 
@@ -197,8 +201,9 @@ Acesse http://localhost:3000. Sem o Mailpit, deixe `SMTP_HOST` de fora: o envio 
 
 | Comando | O que faz |
 |---|---|
-| `npm test` | Os testes unitários e de integração dos packages: 1449 testes, em cerca de 10 s |
+| `npm test` | Os testes unitários e de integração dos packages: 1484 testes, em cerca de 10 s |
 | `npm run test:coverage` | Os mesmos, com a cobertura (v8) |
+| `cd apps/shell && npx vitest run --project storybook` | As 76 stories do design system num navegador real, com 14 testes de interação. Precisa do Chromium do Playwright (`npx playwright install chromium`) |
 | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | A suíte de contrato contra um projeto Supabase real, com `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env`. Desligada por padrão, e fora do CI |
 | `npm run test:session-race` | O teste de regressão da corrida de sessão, num navegador real, contra o app rodando (abaixo) |
 
@@ -235,4 +240,4 @@ O mesmo antivírus pode bloquear o domínio de uma das zonas na Vercel, como aco
 
 **A porta 3000 já está em uso.** Pare o que estiver nela, ou outro `docker compose` deste projeto, com `docker compose down`.
 
-**`Missing NEXTAUTH_SECRET` ou `Missing ATTACHMENT_ENCRYPTION_KEY` ao subir.** Falta o `.env` na raiz, ou a variável está vazia. Volte aos passos 2 e 3. Não deixe `replace-me` no lugar dos segredos: o app sobe, mas com um segredo conhecido.
+**`Missing or invalid NEXTAUTH_SECRET` ou `Missing or invalid ATTACHMENT_ENCRYPTION_KEY` ao subir.** Falta o `.env` na raiz, ou o segredo está vazio, ainda é `replace-me` ou é curto demais para 32 bytes em base64. O `docker compose up` para no serviço `secrets-check`, antes de subir as apps, e fora do Docker o servidor se recusa a iniciar com a mesma mensagem. Volte aos passos 2 e 3.

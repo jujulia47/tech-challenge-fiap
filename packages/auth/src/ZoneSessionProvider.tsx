@@ -1,3 +1,4 @@
+import 'server-only'
 import { SessionProvider } from 'next-auth/react'
 import { auth } from './zone'
 import { zoneSessionProps } from './zoneSessionProps'

@@ -1,8 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ShellApiError, createShellClient } from '@bytebank/bff/client'
 import { Button, Link, PasswordField } from '@bytebank/design-system'
 import { passwordErrorMessage } from '@bytebank/utils'
+
+const shell = createShellClient()
 
 interface ResetPasswordFormProps {
   token: string
@@ -25,17 +28,15 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     e.preventDefault()
     setError('')
 
-    const response = await fetch('/api/password-reset/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password }),
-    }).catch(() => null)
-
-    if (response?.ok) {
+    // No answer at all has no code, and gets the generic message below
+    let code: string | null = null
+    try {
+      await shell.confirmPasswordReset(token, password)
       setStatus('done')
       return
+    } catch (caught) {
+      if (caught instanceof ShellApiError) code = caught.code
     }
-    const code = await response?.json().then((body: { error?: unknown }) => body.error, () => null)
     if (code === 'INVALID_RESET_TOKEN') {
       setStatus('invalid')
       return

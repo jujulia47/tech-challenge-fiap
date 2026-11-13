@@ -8,7 +8,7 @@
     ".": "./src/index.ts",
     "./limits": "./src/http/limits.ts",
     "./env": "./src/env.ts",
-    "./client": "./src/client/createTransactionsClient.ts"
+    "./client": "./src/client/index.ts"
   },
   "scripts": {
     "lint": "eslint src/"
@@ -16,6 +16,7 @@
   "dependencies": {
     "@bytebank/core": "*",
     "@bytebank/infrastructure": "*",
+    "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -20,6 +20,19 @@ services:
     networks:
       - bytebank
 
+  # Refuses a missing, example or short secret before any app starts. Plain Node runs the rule of
+  # packages/utils/src/secrets.ts, the same one the apps run when they start: docs/fase4/security.md
+  secrets-check:
+    image: node:22-alpine
+    command: ["node", "/check/scripts/check-secrets.mts", "NEXTAUTH_SECRET", "ATTACHMENT_ENCRYPTION_KEY"]
+    environment:
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-}
+      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:-}
+    volumes:
+      - ./packages/utils/src/secrets.ts:/check/src/secrets.ts:ro
+      - ./packages/utils/scripts/check-secrets.mts:/check/scripts/check-secrets.mts:ro
+    network_mode: none
+
   shell:
     build:
       context: .
@@ -30,7 +43,7 @@ services:
       - NEXTAUTH_URL=http://localhost:3000
       # The public address of the shell, for the link of the reset email
       - SHELL_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing or invalid NEXTAUTH_SECRET. Generate 32 random bytes in base64, as in step 3 of the README}
       # json-server by default; supabase uses the project of .env: docs/fase4/deploy.md
       - JSON_SERVER_URL=http://json-server:3001
       - DATA_BACKEND=${DATA_BACKEND:-json-server}
@@ -45,10 +58,16 @@ services:
       - IDLE_TIMEOUT_SECONDS=${IDLE_TIMEOUT_SECONDS:-}
       - IDLE_WARNING_SECONDS=${IDLE_WARNING_SECONDS:-}
     depends_on:
-      - json-server
-      - mailpit
-      - dashboard
-      - transactions
+      secrets-check:
+        condition: service_completed_successfully
+      json-server:
+        condition: service_started
+      mailpit:
+        condition: service_started
+      dashboard:
+        condition: service_started
+      transactions:
+        condition: service_started
     networks:
       - bytebank
 
@@ -60,7 +79,7 @@ services:
       - "3003:3003"
     environment:
       - NEXTAUTH_URL=http://localhost:3003
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing or invalid NEXTAUTH_SECRET. Generate 32 random bytes in base64, as in step 3 of the README}
       # json-server by default; supabase uses the project of .env: docs/fase4/deploy.md
       - JSON_SERVER_URL=http://json-server:3001
       - DATA_BACKEND=${DATA_BACKEND:-json-server}
@@ -68,10 +87,13 @@ services:
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
       - ALLOWED_ORIGINS=http://localhost:3000
       - SHELL_URL=http://localhost:3000
-      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing ATTACHMENT_ENCRYPTION_KEY, copy .env.example to .env and fill it in}
+      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing or invalid ATTACHMENT_ENCRYPTION_KEY. Generate 32 random bytes in base64, as in step 3 of the README}
       - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
     depends_on:
-      - json-server
+      secrets-check:
+        condition: service_completed_successfully
+      json-server:
+        condition: service_started
     networks:
       - bytebank
 
@@ -83,7 +105,7 @@ services:
       - "3002:3002"
     environment:
       - NEXTAUTH_URL=http://localhost:3002
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing NEXTAUTH_SECRET, copy .env.example to .env and fill it in}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?Missing or invalid NEXTAUTH_SECRET. Generate 32 random bytes in base64, as in step 3 of the README}
       # json-server by default; supabase uses the project of .env: docs/fase4/deploy.md
       - JSON_SERVER_URL=http://json-server:3001
       - DATA_BACKEND=${DATA_BACKEND:-json-server}
@@ -91,10 +113,13 @@ services:
       - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:-}
       - ALLOWED_ORIGINS=http://localhost:3000
       - SHELL_URL=http://localhost:3000
-      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing ATTACHMENT_ENCRYPTION_KEY, copy .env.example to .env and fill it in}
+      - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing or invalid ATTACHMENT_ENCRYPTION_KEY. Generate 32 random bytes in base64, as in step 3 of the README}
       - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
     depends_on:
-      - json-server
+      secrets-check:
+        condition: service_completed_successfully
+      json-server:
+        condition: service_started
     networks:
       - bytebank
 

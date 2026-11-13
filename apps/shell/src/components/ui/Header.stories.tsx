@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { userEvent, within } from 'storybook/test'
 import { Header } from '@bytebank/design-system'
 import type { NavItem } from '@bytebank/design-system'
+import { withSession } from './storySession'
 
 const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Início',          href: '/' },
@@ -15,6 +16,8 @@ const meta: Meta<typeof Header> = {
   component: Header,
   tags: ['autodocs'],
   args: { navItems: NAV_ITEMS },
+  // The header shows the name of the session: useUser needs a SessionProvider
+  decorators: [withSession],
   parameters: {
     layout: 'fullscreen',
     nextjs: { navigation: { pathname: '/' } },

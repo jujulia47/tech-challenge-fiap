@@ -411,3 +411,46 @@ Two parts, so that no write is left with a read behind it:
 
 - **Another tab.** After a write, Auth.js tells the other tabs, which read the session. Those reads leave after the write, so they carry the new cookie. A read that another tab had started before the write, and that answers after it, can still bring the old token back, since the tabs share the cookie. The check after the sign-out catches it only when it lands before the check. It needs two tabs and a read in flight in the second one at the moment of the click.
 - **Revocation on the server.** The robust fix is a mark on the user, such as "sessions valid after", checked on every request, so that an old token is refused wherever it comes from. It costs one query per check of the session, and it would also end the other sessions after a password change, the open item of step 7b. It was left for later.
+
+## Final step: server-only entries, layers and secrets
+
+### Server-only entries
+
+Code of the server must never reach a bundle of the browser: it holds the database adapters, the secret key of Supabase and the cipher of the attachments. Three barriers keep it there.
+
+1. **`server-only`.** These files import it, and a Client Component that reaches one of them fails `next build`:
+   - `packages/bff/src/index.ts`, the main entry of the bff, with the composition of the use cases and the handlers the apps import;
+   - `packages/auth/src/zoneHandlers.ts`, `zone.ts`, `zoneProxy.ts` and `ZoneSessionProvider.tsx`, the server files of `@bytebank/auth`.
+
+   Two entries are left out on purpose. `@bytebank/bff/client` runs in the browser. `@bytebank/infrastructure` is also used by Node scripts with no bundler, such as `db:reset:supabase`, where `server-only` would throw. Unit tests run in plain Node too, so `vitest.config.mts` points `server-only` to its empty module, the one the server build already uses.
+
+   Proof: with `import { createDataAdapters } from '@bytebank/bff'` in `CardNewTransaction.tsx`, a Client Component of the dashboard, the build failed with "You're importing a module that depends on "server-only"", and the trace `bff/src/index.ts [Client Component Browser]` ← `CardNewTransaction.tsx` ← `app/page.tsx`. The import was removed after the proof.
+
+2. **The layer rules** of `eslint.layers.mjs`: `store` and `design-system` may not import `@bytebank/infrastructure` nor `@bytebank/bff`, only `@bytebank/bff/client`. See `docs/conventions.md`.
+
+3. **No direct `fetch` to the bff in the components.** The shell has its own client, `createShellClient`, in `@bytebank/bff/client`, next to the client of the zones: registration, "Esqueci a senha", reset and the session policy. Its error carries the code of the bff and the status, with the same codes as the client of the zones (`UNKNOWN_ERROR` when the body cannot be read). The screens behave as before.
+
+### Secrets checked at start
+
+`NEXTAUTH_SECRET` signs and encrypts the sessions, and `ATTACHMENT_ENCRYPTION_KEY` encrypts the attachments. Before this step, an app started with the `replace-me` of `.env.example`, so a copied example gave a secret anyone can read on GitHub.
+
+Now one rule, `packages/utils/src/secrets.ts`, refuses a missing value, `replace-me`, or anything that is not base64 of 32 bytes or more, with the same message for each case:
+
+```
+Missing or invalid NEXTAUTH_SECRET. Generate 32 random bytes in base64, as in step 3 of the README
+```
+
+It runs in two places:
+
+- **Docker.** The `secrets-check` service of `docker-compose.yml` runs the rule with plain Node 22, which runs the TypeScript of `secrets.ts` as it is, with no network and no install. The apps depend on it with `service_completed_successfully`, so `docker compose up` stops before any app starts. A missing variable still stops earlier, at `${NEXTAUTH_SECRET:?...}`, now with the same message.
+- **Every start of a server**, in `instrumentation.ts` of each app: Docker, `npm run dev` and Vercel. Next only logs an error of `register()`, and then answers 500 to every request, so `exitUnlessSecrets` stops the Node process instead.
+
+Proofs:
+
+| Run | Result |
+|---|---|
+| `NEXTAUTH_SECRET=replace-me docker compose up -d` (the variable only in that command) | Exit 1: `service "secrets-check" didn't complete successfully`; its log has the message, and the three apps were not started |
+| `docker compose up -d` with the `.env` of this machine | `Secrets: ok`, and the shell answers 200 |
+| The standalone build of the shell with `NEXTAUTH_SECRET=replace-me` | The message, and the process ends with exit 1 |
+
+Before deploying this step, check that the secrets of the three Vercel projects are base64 of 32 bytes, as the checklist of `deploy.md` generates them. A shorter one now stops the functions.

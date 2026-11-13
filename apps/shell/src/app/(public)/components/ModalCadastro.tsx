@@ -1,12 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import { ShellApiError, createShellClient } from '@bytebank/bff/client'
 import { Button, Input, Checkbox, Modal, PasswordField } from '@bytebank/design-system'
 import { passwordErrorMessage } from '@bytebank/utils'
 
 interface ModalCadastroProps {
   isOpen: boolean
   onClose: () => void
+}
+
+const shell = createShellClient()
+const UNAVAILABLE = 'Não foi possível concluir agora. Tente novamente.'
+
+// What the screen says for each refusal. No answer at all (failure is null) is the generic one.
+function registrationMessage(failure: ShellApiError | null): string {
+  if (failure?.status === 400) return 'Verifique os dados.'
+  if (failure?.status === 422) return passwordErrorMessage(failure.code) ?? 'Verifique os dados.'
+  if (failure?.status === 429) return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
+  return UNAVAILABLE
 }
 
 export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
@@ -39,28 +51,12 @@ export function ModalCadastro({ isOpen, onClose }: ModalCadastroProps) {
     setTermsError('')
     setError('')
 
-    const response = await fetch('/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
-    }).catch(() => null)
-
-    if (response?.status === 400) {
-      setError('Verifique os dados.')
-      return
-    }
-    if (response?.status === 422) {
-      const code = await response.json().then((body: { error?: unknown }) => body.error, () => null)
-      if (code === 'PASSWORD_TOO_COMMON') setRefusedAsCommon(password)
-      setError(passwordErrorMessage(code) ?? 'Verifique os dados.')
-      return
-    }
-    if (response?.status === 429) {
-      setError('Muitas tentativas. Aguarde alguns minutos e tente novamente.')
-      return
-    }
-    if (!response?.ok) {
-      setError('Não foi possível concluir agora. Tente novamente.')
+    try {
+      await shell.register({ name, email, password })
+    } catch (caught) {
+      const failure = caught instanceof ShellApiError ? caught : null
+      if (failure?.status === 422 && failure.code === 'PASSWORD_TOO_COMMON') setRefusedAsCommon(password)
+      setError(registrationMessage(failure))
       return
     }
     setPassword('')

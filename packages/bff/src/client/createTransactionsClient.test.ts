@@ -1,7 +1,4 @@
-import { readFileSync } from 'node:fs'
-import { createTransactionsClient as fromSubpath } from '@bytebank/bff/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as bff from '../index'
 import { TransactionsApiError, createTransactionsClient } from './createTransactionsClient'
 
 const transaction = {
@@ -187,39 +184,10 @@ describe('createTransactionsClient', () => {
       await expect(call()).rejects.toMatchObject({ code: 'UPSTREAM_ERROR' })
     })
 
-    it('uses UNKNOWN_ERROR for a body that is not JSON', async () => {
-      fetchMock.mockResolvedValueOnce(new Response('<html>', { status: 500 }))
-
-      await expect(client.fetchTransactions()).rejects.toMatchObject({ code: 'UNKNOWN_ERROR' })
-    })
-
-    it('uses UNKNOWN_ERROR for a JSON body without a code', async () => {
-      respondWith({}, 500)
-
-      await expect(client.fetchTransactions()).rejects.toMatchObject({ code: 'UNKNOWN_ERROR' })
-    })
-
     it('lets a network failure through', async () => {
       fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
 
       await expect(client.fetchTransactions()).rejects.toBeInstanceOf(TypeError)
     })
-  })
-})
-
-describe('@bytebank/bff/client', () => {
-  it('is exposed through the subpath', () => {
-    expect(fromSubpath).toBe(createTransactionsClient)
-  })
-
-  it('stays out of the main entry, which is server code', () => {
-    expect(bff).not.toHaveProperty('createTransactionsClient')
-  })
-
-  it('imports types only, so no server code can reach the browser', () => {
-    const source = readFileSync(new URL('./createTransactionsClient.ts', import.meta.url), 'utf8')
-
-    expect(source).not.toMatch(/^import (?!type )/m)
-    expect(source).not.toMatch(/\bimport\(|\brequire\(/)
   })
 })

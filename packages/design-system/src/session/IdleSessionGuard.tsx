@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { createShellClient, type SessionPolicyDTO } from '@bytebank/bff/client'
 import { SESSION_POLICY } from '@bytebank/utils'
 import { Button } from '../Button'
 import { Modal } from '../Modal'
@@ -9,10 +10,17 @@ import { createIdleMonitor, type IdleMonitor } from './idleMonitor'
 import { createStorageIdleChannel } from './storageIdleChannel'
 import { readSession, signOutCompletely } from './zoneSession'
 
-interface IdlePolicy {
-  idleTimeoutSeconds: number
-  idleWarningSeconds: number
-  updateAgeSeconds: number
+// What the guard needs from outside. The defaults talk to the shell and to Auth.js; a story
+// gives its own, so it runs with short times and no network.
+export interface IdleSessionServices {
+  loadPolicy: () => Promise<SessionPolicyDTO>
+  // Reading the session renews it. The API routes do not, so a long stay on one screen would expire.
+  renew: () => void
+  expire: () => void
+}
+
+interface IdleSessionGuardProps {
+  services?: IdleSessionServices
 }
 
 const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'wheel', 'scroll'] as const
@@ -20,21 +28,20 @@ const ACTIVITY_EVENTS = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'whe
 const ANNOUNCED_SECONDS = [30, 10]
 const DESCRIPTION_ID = 'idle-warning-description'
 
-async function loadPolicy(): Promise<IdlePolicy> {
-  try {
-    // On the shell, the same origin as the zones: read at run time, so it needs no rebuild
-    const response = await fetch('/api/session-policy')
-    if (response.ok) return (await response.json()) as IdlePolicy
-  } catch {
-    // Falls back to the defaults below
-  }
-  return SESSION_POLICY
-}
+const shell = createShellClient()
 
 async function endSession(): Promise<void> {
   await signOutCompletely().catch(() => undefined)
   // A full load: the login is in the shell, outside the zones
   window.location.assign('/?reason=idle')
+}
+
+const BROWSER_SERVICES: IdleSessionServices = {
+  // On the shell, the same origin as the zones: read at run time, so it needs no rebuild.
+  // With no answer, the defaults of the code.
+  loadPolicy: () => shell.fetchSessionPolicy().catch(() => SESSION_POLICY),
+  renew: () => void readSession().catch(() => undefined),
+  expire: () => void endSession(),
 }
 
 function announcementFor(remainingSeconds: number, warningSeconds: number): string {
@@ -44,7 +51,7 @@ function announcementFor(remainingSeconds: number, warningSeconds: number): stri
   return moment ? `Restam ${moment} segundos.` : ''
 }
 
-export function IdleSessionGuard() {
+export function IdleSessionGuard({ services = BROWSER_SERVICES }: IdleSessionGuardProps) {
   const { status } = useSession()
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null)
   const [warningSeconds, setWarningSeconds] = useState<number>(SESSION_POLICY.idleWarningSeconds)
@@ -55,7 +62,7 @@ export function IdleSessionGuard() {
     let cancelled = false
     let cleanup = () => {}
 
-    void loadPolicy().then(policy => {
+    void services.loadPolicy().then(policy => {
       if (cancelled) return
       setWarningSeconds(policy.idleWarningSeconds)
 
@@ -65,9 +72,8 @@ export function IdleSessionGuard() {
         renewEveryMs: policy.updateAgeSeconds * 1_000,
         channel: createStorageIdleChannel(),
         onChange: state => setRemainingSeconds(state.phase === 'warning' ? state.remainingSeconds : null),
-        onExpire: () => void endSession(),
-        // Reading the session renews it. The API routes do not, so a long stay on one screen would expire.
-        onRenew: () => void readSession().catch(() => undefined),
+        onExpire: services.expire,
+        onRenew: services.renew,
       })
       const handleActivity = () => monitor.recordActivity()
       const options = { capture: true, passive: true }
@@ -85,7 +91,7 @@ export function IdleSessionGuard() {
       cancelled = true
       cleanup()
     }
-  }, [status])
+  }, [status, services])
 
   const stayConnected = () => monitorRef.current?.stayConnected()
 

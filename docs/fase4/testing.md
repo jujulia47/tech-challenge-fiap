@@ -58,10 +58,10 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 
 | Package | Test files | Tests | Kind |
 |---|---|---|---|
-| `packages/utils` | 14 | 186 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
+| `packages/utils` | 15 | 203 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
 | `packages/core` | 22 | 325 | Specification |
 | `packages/infrastructure` | 23 | 318 | Specification (unit, CLI, integration and timeout against real servers) |
-| `packages/bff` | 17 | 459 | Specification (handlers with real `Request` objects, and end to end) |
+| `packages/bff` | 20 | 477 | Specification (handlers with real `Request` objects, and end to end) |
 | `packages/design-system` | 11 | 109 | Specification (static rendering of `ProfileMenu`, `TransactionItem`, `MountOnceOpen` and the password fields, the rule of `moveFocusInto`, the order of the session writes, and the strength estimate) |
 | `packages/store` | 3 | 41 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
 | `packages/auth` | 2 | 11 | Specification (the session config shared by the shell and the zones: secret, policy, the shape of the token and the refresh of the name; and the props of the session provider of the zones) |
@@ -101,7 +101,10 @@ Use cases run against `InMemoryTransactionRepository`, `FixedClock` and `Sequent
 | `composition/createUseCases.test.ts` | 3 | The composition of the use cases |
 | `composition/createJsonServerUseCases.e2e.test.ts` | 23 | Handlers, use cases and adapters against the installed json-server |
 | `env.test.ts` | 20 | Required variables and the parsing of `ALLOWED_ORIGINS` |
-| `client/createTransactionsClient.test.ts` | 31 | URLs, methods and bodies with a simulated `fetch`, 401, errors, and that the client imports types only |
+| `client/createTransactionsClient.test.ts` | 28 | URLs, methods and bodies with a simulated `fetch`, 401 and errors |
+| `client/createShellClient.test.ts` | 11 | The routes of the shell with a simulated `fetch`: bodies, the code and status of a refusal, `UNKNOWN_ERROR`, no answer, and no redirect |
+| `client/http.test.ts` | 4 | The code of an error, `UNKNOWN_ERROR`, and that the shared file has no imports |
+| `client/index.test.ts` | 8 | Both clients through `@bytebank/bff/client`, out of the main entry, with imports of types or of their own folder only, and no `server-only` |
 | `index.test.ts` | 3 | Public API surface and the `@bytebank/bff/limits` subpath |
 
 The end-to-end test reuses the structure of the integration test: a temporary copy of `e2e-db.json`, a free port, and the server stopped in `afterAll`. It adds what only the whole chain shows: the id assigned by the server, the attachment removed from the stored record, an attachment at the 70 KB limit reaching json-server through POST and PATCH, corrupted records, the backend down (a port with no server) and a server that never answers giving 502 without details, and the error code and record id reaching the logger only. See `bff.md`.
@@ -232,9 +235,42 @@ Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMon
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 92 test files, 1449 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
+Result: 96 test files, 1484 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
 
 The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
+
+## Storybook: stories and interaction tests
+
+Every component of the design system has a story, in `apps/shell/src/components/ui/`. Each one shows the main states with props and decorators only: no real data and no request. The Storybook tests render every story in a real browser, and run the `play` function of those that have one.
+
+| | Before the final step | After |
+|---|---|---|
+| Components of the design system with a story | 13 | 21 |
+| Stories (each one is a test) | 57 | 76 |
+| Interaction tests (`play`) | 3 | 14 |
+
+The 8 new ones: `ModalEditTransaction`, `ModalTransactionDetail`, `NotFoundMessage`, `MenuDrawer`, `MenuSidebar`, `MenuTabs`, `IdleSessionGuard` and `ChunkBoundary`.
+
+What the interaction tests prove:
+
+| Story | Behavior |
+|---|---|
+| `PasswordInput / Toggle` | The button shows and hides the password, with `aria-pressed` |
+| `MenuDrawer / OpenAndCloseWithEscape` | Opens, takes the focus, marks the current page, closes with Escape and gives the focus back |
+| `MenuSidebar`, `MenuTabs` (2 each) | The item of the current page is highlighted, and only it |
+| `ModalTransactionDetail / EscapeGivesTheFocusBack` | Escape closes the modal and the focus goes back to the button that opened it |
+| `ModalEditTransaction` (3) | Saving calls `onSave` with the form and closes; a failed save keeps the modal open with the message; Escape gives the focus back |
+| `IdleSessionGuard / WarningAndContinue` | The warning comes with the countdown and the focus on its button; "Continuar conectado" closes it and renews the session, without ending it |
+| `ChunkBoundary / FailedAndRetry` | A part that failed shows the alert, the rest of the page stays, and "Tentar novamente" calls the retry |
+| `Header / MobileMenuOpen`, `Select / Open` | Open the menu and the list |
+
+How the stories avoid the network:
+
+- `storySession.tsx` gives the components that read the session a made-up one, through `SessionProvider` with no refetch. Before it, the two tests of `Header` failed with "`useSession` must be wrapped in a `<SessionProvider />`".
+- `IdleSessionGuard` takes an optional `services` prop (policy, renewal, expiry). The app uses the defaults, the client of the shell and Auth.js; the story gives a policy with the warning after 2 s and spies for the renewal and the expiry, so it never logs out or navigates.
+- The tests check that a modal is in the document, not `toBeVisible`: the modal of daisyUI fades in from opacity 0.
+
+Run them from `apps/shell` with `npx vitest run --project storybook`. They need the Chromium of Playwright (`npx playwright install chromium`). On a machine without it, they run on the installed Chrome with a copy of `vitest.config.ts` whose provider is `playwright({ launchOptions: { channel: 'chrome' } })`, which is how they were run here: 23 files, 76 tests, all passing.
 
 ## Browser regression: the session race
 

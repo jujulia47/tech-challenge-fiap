@@ -182,7 +182,7 @@ Pure functions over `Transaction[]`, in `domain/transaction/aggregations.ts`. Th
 
 ## Tests and coverage
 
-1449 tests pass in total: 186 in `packages/utils`, 325 in `packages/core`, 318 in `packages/infrastructure`, 459 in `packages/bff`, 41 in `packages/store`, 109 in `packages/design-system` and 11 in `packages/auth`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
+1484 tests pass in total: 203 in `packages/utils`, 325 in `packages/core`, 318 in `packages/infrastructure`, 477 in `packages/bff`, 41 in `packages/store`, 109 in `packages/design-system` and 11 in `packages/auth`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
 
 ## Step 7b: rules that left the screens, and the account
 

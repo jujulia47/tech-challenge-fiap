@@ -1,3 +1,7 @@
+// The server entry of the bff: composition and handlers. A client component that imports it fails
+// the build. The browser uses @bytebank/bff/client, which has no such import.
+import 'server-only'
+
 export { createUseCases } from './composition/createUseCases'
 export type { UseCaseDependencies, UseCases } from './composition/createUseCases'
 export { createJsonServerUseCases, createStoredUseCases } from './composition/createJsonServerUseCases'

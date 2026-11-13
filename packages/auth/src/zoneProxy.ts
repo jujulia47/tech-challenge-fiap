@@ -1,3 +1,4 @@
+import 'server-only'
 import { requireEnv } from '@bytebank/bff/env'
 import { withContentSecurityPolicy } from '@bytebank/utils'
 import { NextResponse } from 'next/server'
