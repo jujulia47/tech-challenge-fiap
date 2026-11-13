@@ -25,6 +25,7 @@ describe('@bytebank/infrastructure public API', () => {
       'SupabaseTransactionStatistics',
       'SupabaseUserRepository',
       'createSupabaseDatabase',
+      'deriveRateLimitKey',
       'migrateTransactions',
       'parseTransactionRecord',
       'recordFromPrimitives',

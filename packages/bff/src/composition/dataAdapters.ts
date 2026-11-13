@@ -17,6 +17,7 @@ import {
   SupabaseTransactionStatistics,
   SupabaseUserRepository,
   createSupabaseDatabase,
+  deriveRateLimitKey,
 } from '@bytebank/infrastructure'
 
 export type DataBackend = 'json-server' | 'supabase'
@@ -70,7 +71,9 @@ export function createJsonServerAdapters(baseUrl: string): DataAdapters {
   }
 }
 
-export function createSupabaseAdapters(url: string, secretKey: string): DataAdapters {
+// rateLimitSecret is the HMAC key of the counters in Postgres, derived from NEXTAUTH_SECRET by
+// createDataAdapters: no new variable, and never the key of the sessions itself
+export function createSupabaseAdapters(url: string, secretKey: string, rateLimitSecret: Uint8Array): DataAdapters {
   const database = createSupabaseDatabase(url, secretKey)
   return {
     backend: 'supabase',
@@ -78,7 +81,7 @@ export function createSupabaseAdapters(url: string, secretKey: string): DataAdap
     transactions: new SupabaseTransactionRepository(database),
     resetTokens: new SupabasePasswordResetTokenRepository(database),
     statistics: new SupabaseTransactionStatistics(database),
-    rateLimiter: (namespace, options) => new PostgresRateLimiter(database, { namespace, ...options }),
+    rateLimiter: (namespace, options) => new PostgresRateLimiter(database, { namespace, ...options, keySecret: rateLimitSecret }),
   }
 }
 
@@ -87,7 +90,11 @@ export function createSupabaseAdapters(url: string, secretKey: string): DataAdap
 export function createDataAdapters(env: Env = process.env): DataAdapters {
   if (readDataBackend(env) === 'supabase') {
     const reason = 'DATA_BACKEND is supabase'
-    return createSupabaseAdapters(required(env, 'SUPABASE_URL', reason), required(env, 'SUPABASE_SECRET_KEY', reason))
+    return createSupabaseAdapters(
+      required(env, 'SUPABASE_URL', reason),
+      required(env, 'SUPABASE_SECRET_KEY', reason),
+      deriveRateLimitKey(required(env, 'NEXTAUTH_SECRET', 'the keys of the rate limits')),
+    )
   }
   return createJsonServerAdapters(required(env, 'JSON_SERVER_URL', 'DATA_BACKEND is json-server'))
 }

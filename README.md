@@ -201,9 +201,9 @@ Acesse http://localhost:3000. Sem o Mailpit, deixe `SMTP_HOST` de fora: o envio 
 
 | Comando | O que faz |
 |---|---|
-| `npm test` | Os testes unitários e de integração dos packages: 1484 testes, em cerca de 10 s |
+| `npm test` | Os testes unitários e de integração dos packages: 1492 testes, em cerca de 10 s |
 | `npm run test:coverage` | Os mesmos, com a cobertura (v8) |
-| `cd apps/shell && npx vitest run --project storybook` | As 76 stories do design system num navegador real, com 14 testes de interação. Precisa do Chromium do Playwright (`npx playwright install chromium`) |
+| `cd apps/shell && npx vitest run --project storybook` | As 77 stories do design system num navegador real, com 15 testes de interação. Precisa do Chromium do Playwright (`npx playwright install chromium`) |
 | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | A suíte de contrato contra um projeto Supabase real, com `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env`. Desligada por padrão, e fora do CI |
 | `npm run test:session-race` | O teste de regressão da corrida de sessão, num navegador real, contra o app rodando (abaixo) |
 

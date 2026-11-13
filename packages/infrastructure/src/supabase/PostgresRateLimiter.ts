@@ -1,12 +1,14 @@
-import { createHash } from 'node:crypto'
 import type { RateLimiter, RateLimitResult } from '@bytebank/core'
 import { databaseError, invalidResponse, type SupabaseDatabase } from './database'
+import { rateLimitStorageKey } from './rateLimitKey'
 
 export interface PostgresRateLimiterOptions {
   // Separates the counters of different limits that may see the same key
   namespace: string
   maxHits: number
   windowMs: number
+  // The HMAC key of the stored keys, from deriveRateLimitKey: the composition of the bff gives it
+  keySecret: Uint8Array
 }
 
 interface ConsumeRow {
@@ -26,14 +28,16 @@ export class PostgresRateLimiter implements RateLimiter {
   private readonly namespace: string
   private readonly maxHits: number
   private readonly windowMs: number
+  private readonly keySecret: Uint8Array
 
   constructor(
     private readonly database: SupabaseDatabase,
-    { namespace, maxHits, windowMs }: PostgresRateLimiterOptions,
+    { namespace, maxHits, windowMs, keySecret }: PostgresRateLimiterOptions,
   ) {
     this.namespace = namespace
     this.maxHits = maxHits
     this.windowMs = windowMs
+    this.keySecret = keySecret
   }
 
   async consume(key: string): Promise<RateLimitResult> {
@@ -58,8 +62,8 @@ export class PostgresRateLimiter implements RateLimiter {
     if (error) throw databaseError('reset rate limit', error, status)
   }
 
-  // A hash, so no email or IP is stored in the table
+  // An HMAC, so no email or IP is stored in the table, and none can be found back without the key
   storedKey(key: string): string {
-    return createHash('sha256').update(`${this.namespace}:${key}`).digest('hex')
+    return rateLimitStorageKey(this.keySecret, this.namespace, key)
   }
 }

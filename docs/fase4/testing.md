@@ -60,8 +60,8 @@ Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vit
 |---|---|---|---|
 | `packages/utils` | 15 | 203 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
 | `packages/core` | 22 | 325 | Specification |
-| `packages/infrastructure` | 23 | 318 | Specification (unit, CLI, integration and timeout against real servers) |
-| `packages/bff` | 20 | 477 | Specification (handlers with real `Request` objects, and end to end) |
+| `packages/infrastructure` | 24 | 324 | Specification (unit, CLI, integration and timeout against real servers) |
+| `packages/bff` | 20 | 479 | Specification (handlers with real `Request` objects, and end to end) |
 | `packages/design-system` | 11 | 109 | Specification (static rendering of `ProfileMenu`, `TransactionItem`, `MountOnceOpen` and the password fields, the rule of `moveFocusInto`, the order of the session writes, and the strength estimate) |
 | `packages/store` | 3 | 41 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
 | `packages/auth` | 2 | 11 | Specification (the session config shared by the shell and the zones: secret, policy, the shape of the token and the refresh of the name; and the props of the session provider of the zones) |
@@ -235,7 +235,7 @@ Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMon
 
 Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
 
-Result: 96 test files, 1484 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
+Result: 97 test files, 1492 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
 
 The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
 
@@ -245,9 +245,9 @@ Every component of the design system has a story, in `apps/shell/src/components/
 
 | | Before the final step | After |
 |---|---|---|
-| Components of the design system with a story | 13 | 21 |
-| Stories (each one is a test) | 57 | 76 |
-| Interaction tests (`play`) | 3 | 14 |
+| Components of the design system with a story | 13 | 22 |
+| Stories (each one is a test) | 57 | 77 |
+| Interaction tests (`play`) | 3 | 15 |
 
 The 8 new ones: `ModalEditTransaction`, `ModalTransactionDetail`, `NotFoundMessage`, `MenuDrawer`, `MenuSidebar`, `MenuTabs`, `IdleSessionGuard` and `ChunkBoundary`.
 
@@ -263,6 +263,7 @@ What the interaction tests prove:
 | `IdleSessionGuard / WarningAndContinue` | The warning comes with the countdown and the focus on its button; "Continuar conectado" closes it and renews the session, without ending it |
 | `ChunkBoundary / FailedAndRetry` | A part that failed shows the alert, the rest of the page stays, and "Tentar novamente" calls the retry |
 | `Header / MobileMenuOpen`, `Select / Open` | Open the menu and the list |
+| `TransactionActions / List` | Every item of the list gets the three actions from the component |
 
 How the stories avoid the network:
 
@@ -270,7 +271,9 @@ How the stories avoid the network:
 - `IdleSessionGuard` takes an optional `services` prop (policy, renewal, expiry). The app uses the defaults, the client of the shell and Auth.js; the story gives a policy with the warning after 2 s and spies for the renewal and the expiry, so it never logs out or navigates.
 - The tests check that a modal is in the document, not `toBeVisible`: the modal of daisyUI fades in from opacity 0.
 
-Run them from `apps/shell` with `npx vitest run --project storybook`. They need the Chromium of Playwright (`npx playwright install chromium`). On a machine without it, they run on the installed Chrome with a copy of `vitest.config.ts` whose provider is `playwright({ launchOptions: { channel: 'chrome' } })`, which is how they were run here: 23 files, 76 tests, all passing.
+**Known limit: the lazy modals do not load in Storybook.** `lazyModal` and `lazyPart` of the design system use `next/dynamic`, and under the Vite builder of Storybook the component never arrives: React gets `undefined` and the boundary shows "Não foi possível carregar esta parte". Called from a story, `next/dynamic` works, with an inline component and with a component of the package; called from `lazy.tsx`, the same chunk fails. A loader in the shape `{ default }`, and an inline arrow, did not change it, and there is a single copy of `next`. The cause was not found, and the code of production was left as it is: the app loads these modals, in both zones, as the browser checks of each step show. So `TransactionActions` (step after the review) has a story of its list only, and opening, saving and deleting are tested in the browser, in Docker, in both zones.
+
+Run them from `apps/shell` with `npx vitest run --project storybook`. They need the Chromium of Playwright (`npx playwright install chromium`). On a machine without it, they run on the installed Chrome with a copy of `vitest.config.ts` whose provider is `playwright({ launchOptions: { channel: 'chrome' } })`, which is how they were run here: 24 files, 77 tests, all passing.
 
 ## Browser regression: the session race
 

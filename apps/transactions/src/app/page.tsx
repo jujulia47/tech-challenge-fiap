@@ -1,26 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useDeleteTransactionMutation, useGetTransactionsQuery, useUpdateTransactionMutation } from '@/store/transactionsApi'
 import { useStatementSearch } from '@/hooks/use-statement-search'
-import {
-  LazyModalConfirmDelete,
-  LazyModalEditTransaction,
-  LazyModalTransactionDetail,
-  Select,
-  Toast,
-  preloadActionModal,
-  useToast,
-} from '@bytebank/design-system'
+import { Select, TransactionActions } from '@bytebank/design-system'
 import { StatementResults } from '@/components/dashboard/StatementResults'
 import { PaginationControls } from '@/components/PaginationControls'
-import type { TransactionDTO } from '@bytebank/core'
-import {
-  TRANSACTION_TYPE_LABELS,
-  TRANSACTION_TYPE_OPTIONS,
-  formatMonthKey,
-  groupDtosByMonth,
-} from '@bytebank/utils'
+import { TRANSACTION_TYPE_OPTIONS, formatMonthKey, groupDtosByMonth } from '@bytebank/utils'
 
 const PAGE_SIZE = 5
 
@@ -32,10 +18,6 @@ export default function StatementPage() {
   const [deleteTransaction] = useDeleteTransactionMutation()
   const [updateTransaction] = useUpdateTransactionMutation()
   const transactions = useMemo(() => data ?? [], [data])
-  const { toast, showToast } = useToast()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editingTx, setEditingTx] = useState<TransactionDTO | null>(null)
-  const [detailTx, setDetailTx] = useState<TransactionDTO | null>(null)
   const { text, filters, results, page, changeText, changeFilters, changePage } = useStatementSearch(transactions)
 
   const monthOptions = useMemo(() => {
@@ -51,126 +33,98 @@ export default function StatementPage() {
   const currentPage = Math.min(page, Math.max(totalPages, 1))
   const paginated = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
   const paginatedGroups = groupDtosByMonth(paginated)
-  const deletingTx = transactions.find(t => t.id === deletingId)
-
-  async function handleDeleteConfirm() {
-    try {
-      await deleteTransaction(deletingId!).unwrap()
-      showToast('Transação excluída com sucesso', 'success')
-    } catch {
-      showToast('Erro ao excluir transação', 'error')
-    } finally {
-      setDeletingId(null)
-    }
-  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <nav aria-label="breadcrumb">
-        <ol className="flex items-center gap-2">
-          <li>
-            <a href="/dashboard" className="inline-flex items-center min-h-6 text-body text-text-secondary hover:text-text-primary transition-colors">
-              Início
-            </a>
-          </li>
-          <li aria-hidden="true">
-            <span className="text-body text-text-secondary">/</span>
-          </li>
-          <li>
-            <span className="text-body text-text-primary">Extrato completo</span>
-          </li>
-        </ol>
-      </nav>
+    <TransactionActions
+      transactions={transactions}
+      remove={id => deleteTransaction(id).unwrap()}
+      save={(id, changes) => updateTransaction({ id, changes }).unwrap()}
+    >
+      {({ actions }) => (
+        <div className="flex flex-col gap-6">
+          <nav aria-label="Navegação estrutural">
+            <ol className="flex items-center gap-2">
+              <li>
+                <a href="/dashboard" className="inline-flex items-center min-h-6 text-body text-text-secondary hover:text-text-primary transition-colors">
+                  Início
+                </a>
+              </li>
+              <li aria-hidden="true">
+                <span className="text-body text-text-secondary">/</span>
+              </li>
+              <li>
+                <span className="text-body text-text-primary">Extrato completo</span>
+              </li>
+            </ol>
+          </nav>
 
-      <h1 className="text-heading font-bold text-text-primary">
-        Extrato completo
-      </h1>
+          <h1 className="text-heading font-bold text-text-primary">
+            Extrato completo
+          </h1>
 
-      <div className="flex flex-col md:flex-row gap-4 items-end">
-        <div className="flex flex-col gap-1 w-full md:w-select-md">
-          <label className="text-body-semibold text-text-primary">Buscar</label>
-          <div className="relative">
-            <span
-              className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-icon-xs text-text-secondary pointer-events-none"
-              aria-hidden="true"
-            >
-              search
-            </span>
-            <input
-              type="search"
-              placeholder="Buscar transação..."
-              value={text}
-              onChange={e => changeText(e.target.value)}
-              aria-label="Buscar transações"
-              className="h-12 w-full pl-10 pr-4 rounded-md border border-primary-900 bg-inverse text-body text-primary-800 focus:border-2 focus:border-primary-800 focus:outline-none"
+          <div className="flex flex-col md:flex-row gap-4 items-end">
+            <div className="flex flex-col gap-1 w-full md:w-select-md">
+              <label htmlFor="statement-search" className="text-body-semibold text-text-primary">Buscar</label>
+              <div className="relative">
+                <span
+                  className="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-icon-xs text-text-secondary pointer-events-none"
+                  aria-hidden="true"
+                >
+                  search
+                </span>
+                <input
+                  id="statement-search"
+                  type="search"
+                  placeholder="Buscar transação..."
+                  value={text}
+                  onChange={e => changeText(e.target.value)}
+                  aria-label="Buscar transações"
+                  className="h-12 w-full pl-10 pr-4 rounded-md border border-primary-900 bg-inverse text-body text-primary-800 focus:border-2 focus:border-primary-800 focus:outline-none"
+                />
+              </div>
+            </div>
+            <div className="w-full md:w-select-md">
+              <Select
+                label="Tipo de transação"
+                placeholder="Todos os tipos"
+                options={[{ value: '', label: 'Todos os tipos' }, ...TRANSACTION_TYPE_OPTIONS]}
+                value={filters.type}
+                onChange={type => changeFilters({ type })}
+              />
+            </div>
+            <div className="w-full md:w-select-md">
+              <Select
+                label="Mês"
+                placeholder="Todos os meses"
+                options={monthOptions}
+                value={filters.month}
+                onChange={month => changeFilters({ month })}
+              />
+            </div>
+          </div>
+
+          <div aria-live="polite" aria-atomic="true" className="sr-only">
+            {!isLoading && resultsMessage(results.length)}
+          </div>
+
+          <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6 min-h-[400px]">
+            <StatementResults
+              groups={paginatedGroups}
+              loading={isLoading}
+              loadFailed={isError}
+              {...actions}
             />
           </div>
-        </div>
-        <div className="w-full md:w-select-md">
-          <Select
-            label="Tipo de transação"
-            placeholder="Todos os tipos"
-            options={[{ value: '', label: 'Todos os tipos' }, ...TRANSACTION_TYPE_OPTIONS]}
-            value={filters.type}
-            onChange={type => changeFilters({ type })}
+
+          <PaginationControls
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={results.length}
+            pageSize={PAGE_SIZE}
+            onPageChange={changePage}
           />
         </div>
-        <div className="w-full md:w-select-md">
-          <Select
-            label="Mês"
-            placeholder="Todos os meses"
-            options={monthOptions}
-            value={filters.month}
-            onChange={month => changeFilters({ month })}
-          />
-        </div>
-      </div>
-
-      <div aria-live="polite" aria-atomic="true" className="sr-only">
-        {!isLoading && resultsMessage(results.length)}
-      </div>
-
-      <div className="bg-surface-card rounded-md px-6 py-8 flex flex-col gap-6 min-h-[400px]">
-        <StatementResults
-          groups={paginatedGroups}
-          loading={isLoading}
-          loadFailed={isError}
-          onDetail={(id) => setDetailTx(transactions.find(t => t.id === id) ?? null)}
-          onEdit={(id) => setEditingTx(transactions.find(t => t.id === id) ?? null)}
-          onDelete={setDeletingId}
-          onActionIntent={preloadActionModal}
-        />
-      </div>
-
-      <PaginationControls
-        page={currentPage}
-        totalPages={totalPages}
-        totalItems={results.length}
-        pageSize={PAGE_SIZE}
-        onPageChange={changePage}
-      />
-
-      <LazyModalTransactionDetail
-        transaction={detailTx}
-        onClose={() => setDetailTx(null)}
-      />
-
-      <LazyModalConfirmDelete
-        isOpen={!!deletingId}
-        onClose={() => setDeletingId(null)}
-        onConfirm={handleDeleteConfirm}
-        transactionLabel={deletingTx && TRANSACTION_TYPE_LABELS[deletingTx.type]}
-      />
-
-      <LazyModalEditTransaction
-        transaction={editingTx}
-        onSave={(id, changes) => updateTransaction({ id, changes }).unwrap()}
-        onClose={() => setEditingTx(null)}
-        onSuccess={() => showToast('Transação editada com sucesso', 'success')}
-        onError={(message) => showToast(message, 'error')}
-      />
-
-      <Toast message={toast.message} type={toast.type} visible={toast.visible} />
-    </div>
+      )}
+    </TransactionActions>
   )
 }

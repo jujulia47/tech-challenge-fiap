@@ -25,7 +25,7 @@ The migration is `supabase/migrations/0001_init.sql`.
 | `users` | `id`, `name`, `email`, `password_hash` | Unique email in any case (`lower(email)`). Name from 1 to 100 characters, as in the domain. |
 | `transactions` | `id`, `user_id`, `type`, `amount_in_cents`, `date`, `attachment` | `user_id` references `users` with `on delete cascade`. `type` is one of the 7 codes. Amount is a positive integer. Index on `(user_id, date desc)`. |
 | `password_reset_tokens` | `id`, `user_id`, `token_hash`, `expires_at`, `used_at` | Only the hash of the token. |
-| `rate_limits` | `key`, `window_start`, `hits` | One counter per key and window. The key is a SHA-256 made by the server, so no email or IP is stored. |
+| `rate_limits` | `key`, `window_start`, `hits` | One counter per key and window. The key is an HMAC-SHA-256 made by the server with a key derived from `NEXTAUTH_SECRET`, so no email or IP is stored, and none can be found back without that key (`security.md`, "Keys of the rate limits"). |
 
 The ids are text, because the domain makes them (`CryptoIdGenerator`) and the seed uses `"1"` and `"2"`. The attachment column holds the value encrypted by the server (`aes256gcm$v1$...`), never the file.
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { MAX_ATTACHMENT_BYTES } from '@bytebank/bff/limits'
-import { Button, Input, Select, useCurrencyInput } from '@bytebank/design-system'
+import { Button, Input, Select, useCurrencyInput, useFileAttachment } from '@bytebank/design-system'
 import { useCreateTransactionMutation } from '@/store/transactionsApi'
 import {
   ApplicationError,
@@ -37,27 +37,18 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
   const [type, setType] = useState('')
   const [date, setDate] = useState(today)
   const { digits, formatted, handleChange, setDigits } = useCurrencyInput()
-  const [attachment, setAttachment] = useState<string | undefined>(undefined)
-  const [attachmentName, setAttachmentName] = useState<string>('')
-  const [errors, setErrors] = useState<{ type?: string; amount?: string; date?: string; attachment?: string }>({})
+  // Apart, not as one object: the lint of React refuses to read an object that holds a ref
+  const { dataUrl, name: attachmentName, error: attachmentError, inputRef: fileInput, choose, clear: clearAttachment } =
+    useFileAttachment(MAX_ATTACHMENT_BYTES)
+  const [errors, setErrors] = useState<{ type?: string; amount?: string; date?: string }>({})
 
   const amountInCents = parseInt(digits, 10)
   const suggestion = type ? null : suggestTransactionType(amountInCents)
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > MAX_ATTACHMENT_BYTES) {
-      setErrors(prev => ({ ...prev, attachment: `Arquivo deve ter no máximo ${MAX_ATTACHMENT_BYTES / 1024}KB` }))
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
-      setAttachment(reader.result as string)
-      setAttachmentName(file.name)
-      setErrors(prev => ({ ...prev, attachment: '' }))
-    }
-    reader.readAsDataURL(file)
+  // The button goes away with the file: the focus returns to the field, not to the page
+  function removeAttachment() {
+    clearAttachment()
+    fileInput.current?.focus()
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -72,13 +63,12 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
     }
     setErrors({})
     try {
-      await createTransaction({ type, amountInCents, date, attachment }).unwrap()
+      await createTransaction({ type, amountInCents, date, attachment: dataUrl }).unwrap()
       setDigits('0')
       setType('')
       setDate(today())
       setErrors({})
-      setAttachment(undefined)
-      setAttachmentName('')
+      clearAttachment()
       onSuccess?.('Transação adicionada com sucesso')
     } catch {
       onError?.('Erro ao adicionar transação')
@@ -144,23 +134,32 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
               {attachmentName || 'Selecionar arquivo'}
             </span>
             <input
+              ref={fileInput}
               id="attachment-input"
               type="file"
               accept="image/png,image/jpeg,image/webp,application/pdf"
-              onChange={handleFileChange}
+              onChange={choose}
               className="sr-only"
             />
           </label>
-          {attachmentName && attachment?.startsWith('data:image') && (
+          {attachmentName && dataUrl?.startsWith('data:image') && (
             // eslint-disable-next-line @next/next/no-img-element -- attachment is a base64 data URL; next/image does not optimize data URLs
             <img
-              src={attachment}
+              src={dataUrl}
               alt="Preview do anexo"
               className="mt-2 rounded-md max-h-32 object-contain border border-primary-900"
             />
           )}
-          {errors.attachment && (
-            <span role="alert" aria-live="polite" className="text-meta text-error">{errors.attachment}</span>
+          {attachmentName && (
+            <button type="button" onClick={removeAttachment} aria-label={`Remover anexo ${attachmentName}`}
+              className="flex items-center gap-1 self-start min-h-6 text-meta text-error underline hover:no-underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
+            >
+              <span className="material-icons text-icon-xs" aria-hidden="true">close</span>
+              Remover anexo
+            </button>
+          )}
+          {attachmentError && (
+            <span role="alert" aria-live="polite" className="text-meta text-error">{attachmentError}</span>
           )}
         </div>
 

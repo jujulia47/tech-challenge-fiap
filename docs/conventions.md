@@ -42,7 +42,7 @@ The apps are thin: routes, pages, layouts and the assembly of the pieces. No fil
 | A UI component or hook, the header and the menus (items by prop) | `@bytebank/design-system` |
 | A pure helper shared by several packages | `@bytebank/utils` |
 
-A new UI component is created in the design system, never in an app.
+A new UI component is created in the design system, never in an app. The same goes for a block of screen behavior that two zones share, such as the actions of a transaction with their modals and toast (`TransactionActions`): it is a design system component, which takes the data of the zone by props, such as the mutations of its store, and gives the page what it needs by a render prop. The design system never imports the store.
 
 ## Imports
 

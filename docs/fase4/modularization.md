@@ -216,12 +216,13 @@ The apps only keep routes, pages, layouts and the wiring of the pieces. A differ
 | `lib/auth.ts` | dashboard, transactions | `@bytebank/auth/zone`: the NextAuth instance of a zone |
 | `proxy.ts` (logic) | dashboard, transactions | `@bytebank/auth/zoneProxy`. The `proxy.ts` of each zone only exports it, with the matcher, which Next reads from that file |
 | Session config of `lib/auth.ts` | shell, dashboard, transactions | `baseAuthConfig` in `@bytebank/auth`. The shell adds its login provider to it |
+| The actions of a transaction in `app/page.tsx`: the state of delete, edit and detail, the confirmation of the delete, the three lazy modals and the toast (after the review) | dashboard, transactions | `TransactionActions` in the design system. The zone gives its transactions and the mutations of its store by props, and gets the actions of its list and `showToast` by a render prop. The 8 windows of 6 lines that the two pages shared are gone |
 
 ### The new package: `@bytebank/auth`
 
 Authentication of the zones on the server: the NextAuth instance (`./zone`), the proxy (`./zoneProxy`), the binding of the session to the handlers of the bff (`./handlers`), and the session config shared with the shell (main entry). It depends on `next-auth`, `next` (peers), `@bytebank/bff` and `server-only`.
 
-`./handlers` imports `server-only` and `./zoneProxy` does not, because the proxy is not built with the `react-server` condition that `server-only` requires.
+Since the final step, `./handlers`, `./zone`, `./zoneProxy` and `./sessionProvider` all import `server-only`. An earlier version of this page said the proxy could not, because it is not built with the `react-server` condition; Next.js 16 builds it, and the proxies of the three apps run with it (`security.md`, "Server-only entries").
 
 It follows the pattern of the other packages: `package.json` with `exports`, `tsconfig.json`, `lint`, tests in the root Vitest config, a `COPY` in the three Dockerfiles and an entry in `transpilePackages`.
 

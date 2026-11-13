@@ -10,7 +10,12 @@ import {
 import { describe, expect, it } from 'vitest'
 import { createDataAdapters, readDataBackend } from './dataAdapters'
 
-const SUPABASE = { DATA_BACKEND: 'supabase', SUPABASE_URL: 'https://project.supabase.test', SUPABASE_SECRET_KEY: 'sb_secret_test' }
+const SUPABASE = {
+  DATA_BACKEND: 'supabase',
+  SUPABASE_URL: 'https://project.supabase.test',
+  SUPABASE_SECRET_KEY: 'sb_secret_test',
+  NEXTAUTH_SECRET: btoa('n'.repeat(32)),
+}
 const LIMIT = { maxHits: 5, windowMs: 60_000 }
 
 describe('readDataBackend', () => {
@@ -56,6 +61,18 @@ describe('createDataAdapters', () => {
     expect(key('login-email')).not.toBe(key('register-ip'))
     expect(key('login-email')).toMatch(/^[0-9a-f]{64}$/)
     expect(key('login-email')).not.toContain('ana')
+  })
+
+  it('derives the keys of the limits from NEXTAUTH_SECRET: another secret, other keys', () => {
+    const key = (env: typeof SUPABASE) => (createDataAdapters(env).rateLimiter('login-email', LIMIT) as PostgresRateLimiter).storedKey('ana@bytebank.com')
+
+    expect(key(SUPABASE)).not.toBe(key({ ...SUPABASE, NEXTAUTH_SECRET: btoa('m'.repeat(32)) }))
+  })
+
+  it('says clearly when NEXTAUTH_SECRET is missing, which the keys of the limits need', () => {
+    expect(() => createDataAdapters({ ...SUPABASE, NEXTAUTH_SECRET: '' })).toThrow(
+      'Missing required environment variable: NEXTAUTH_SECRET (the keys of the rate limits)',
+    )
   })
 
   it.each(['SUPABASE_URL', 'SUPABASE_SECRET_KEY'])('says clearly when %s is missing', name => {

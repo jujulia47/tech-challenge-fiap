@@ -5,6 +5,7 @@ import { User } from '@bytebank/core'
 import { afterAll, beforeAll, describe } from 'vitest'
 import { createSupabaseDatabase, type SupabaseDatabase } from '../supabase/database'
 import { PostgresRateLimiter } from '../supabase/PostgresRateLimiter'
+import { deriveRateLimitKey } from '../supabase/rateLimitKey'
 import { SupabasePasswordResetTokenRepository } from '../supabase/SupabasePasswordResetTokenRepository'
 import { SupabaseTransactionRepository } from '../supabase/SupabaseTransactionRepository'
 import { SupabaseTransactionStatistics } from '../supabase/SupabaseTransactionStatistics'
@@ -77,7 +78,9 @@ describe.skipIf(!ENABLED)('Supabase', () => {
     'Postgres',
     maxHits => {
       if (!database) throw new Error('Supabase is not ready')
-      const limiter = new PostgresRateLimiter(database, { namespace: `${RUN}-limits`, maxHits, windowMs: 60_000 })
+      // The HMAC key, from a secret made for this run
+      const keySecret = deriveRateLimitKey(`${RUN}-secret`)
+      const limiter = new PostgresRateLimiter(database, { namespace: `${RUN}-limits`, maxHits, windowMs: 60_000, keySecret })
       // Kept so the rows can be deleted at the end
       const consume = limiter.consume.bind(limiter)
       limiter.consume = async key => {

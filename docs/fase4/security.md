@@ -324,7 +324,7 @@ Both routes check the Origin and validate with Zod, as the registration does.
 
 Docker Compose has Mailpit, with a fixed version. Its SMTP stays inside the `bytebank` network, and the inbox is at http://localhost:8025, on this machine only.
 
-Outside Docker, `apps/shell/.env.local` points to `localhost:1025`, but that port is not published. Email there needs a Mailpit started by hand. The answer on the screen is the same, and the failure goes to the server log.
+Outside Docker, `apps/shell/.env.example` points to `127.0.0.1:1025`. Not `localhost`: Node resolves it to `::1` first, nodemailer tries only that address, and a Mailpit published on `127.0.0.1` refuses it. Compose does not publish port 1025, so email there needs a Mailpit started by hand, as the README shows (`docker run --rm -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1.29.5`). Without it, the answer on the screen is the same, and the failure goes to the server log. The `.env.example` of each app has every variable `npm run dev` needs, with the values of the README.
 
 ### Still open
 
@@ -454,3 +454,28 @@ Proofs:
 | The standalone build of the shell with `NEXTAUTH_SECRET=replace-me` | The message, and the process ends with exit 1 |
 
 Before deploying this step, check that the secrets of the three Vercel projects are base64 of 32 bytes, as the checklist of `deploy.md` generates them. A shorter one now stops the functions.
+
+## After the review
+
+### Keys of the rate limits
+
+With Supabase, the counters of the rate limits are rows of `rate_limits`, whose key was the SHA-256 of `namespace:email` or `namespace:ip`. A hash is not anonymous when the input is easy to guess: anyone with the table and a list of emails can hash each one and find the rows.
+
+The key is now an HMAC-SHA-256 (`packages/infrastructure/src/supabase/rateLimitKey.ts`):
+
+- **The HMAC key** is derived from `NEXTAUTH_SECRET` with HKDF of `node:crypto`, with its own label (`bytebank/rate-limit-keys/v1`), so it is never the key that signs and encrypts the sessions, and no new variable is needed.
+- **It reaches the adapter through the composition of the bff:** `createDataAdapters` derives it and gives it to `PostgresRateLimiter`. The adapter does not read the environment.
+- **No new migration.** An HMAC in hex has 64 characters, so it still passes the check of the column (`^[0-9a-f]{64}$`). The rows made with the old keys are no longer found, and they expire with their window; `npm run db:reset:supabase` empties the table anyway.
+
+The tests: the same input gives the same key, another secret gives other keys, two namespaces give two keys, and the key shows nothing of the email and is not its plain SHA-256. The contract suite against Supabase runs the limiter with the HMAC.
+
+With json-server, the limiter is in memory and keeps no key anywhere, so nothing changes there.
+
+### Next phase
+
+Found in the review and left out of this step, on purpose:
+
+- **CI.** The Storybook tests (77 stories, 15 interaction tests) and `test:session-race` do not run in GitHub Actions. Storybook needs `npx playwright install chromium` in a job of its own; the session race needs a running app.
+- **Cleaning the database.** Expired reset tokens and old rows of `rate_limits` are never deleted. A scheduled job (pg_cron) or a delete when a token is created would keep the tables small.
+- **Adapters of `/sobre`.** The page builds the adapters on every request (`createDataAdapters()`), and so does the refresh of the name in `@bytebank/auth/zone`. It costs little, since Supabase is HTTP with no pool of connections, but they could be cached like the handlers.
+- **Lazy modals in Storybook** (`testing.md`): they do not load there, so `TransactionActions` is tested in the browser.
