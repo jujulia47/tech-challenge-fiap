@@ -55,6 +55,16 @@ describe('createShellClient', () => {
     expect(sent()).toMatchObject({ url: '/api/password-reset/confirm', method: 'POST', body: { token: 'token-do-link', password: 'uma senha nova' } })
   })
 
+  it('ends every session with a POST and no body, and throws the code of a refusal', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+    await expect(client.endAllSessions()).resolves.toBeUndefined()
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/sessions/end')
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'POST' })
+
+    fetchMock.mockResolvedValueOnce(json({ error: 'UNAUTHENTICATED' }, 401))
+    await expect(client.endAllSessions()).rejects.toMatchObject({ code: 'UNAUTHENTICATED', status: 401 })
+  })
+
   it('reads the session policy with a GET', async () => {
     const policy = { idleTimeoutSeconds: 600, idleWarningSeconds: 60, updateAgeSeconds: 300 }
     fetchMock.mockResolvedValue(json(policy))

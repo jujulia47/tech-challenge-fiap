@@ -25,11 +25,11 @@ Supabase is only the database: no Supabase Auth, Storage or Realtime. The browse
 
 ### Tables
 
-The migration is `supabase/migrations/0001_init.sql`.
+The migrations are `supabase/migrations/0001_init.sql` and `0002_sessions_valid_after.sql`, run in that order.
 
 | Table | What it holds | Rules |
 |---|---|---|
-| `users` | `id`, `name`, `email`, `password_hash` | Unique email in any case (`lower(email)`). Name from 1 to 100 characters, as in the domain |
+| `users` | `id`, `name`, `email`, `password_hash`, `sessions_valid_after` | Unique email in any case (`lower(email)`). Name from 1 to 100 characters, as in the domain. `sessions_valid_after` is the moment the user last ended their sessions, null if never ([security.md](security.md#ending-every-session)) |
 | `transactions` | `id`, `user_id`, `type`, `amount_in_cents`, `date`, `attachment` | `user_id` references `users` with `on delete cascade`. `type` is one of the 7 codes. Amount is a positive integer. Index on `(user_id, date desc)` |
 | `password_reset_tokens` | `id`, `user_id`, `token_hash`, `expires_at`, `used_at` | Only the hash of the token |
 | `rate_limits` | `key`, `window_start`, `hits` | One counter per key and window. The key is an HMAC-SHA-256 made by the server with a key derived from `NEXTAUTH_SECRET`, so no email or IP is stored, and none can be found back without that key ([security.md](security.md#keys-of-the-rate-limits)) |
@@ -160,7 +160,7 @@ The commands live in `vercel.json`, so the overrides of the panel stay off.
 
 ### Order of the steps
 
-1. **Supabase.** Run `supabase/migrations/0001_init.sql` once in the SQL Editor. Create the secret key of production. Leave only the demonstration in the database, from a local machine with the key of `.env`: `npm run db:reset:supabase`.
+1. **Supabase.** Run `supabase/migrations/0001_init.sql` and then `0002_sessions_valid_after.sql` once each in the SQL Editor, before deploying the code that reads the new column. Create the secret key of production. Leave only the demonstration in the database, from a local machine with the key of `.env`: `npm run db:reset:supabase`.
 2. **Generate** `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY`, and keep them in a password manager.
 3. **dashboard and transactions:** build settings as in the table, delete the old variables, add the new ones, redeploy with the build cache off.
 4. **shell**, last: it proxies the zones, and its build reads their URLs.
@@ -168,7 +168,7 @@ The commands live in `vercel.json`, so the overrides of the panel stay off.
 
 ## Running locally against Supabase
 
-1. Run the migration once in the SQL Editor of the project.
+1. Run the two migrations once, in order, in the SQL Editor of the project.
 2. Put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in the `.env` of the root.
 3. Seed the demonstration: `npm run db:seed:supabase`. It can run twice: it adds what is missing and changes nothing else.
 4. Start with the variable, in PowerShell:
@@ -238,7 +238,7 @@ A Preview deployment uses the variables of the Preview environment, which this c
 
 ## Known limits
 
-- **Migrations by hand.** The SQL is versioned, but it runs in the SQL Editor. A second migration needs the Supabase CLI or a runner.
+- **Migrations by hand.** The SQL is versioned, but each file runs in the SQL Editor, in order; nothing records which ones ran. More migrations would call for the Supabase CLI or a runner.
 - **Expired tokens and old rate-limit rows are never deleted** ([security.md](security.md#next-phase)).
 - **Two backends to keep.** The contract suites keep them aligned; the guarantees that only Postgres gives are listed in [security.md](security.md#known-limits).
 - **Other sessions after a password change** stay valid until the JWT expires ([security.md](security.md#known-limits)).

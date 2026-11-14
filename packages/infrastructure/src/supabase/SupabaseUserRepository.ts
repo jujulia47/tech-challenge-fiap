@@ -3,24 +3,30 @@ import { InfrastructureError } from '../errors/InfrastructureError'
 import { UNIQUE_VIOLATION, databaseError, type SupabaseDatabase } from './database'
 
 const TABLE = 'users'
-const COLUMNS = 'id, name, email, password_hash'
+const COLUMNS = 'id, name, email, password_hash, sessions_valid_after'
 
 interface UserRow {
   id: string
   name: string
   email: string
   password_hash: string
+  // timestamptz: an ISO string, or null while the user never ended their sessions
+  sessions_valid_after: string | null
 }
 
 function isUserRow(value: unknown): value is UserRow {
   const row = value as Partial<Record<keyof UserRow, unknown>> | null
-  return [row?.id, row?.name, row?.email, row?.password_hash].every(field => typeof field === 'string')
+  const ended = row?.sessions_valid_after
+  return [row?.id, row?.name, row?.email, row?.password_hash].every(field => typeof field === 'string') &&
+    (ended === null || typeof ended === 'string')
 }
 
 function userFromRow(value: unknown): User {
   try {
     if (!isUserRow(value)) throw new InfrastructureError('Stored user does not match the expected format')
-    return User.create({ id: value.id, name: value.name, email: value.email, passwordHash: value.password_hash })
+    const ended = value.sessions_valid_after === null ? undefined : Date.parse(value.sessions_valid_after)
+    if (Number.isNaN(ended)) throw new InfrastructureError('Stored sessions_valid_after is not a date')
+    return User.create({ id: value.id, name: value.name, email: value.email, passwordHash: value.password_hash, sessionsValidAfter: ended })
   } catch (error) {
     // No id in the message: a user id is personal data in the log
     throw new InfrastructureError('Stored user is invalid', { code: 'CORRUPTED_RECORD', cause: error })
@@ -48,6 +54,10 @@ export class SupabaseUserRepository implements UserRepository {
 
   async updateName(id: string, name: string): Promise<void> {
     await this.update(id, { name }, 'update name')
+  }
+
+  async updateSessionsValidAfter(id: string, instant: number): Promise<void> {
+    await this.update(id, { sessions_valid_after: new Date(instant).toISOString() }, 'end sessions')
   }
 
   async create(user: User): Promise<User> {

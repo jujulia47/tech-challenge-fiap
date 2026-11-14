@@ -23,6 +23,7 @@ export {
 export type { MonthGroup, MonthTotal, PeriodInMonths, TypeTotal } from './domain/transaction/aggregations'
 
 export { USER_NAME_MAX_LENGTH, User, normalizeEmail } from './domain/user/User'
+export { isSessionRevoked } from './domain/user/sessionRevocation'
 export {
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
@@ -59,6 +60,10 @@ export { RegisterUser } from './application/use-cases/RegisterUser'
 export { UpdateUserProfile } from './application/use-cases/UpdateUserProfile'
 export type { UpdateUserProfileInput } from './application/use-cases/UpdateUserProfile'
 export { ChangePassword } from './application/use-cases/ChangePassword'
+export { EndUserSessions } from './application/use-cases/EndUserSessions'
+export type { EndUserSessionsInput } from './application/use-cases/EndUserSessions'
+export { VerifySession } from './application/use-cases/VerifySession'
+export type { VerifySessionInput } from './application/use-cases/VerifySession'
 export type { ChangePasswordDependencies, ChangePasswordInput } from './application/use-cases/ChangePassword'
 export { assertDateNotInFuture } from './application/use-cases/assertDateNotInFuture'
 export type { RegisterUserInput } from './application/use-cases/RegisterUser'

@@ -61,9 +61,14 @@ const provokeReads = page => page.evaluate(() => {
   window.dispatchEvent(new Event('focus'))
 })
 
+// Waits for the answer of the write itself: the toast of an earlier save may still be on the
+// screen, and closing the page before the answer would leave the changed name behind
 async function saveName(page, name) {
   await page.getByLabel('Nome', { exact: true }).fill(name)
+  const saved = page.waitForResponse(response => response.url().endsWith('/api/account/profile') && response.request().method() === 'PATCH')
   await page.getByRole('button', { name: 'Salvar nome' }).click()
+  const response = await saved
+  if (!response.ok()) throw new Error(`saving the name answered ${response.status()}`)
   await page.getByText('Nome atualizado com sucesso').first().waitFor()
 }
 

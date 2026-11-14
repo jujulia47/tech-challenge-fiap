@@ -1,6 +1,6 @@
 import NextAuth, { CredentialsSignin } from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
-import { clientIp } from '@bytebank/bff'
+import { clientIp, getSessionRevocation } from '@bytebank/bff'
 import { ApplicationError, RateLimitedError } from '@bytebank/core'
 import { baseAuthConfig } from '@bytebank/auth'
 import { rateLimitCode } from '@bytebank/utils'
@@ -19,7 +19,8 @@ class RateLimitedSignin extends CredentialsSignin {
 }
 
 export const { handlers, auth } = NextAuth({
-  ...baseAuthConfig(process.env),
+  // The same revocation as the zones: a logout anywhere ends this session too
+  ...baseAuthConfig(process.env, { sessions: getSessionRevocation }),
   providers: [
     Credentials({
       credentials: {

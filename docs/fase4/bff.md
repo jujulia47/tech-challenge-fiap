@@ -29,6 +29,8 @@ packages/bff/src/
 | `createDataAdapters(env)` | The adapters of the chosen backend, in one place ([deploy.md](deploy.md)) |
 | `createLazyTransactionHandlers(getUserId)`, `createLazyAccountHandlers(...)` | The handlers of the zones, built on the first request |
 | `createTransactionHandlers({ getUserId, useCases, allowedOrigins, logger? })` | The seven transaction handlers |
+| `getSessionRevocation()`, `createSessionRevocation(users)` | The end of the sessions: `isValid` for the session config of the three apps, `endAll` for "Sair" ([security.md](security.md#ending-every-session)) |
+| `createEndSessionsHandler({ getUserId, endAll, allowedOrigins, logger? })` | `POST /api/sessions/end` of the shell: "Sair" ends every session of the user. Origin first, then the session; 204 |
 | `createRegisterHandler`, `createPasswordResetHandlers`, `createAccountHandlers` | Registration and recovery in the shell, name and password in the dashboard ([security.md](security.md)) |
 | `MAX_ATTACHMENT_BYTES`, from `@bytebank/bff/limits` | The attachment limit. The file has no imports, so a client component can use it without pulling server code into the browser |
 | `createTransactionsClient(basePath)`, `createShellClient()`, from `@bytebank/bff/client` | The browser clients ([Shared clients](#shared-clients)) |
@@ -50,7 +52,7 @@ All bodies use the core format: `amountInCents`, ISO dates and type codes. With 
 | `statement/route.ts` | GET | `getStatement`, `GetStatement` | None | 200, `{ groups: [{ monthKey, transactions }] }` |
 | `chart-data/route.ts` | GET | `getChartData`, `GetChartData` | `period`: `3`, `6` or `all`; `type` optional | 200, `{ byMonth, byType }` |
 
-The dashboard also has `account/profile` and `account/password`, and the shell `register`, `password-reset/request`, `password-reset/confirm` and `session-policy` ([security.md](security.md)).
+The dashboard also has `account/profile` and `account/password`, and the shell `register`, `password-reset/request`, `password-reset/confirm`, `session-policy` and `sessions/end` ([security.md](security.md)).
 
 The routes only delegate. Each one has `dynamic = 'force-dynamic'` and `runtime = 'nodejs'`. `params` is a promise in Next.js 16 and is awaited; the `RouteContext` helper is not used, because its types only exist after `next dev`, `next build` or `next typegen`, and `tsc` on a clean checkout would fail.
 

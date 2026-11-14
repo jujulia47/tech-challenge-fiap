@@ -26,6 +26,11 @@ export class InMemoryUserRepository implements UserRepository {
     if (user) this.items.set(user.email, user.withName(name))
   }
 
+  async updateSessionsValidAfter(id: string, instant: number): Promise<void> {
+    const user = await this.findById(id)
+    if (user) this.items.set(user.email, User.create({ ...user.toRecord(), sessionsValidAfter: instant }))
+  }
+
   async create(user: User): Promise<User> {
     this.items.set(user.email, user)
     return user

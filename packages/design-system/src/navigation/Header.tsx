@@ -5,7 +5,7 @@ import { Button } from '../Button'
 import { useUser } from '../hooks/useUser'
 import { Modal } from '../Modal'
 import { ProfileMenu, type ProfileMenuItem } from '../ProfileMenu'
-import { signOutCompletely } from '../session/zoneSession'
+import { signOutEverywhere } from '../session/zoneSession'
 import { MenuDrawer } from './MenuDrawer'
 import type { NavItem } from './navItems'
 
@@ -22,7 +22,8 @@ export function Header({ navItems, profileItems }: HeaderProps) {
   const avatarRef = useRef<HTMLButtonElement>(null)
 
   async function handleLogout() {
-    await signOutCompletely()
+    // "Sair" ends the sessions of every device; the inactivity logout only ends this one
+    await signOutEverywhere()
     // The login is at the root of the shell, a full page load away from any zone
     window.location.href = '/'
   }

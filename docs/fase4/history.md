@@ -86,6 +86,13 @@ The timeline of the work, by block. Each line says what was done, and what was f
 - The docs were reorganized by subject, with this page as the only timeline. The work notes of the lint diagnosis and the dependency audit were merged here and into [ci.md](ci.md).
 - The Lighthouse PDFs kept are the official "before" (Next 16.4.3, one run per page and device) and the median run of the 3 "after" runs. The reports measured on Next 16.2.4, before the dependency upgrade, and the other 8 "after" runs were removed; their numbers stay in [baseline.md](baseline.md) and [performance.md](performance.md#lighthouse-before-and-after).
 
+## The logout in production (2026-11-14)
+
+- **Found.** With the first fix of the session race deployed, the regression test against production passed the name 6 of 6 and failed the logout 6 of 6. A recording of every request after the click showed the cause: the RSC prefetches of the menu links, made right after the page loads, pass through the proxies of the shell and of the zone, whose `auth()` wrapper renews the session cookie on every answer. In production one of them answered 1 ms after the sign-out and wrote the session back; in Docker they all end before anyone can click.
+- **Fixed in two ways.** The proxies no longer renew the session on a fetch of the router (told by `Sec-Fetch-Dest`, because Next removes the RSC headers before the proxy runs). And the server now ends every session at logout and at a new password (`sessionsValidAfter`, checked by the `jwt` callback of the three apps), so no late answer can keep a session alive ([security.md](security.md#ending-every-session)). Migration `0002_sessions_valid_after.sql` adds the column in Supabase.
+- **Then separated.** The inactivity logout ends only the session of its own browser, so that a tab forgotten on another computer does not log the person out everywhere; "Sair" goes through `POST /api/sessions/end` of the shell first, and a new password ends every session in the core. `npm run test:logout-scope` proves both.
+- **Found on the way.** The regression test restored the original name by waiting for a toast that the previous save had left on the screen, and closed the page before the write; it now waits for the answer of the write.
+
 ## Superseded numbers
 
 The coverage table of the early blocks measured fewer files. At the end of Block 3 it gave 97.05% of statements (658/678), 97.64% of branches (290/297), 96.92% of functions (252/260) and 97.46% of lines (576/591), over `utils`, `core`, `infrastructure`, `bff`, `store` and two design system files. The current figures, over every package, are in [testing.md](testing.md#coverage).

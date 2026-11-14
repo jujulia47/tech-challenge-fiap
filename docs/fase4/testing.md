@@ -6,13 +6,14 @@ This is the only page with test counts. The other docs link here.
 
 | Suite | Command | Result |
 |---|---|---|
-| Unit and integration tests of the packages | `npm test` | **97 files, 1492 tests passing, 22 skipped**, in about 10 s |
+| Unit and integration tests of the packages | `npm test` | **103 files, 1542 tests passing, 26 skipped**, in about 10 s |
 | Storybook: every story in a real browser, with interaction tests | `cd apps/shell && npx vitest run --project storybook` | **24 files, 77 stories (22 components), 15 interaction tests**, all passing |
-| Contract suite against a real Supabase project | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | **19 tests**, all passing (off by default, out of the CI) |
-| Browser regression of the session race | `npm run test:session-race` | **12 of 12 checks** in Docker (3 rounds) |
-| Coverage of the packages | `npm run test:coverage` | **83.68% of statements**, per package [below](#coverage) |
+| Contract suite against a real Supabase project | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | **23 tests**: 19 passed on the last run, before the 4 of the end of the sessions were added, which need migration 0002. Off by default, out of the CI |
+| Browser regression of the session race | `npm run test:session-race` | **12 of 12 checks** in Docker (3 rounds, twice in a row); production [below](#browser-regression-the-session-race) |
+| What each logout ends | `npm run test:logout-scope` | **7 of 7 checks** in Docker, twice, with the idle logout after 20 s ([below](#browser-regression-what-each-logout-ends)) |
+| Coverage of the packages | `npm run test:coverage` | **84.00% of statements**, per package [below](#coverage) |
 
-The 22 skipped tests are the 19 of the Supabase suite, which run only with its variable, and 3 cases of the json-server contract suite that json-server cannot hold ([deploy.md](deploy.md#contract-tests)).
+The 26 skipped tests are the 23 of the Supabase suite, which run only with its variable, and 3 cases of the json-server contract suite that json-server cannot hold ([deploy.md](deploy.md#contract-tests)).
 
 ## Strategy
 
@@ -49,13 +50,13 @@ The Storybook project is separate: `apps/shell/vitest.config.ts`, browser mode w
 | Package | Files | Tests | Highlights |
 |---|---|---|---|
 | `utils` | 15 | 203 | `cn` against every token of the theme, presentation of amounts and dates, secrets rule, security headers, session policy, zone rewrites |
-| `core` | 22 | 325 | Value objects, entities, aggregations, password policy, every use case against in-memory ports |
-| `infrastructure` | 24 | 324 (+22 skipped) | Adapters with a simulated `fetch`, real json-server, real hanging servers, the migration CLI, the cipher, the hasher, both contract suites |
-| `bff` | 20 | 479 | Every handler with real `Request` objects, validation, origin, errors, both browser clients, the composition, end to end against json-server |
-| `design-system` | 11 | 109 | Static rendering, focus of the modals, lazy parts, icon font list, password strength, idle monitor, order of the session writes |
+| `core` | 23 | 340 | Value objects, entities, aggregations, password policy, the revocation of sessions, every use case against in-memory ports |
+| `infrastructure` | 25 | 334 (+26 skipped) | Adapters with a simulated `fetch`, real json-server, real hanging servers, the migration CLI, the cipher, the hasher, both contract suites |
+| `bff` | 22 | 486 | Every handler with real `Request` objects, validation, origin, errors, both browser clients, the composition, end to end against json-server |
+| `design-system` | 11 | 112 | Static rendering, focus of the modals, lazy parts, icon font list, password strength, idle monitor, order of the session writes |
 | `store` | 3 | 41 | The RTK Query factory with a simulated `fetch`, the RxJS search in virtual time, `useObservable` |
-| `auth` | 2 | 11 | The session config shared with the shell, the props of the session provider of the zones |
-| **Total** | **97** | **1492 (+22 skipped)** | |
+| `auth` | 4 | 26 | The session config shared with the shell, the `jwt` callback with the revocation, the router fetches that do not renew the session, the props of the session provider of the zones |
+| **Total** | **103** | **1542 (+26 skipped)** | |
 
 ### `core`
 
@@ -66,6 +67,7 @@ Use cases run against `InMemoryTransactionRepository`, `FixedClock`, `Sequential
 | `domain/value-objects/CalendarDate.test.ts` | 66 |
 | `domain/transaction/Transaction.test.ts` | 35 |
 | `domain/value-objects/Money.test.ts` | 28 |
+| `domain/user/sessionRevocation.test.ts` | 15 (the rule, `EndUserSessions`, `VerifySession`, and a new password ending the sessions) |
 | `domain/user/passwordPolicy.test.ts` | 25 |
 | `domain/transaction/aggregations.test.ts` | 21 |
 | `domain/transaction/TransactionType.test.ts` | 20 |
@@ -91,13 +93,14 @@ Use cases run against `InMemoryTransactionRepository`, `FixedClock`, `Sequential
 | `encryption/AesGcmCipher.test.ts`, `EncryptedAttachmentRepository.test.ts` | 21 and 15 | Format, owner binding, tampering, wrong key, unreadable attachments |
 | `password/ScryptPasswordHasher.test.ts`, `StaticCommonPasswordList.test.ts` | 20 each | Format, parameters, refusal of costly parameters; the lists |
 | `json-server/HttpUserRepository.test.ts` | 20 | Users over HTTP |
-| `contracts/jsonServer.contract.test.ts` | 16 (+3 skipped) | The contract suite against a json-server started for the test, and the memory limiter |
-| `contracts/supabase.contract.test.ts` | 19 skipped | The same suite against Supabase, only with `SUPABASE_CONTRACT_TESTS=1` |
+| `contracts/jsonServer.contract.test.ts` | 20 (+3 skipped) | The contract suite against a json-server started for the test, and the memory limiter. Includes the 4 cases of the end of the sessions (`userSessionsContract.ts`): stored to the millisecond, kept across the other updates, and read back by the rule of the core |
+| `contracts/supabase.contract.test.ts` | 23 skipped | The same suite against Supabase, only with `SUPABASE_CONTRACT_TESTS=1` |
 | `migration/migrate-db.cli.test.ts` | 14 | The script as a real process: success, a file with errors (nothing written, exit 1), protection of the input without `--in-place` |
 | `json-server/HttpTransactionRepository.timeout.test.ts` | 13 | Real servers that accept and never write, stop in the middle of the body, or stop only on the write |
 | `rate-limit/InMemoryRateLimiter.test.ts` | 13 | Sliding window, refused attempts, give-back |
 | `json-server/HttpTransactionRepository.integration.test.ts` | 11 | The installed json-server on a temporary copy: string user ids (`"1"` versus `"10"`), another user's record, the id assigned on `POST`, blocked updates and deletes |
 | `json-server/HttpPasswordResetTokenRepository.test.ts` | 9 | Reset tokens over HTTP |
+| `json-server/HttpUserRepository.sessions.test.ts` | 6 | The moment the sessions ended, as ISO in `db.json`: read, written with one PATCH, refused when it is not a date |
 | `clock/SaoPauloClock.test.ts` | 8 | The day in São Paulo at any instant |
 | `supabase/rateLimitKey.test.ts` | 6 | Same input gives the same key, another secret gives other keys, two namespaces give two keys, the key shows nothing of the email and is not its plain SHA-256 |
 | `email/SmtpEmailSender.test.ts`, `DisabledEmailSender.test.ts` | 5 and 2 | Sending, and the disabled sender's log line |
@@ -122,11 +125,13 @@ All through real `Request` objects, with the in-memory ports of the core.
 | `env.test.ts` | 20 | Required variables and the parsing of `ALLOWED_ORIGINS` |
 | `http/createAccountHandlers.test.ts`, `createRegisterHandler.test.ts` | 16 each | Profile and password routes; registration |
 | `http/createPasswordResetHandlers.test.ts` | 12 | Request and confirm |
-| `client/createShellClient.test.ts` | 11 | The routes of the shell: bodies, code and status of a refusal, `UNKNOWN_ERROR`, no redirect |
+| `client/createShellClient.test.ts` | 12 | The routes of the shell: bodies, code and status of a refusal, `UNKNOWN_ERROR`, no redirect |
 | `composition/dataAdapters.test.ts` | 11 | `DATA_BACKEND`, the messages of missing variables, the HMAC key from `NEXTAUTH_SECRET` |
 | `client/index.test.ts` | 8 | Both clients through `@bytebank/bff/client`, with imports of types or of their own folder only, and no `server-only` |
 | `responses.test.ts`, `clientIp.test.ts`, `client/http.test.ts` | 5, 4, 4 | Helpers |
 | `createUseCases`, `emailDisabled`, `loginRateLimit`, `index` (public API) | 3 each | Composition |
+| `composition/sessionRevocation.test.ts` | 2 | The revocation given to the apps: a logout made through one of them holds for the others at the next check |
+| `http/createEndSessionsHandler.test.ts` | 4 | `POST /api/sessions/end`: ends every session of the user of the session (204), refuses another origin before the session (403), no session (401), a failure without details |
 
 The package was also checked by **mutation**: one deliberate change at a time (removing a check, comparing origins by prefix, letting a `DomainError` escape the mapper, keeping a parse error as the cause, leaking the code in a 502), confirming that a test fails. 53 of 53 changes were caught, plus 15 of 15 in the timeout and environment code.
 
@@ -135,9 +140,9 @@ The package was also checked by **mutation**: one deliberate change at a time (r
 | Package | Test files (tests) |
 |---|---|
 | `utils` | `cn` (50), `transactionPresentation` (42), `secrets` (17), `filterTransactions` (17), `loginRetry` (15), `currency` (12), `sessionPolicy` (11), `securityHeaders` (9), `user` (7), `chartTypeFilter` (6), `preload` (6), `zoneRewrites` (5), `browserClock` (4), `authLogger` (1), `index` (1) |
-| `design-system` | `passwordEntropy` (23), `idleMonitor` (19), `passwordStrength` (17), `TransactionItem` (11), `modalFocus` (9), `PasswordInput` (8), `ProfileMenu` (6), `lazy` (6), `sessionWrites` (5), `iconFont` (3), `MountOnceOpen` (2) |
+| `design-system` | `passwordEntropy` (23), `idleMonitor` (19), `passwordStrength` (17), `TransactionItem` (11), `modalFocus` (9), `PasswordInput` (8), `sessionWrites` (8: the order of the reads and the writes, and the inactivity logout of this browser against "Sair" of every device), `ProfileMenu` (6), `lazy` (6), `iconFont` (3), `MountOnceOpen` (2) |
 | `store` | `createTransactionsApi` (21): endpoints and invalidation; `createStatementSearch` (13): marble tests; `useObservable` (7) |
-| `auth` | `sessionConfig` (9): secret, policy, shape of the token, refresh of the name; `zoneSessionProps` (2) |
+| `auth` | `sessionConfig` (9): secret, policy, shape of the token, refresh of the name; `sessionRevocation` (7): the start of the session at the login, a token from before the logout refused (`null`), no refresh for it, a failure of the store failing closed, and no `signOut` event that would end the other sessions; `rscSessionCookies` (8): a fetch of the router told by `Sec-Fetch-Dest`, the renewed cookie dropped and a clearing one kept; `zoneSessionProps` (2) |
 
 The `cn` tests compare the token list with `packages/design-system/src/styles/theme.css`, and check every typography token against every color token in both orders. The design system tests render to static HTML with `react-dom/server`, because the unit environment has no DOM; interactions are covered by Storybook.
 
@@ -170,14 +175,14 @@ Each item matches one test marked `// Characterization: current behavior, see do
 
 | Package | Files | Statements | Branches | Functions | Lines |
 |---|---|---|---|---|---|
-| `core` | 52 | 99.51% (408/410) | 98.47% (193/196) | 99.37% (158/159) | 99.43% (347/349) |
+| `core` | 55 | 99.54% (433/435) | 98.13% (210/214) | 99.40% (165/166) | 99.46% (367/369) |
 | `utils` | 16 | 97.96% (96/98) | 91.67% (66/72) | 95.45% (42/44) | 98.86% (87/88) |
-| `bff` | 25 | 95.30% (304/319) | 95.88% (93/97) | 91.45% (107/117) | 94.72% (269/284) |
+| `bff` | 27 | 94.99% (322/339) | 96.08% (98/102) | 91.13% (113/124) | 94.37% (285/302) |
 | `store` | 5 | 90.38% (47/52) | 100% (6/6) | 86.11% (31/36) | 95.00% (38/40) |
-| `infrastructure` | 31 | 78.30% (487/622) | 60.98% (161/264) | 75.96% (139/183) | 81.72% (438/536) |
-| `design-system` | 26 | 61.71% (216/350) | 69.95% (149/213) | 56.00% (56/100) | 63.86% (182/285) |
-| `auth` | 6 | 54.84% (17/31) | 61.11% (11/18) | 57.14% (4/7) | 55.17% (16/29) |
-| **Total** | **161** | **83.68% (1575/1882)** | **78.40% (679/866)** | **83.12% (537/646)** | **85.47% (1377/1611)** |
+| `infrastructure` | 32 | 79.20% (533/673) | 60.71% (170/280) | 76.80% (149/194) | 82.53% (482/584) |
+| `design-system` | 26 | 61.52% (219/356) | 69.95% (149/213) | 56.31% (58/103) | 63.23% (184/291) |
+| `auth` | 7 | 69.70% (46/66) | 84.44% (38/45) | 66.67% (12/18) | 67.27% (37/55) |
+| **Total** | **168** | **84.00% (1696/2019)** | **79.07% (737/932)** | **83.21% (570/685)** | **85.59% (1480/1729)** |
 
 How to read it:
 
@@ -224,6 +229,7 @@ How the stories avoid the network:
 
 - `packages/design-system/src/session/sessionWrites.test.ts`: a read in flight is waited for before the sign-out, a sign-out undone by a late read is done again, at most twice, and a failed read blocks nothing. A fake cookie and a fake server that answers when told play the slow network.
 - `packages/auth/src/zoneSessionProps.test.ts`: the provider of the zones starts with the session of the server and does not read it on focus.
+- `packages/auth/src/sessionRevocation.test.ts` and `rscSessionCookies.test.ts`: a session that started before the logout is refused, and a fetch of the router never renews the session.
 
 The script logs in, then holds every `GET` of the session for 3 s after the server answered, so the real answer arrives late. It starts reads the way a page does (load, `visibilitychange`, `focus`), then saves the name and logs out. It checks that the header and the session keep the new name, and that after the logout no session is left and `/dashboard` goes back to the login. It runs 3 rounds by default (`ROUNDS` changes it), puts the original name back, prints statuses and names only, never a password or a cookie, and uses the installed Chrome.
 
@@ -237,8 +243,21 @@ SHELL_URL=https://bytebank-shell.vercel.app E2E_EMAIL=... E2E_PASSWORD=... npm r
 
 | Where | Before the fix | After the fix |
 |---|---|---|
-| Production | 8 of 8 checks failed (2 rounds) | 2026-11-14: 6 of 12 passed (3 rounds). The name passed 6 of 6; the logout failed 6 of 6: after the sign-out the session was still there and `/dashboard` opened |
-| Docker, local | not run | 12 of 12 passed (3 rounds) |
+| Production | 8 of 8 checks failed (2 rounds) | 2026-11-14, with the first fix only: 6 of 12 passed (3 rounds). The name passed 6 of 6; the logout failed 6 of 6: after the sign-out the session was still there and `/dashboard` opened. The cause is in [security.md](security.md#the-session-race) |
+| Production, with the revocation on the server | | Pending the deploy |
+| Docker, local | not run | 12 of 12 passed (3 rounds), twice in a row, with the revocation |
+
+## Browser regression: what each logout ends
+
+`apps/shell/scripts/logout-scope.mjs` proves, in a real browser, that the inactivity logout ends the session of its own browser only and that "Sair" ends the sessions of every browser of the user ([security.md](security.md#ending-every-session)). It needs a running app with short idle times, and refuses to run with an idle timeout above 2 minutes:
+
+```powershell
+$env:IDLE_TIMEOUT_SECONDS = 20; $env:IDLE_WARNING_SECONDS = 10
+docker compose up -d --no-deps --force-recreate shell dashboard transactions
+$env:E2E_EMAIL = 'julia@bytebank.com'; $env:E2E_PASSWORD = 'bytebank123'; npm run test:logout-scope
+```
+
+It logs in on two browsers (two contexts, each with its own cookie and idle timer), keeps one active and lets the other time out: the idle one has no session and goes back to the login, the active one keeps its session and opens `/dashboard`. Then it logs in a third browser and clicks "Sair" on the active one: both lose the session. 7 checks; 7 of 7 in Docker, twice. A separate check confirmed that the inactivity logout records no `sessionsValidAfter`.
 
 ## What has no automated test
 

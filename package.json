@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:session-race": "node apps/shell/scripts/session-race.mjs"
+    "test:session-race": "node apps/shell/scripts/session-race.mjs",
+    "test:logout-scope": "node apps/shell/scripts/logout-scope.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.12",

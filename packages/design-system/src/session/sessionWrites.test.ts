@@ -29,6 +29,9 @@ function fakeClient(initial: Session | null) {
       cookie = null
       log.push('signed out')
     }),
+    endAllSessions: vi.fn(async () => {
+      log.push('ended every session on the server')
+    }),
   }
   return {
     client,
@@ -81,10 +84,39 @@ describe('createSessionWrites', () => {
     expect(fake.client.signOut).toHaveBeenCalledTimes(2)
   })
 
+  it('signs this browser out only: the inactivity logout never ends the other devices', async () => {
+    const fake = fakeClient({ name: 'Júlia' })
+
+    await createSessionWrites(fake.client).signOut()
+
+    expect(fake.client.endAllSessions).not.toHaveBeenCalled()
+    expect(fake.cookie()).toBeNull()
+  })
+
+  it('"Sair" ends every session on the server first, then clears this cookie', async () => {
+    const fake = fakeClient({ name: 'Júlia' })
+
+    await createSessionWrites(fake.client).signOutEverywhere()
+
+    expect(fake.log).toEqual(['ended every session on the server', 'signed out', 'read answered with nothing'])
+    expect(fake.cookie()).toBeNull()
+  })
+
+  it('"Sair" still clears this cookie when the server could not end the sessions', async () => {
+    const fake = fakeClient({ name: 'Júlia' })
+    fake.client.endAllSessions.mockRejectedValueOnce(new Error('offline'))
+
+    await createSessionWrites(fake.client).signOutEverywhere()
+
+    expect(fake.client.signOut).toHaveBeenCalled()
+    expect(fake.cookie()).toBeNull()
+  })
+
   it('settles once every read answered, even a failed one', async () => {
     const writes = createSessionWrites({
       getSession: () => Promise.reject(new Error('offline')),
       signOut: async () => undefined,
+      endAllSessions: async () => undefined,
     })
     await expect(writes.read()).rejects.toThrow('offline')
     await expect(writes.settle()).resolves.toBeUndefined()

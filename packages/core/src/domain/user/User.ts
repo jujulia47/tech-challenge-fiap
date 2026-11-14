@@ -18,6 +18,8 @@ export interface UserProps {
   name: string
   email: string
   passwordHash: string
+  // When the user last ended their sessions (logout or password change), in ms since the epoch
+  sessionsValidAfter?: number
 }
 
 export function normalizeEmail(email: string): string {
@@ -32,7 +34,7 @@ export class User {
     Object.freeze(this)
   }
 
-  static create({ id, name, email, passwordHash }: UserProps): User {
+  static create({ id, name, email, passwordHash, sessionsValidAfter }: UserProps): User {
     const normalizedEmail = normalizeEmail(email)
     if (id.trim() === '') throw new DomainError('USER_INVALID_ID', 'User id must not be empty')
     const validatedName = validName(name)
@@ -40,7 +42,12 @@ export class User {
     if (passwordHash === '') {
       throw new DomainError('USER_INVALID_PASSWORD_HASH', 'User password hash must not be empty')
     }
-    return new User({ id, name: validatedName, email: normalizedEmail, passwordHash })
+    if (sessionsValidAfter !== undefined && !(Number.isSafeInteger(sessionsValidAfter) && sessionsValidAfter >= 0)) {
+      throw new DomainError('USER_INVALID_SESSIONS_VALID_AFTER', 'User sessions must end at a valid instant')
+    }
+    const props: UserProps = { id, name: validatedName, email: normalizedEmail, passwordHash }
+    if (sessionsValidAfter !== undefined) props.sessionsValidAfter = sessionsValidAfter
+    return new User(props)
   }
 
   withName(name: string): User {
@@ -61,6 +68,10 @@ export class User {
 
   get passwordHash(): string {
     return this.props.passwordHash
+  }
+
+  get sessionsValidAfter(): number | undefined {
+    return this.props.sessionsValidAfter
   }
 
   // The only way out of the application: it has no hash

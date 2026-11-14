@@ -45,6 +45,8 @@ export class ResetPassword {
     // the claim stops here, so its password is never saved
     await tokens.markUsed(stored.id)
     await users.updatePasswordHash(user.id, passwordHash)
+    // A reset is a new password too: every session made with the old one ends
+    await users.updateSessionsValidAfter(user.id, now())
     await loginLimiterByEmail.reset(user.email)
   }
 }

@@ -9,15 +9,18 @@ describe('@bytebank/bff public API', () => {
       'createAccountHandlers',
       'createAuthUseCases',
       'createDataAdapters',
+      'createEndSessionsHandler',
       'createJsonServerAuthUseCases',
       'createJsonServerUseCases',
       'createLazyAccountHandlers',
       'createLazyTransactionHandlers',
       'createPasswordResetHandlers',
       'createRegisterHandler',
+      'createSessionRevocation',
       'createStoredUseCases',
       'createTransactionHandlers',
       'createUseCases',
+      'getSessionRevocation',
       'readDataBackend',
     ])
   })

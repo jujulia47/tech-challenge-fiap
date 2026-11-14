@@ -20,6 +20,8 @@ export interface ChangePasswordDependencies {
   commonPasswords: CommonPasswordList
   // The limiter of the login, by email: a wrong current password is a guess like a wrong login
   limiterByEmail: RateLimiter
+  // The current instant, in ms: a new password ends every session, this one included
+  now?: () => number
 }
 
 export class ChangePassword {
@@ -50,6 +52,9 @@ export class ChangePassword {
     // The same policy as the registration and the reset
     const passwordHash = await hashNewPassword(newPassword, user, commonPasswords, hasher)
     await users.updatePasswordHash(user.id, passwordHash)
+    // Whoever had the old password, or a session made with it, is out on every device
+    const { now = Date.now } = this.dependencies
+    await users.updateSessionsValidAfter(user.id, now())
   }
 
   // The hasher compares in constant time

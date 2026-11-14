@@ -17,6 +17,7 @@ import {
   type ContractContext,
 } from './portContracts'
 import { describeRateLimiterContract } from './rateLimiterContract'
+import { describeUserSessionsContract } from './userSessionsContract'
 
 // The json-server of the local development, started for this file only
 const JSON_SERVER_BIN = fileURLToPath(new URL('../../../../node_modules/json-server/lib/bin.js', import.meta.url))
@@ -87,6 +88,7 @@ const ready = (): ContractContext => {
 }
 
 describeUserRepositoryContract('json-server', ready, CAPABILITIES)
+describeUserSessionsContract('json-server', ready)
 describeTransactionRepositoryContract('json-server', ready)
 describeResetTokenContract('json-server', ready, CAPABILITIES)
 describeRateLimiterContract('in memory', maxHits => new InMemoryRateLimiter({ maxHits, windowMs: 60_000 }), () => `key-${(sequence += 1)}`)

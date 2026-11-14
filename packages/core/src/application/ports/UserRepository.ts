@@ -5,6 +5,8 @@ export interface UserRepository {
   findById(id: string): Promise<User | null>
   updatePasswordHash(id: string, passwordHash: string): Promise<void>
   updateName(id: string, name: string): Promise<void>
+  // Ends every session of the user that started before this instant (ms since the epoch)
+  updateSessionsValidAfter(id: string, instant: number): Promise<void>
   // Returns what was stored: a backend may assign its own id (json-server does)
   create(user: User): Promise<User>
 }

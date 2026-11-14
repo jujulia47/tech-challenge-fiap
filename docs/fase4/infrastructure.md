@@ -31,7 +31,7 @@ packages/infrastructure/src/
   migration/       the migration of the old records, kept for reference
 ```
 
-The security adapters (scrypt, AES-GCM, rate limits, the lists) are described in [security.md](security.md), and the Supabase tables and functions in [deploy.md](deploy.md). This page covers the record format, the error codes, json-server and the local database.
+The user repositories also store `sessionsValidAfter`, the moment the user ended their sessions: as an ISO date and time in `db.json`, and as `timestamptz` in Supabase, both read back to the millisecond and covered by `userSessionsContract.ts`. The security adapters (scrypt, AES-GCM, rate limits, the lists) are described in [security.md](security.md), and the Supabase tables and functions in [deploy.md](deploy.md). This page covers the record format, the error codes, json-server and the local database.
 
 ## Record format
 

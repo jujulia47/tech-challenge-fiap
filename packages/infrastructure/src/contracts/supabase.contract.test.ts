@@ -17,6 +17,7 @@ import {
   type ContractContext,
 } from './portContracts'
 import { describeRateLimiterContract } from './rateLimiterContract'
+import { describeUserSessionsContract } from './userSessionsContract'
 
 // Against the real project: off by default and out of the CI.
 // SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract   (reads .env of the root)
@@ -72,6 +73,7 @@ const ready = (): ContractContext => {
 
 describe.skipIf(!ENABLED)('Supabase', () => {
   describeUserRepositoryContract('Supabase', ready, CAPABILITIES)
+  describeUserSessionsContract('Supabase', ready)
   describeTransactionRepositoryContract('Supabase', ready)
   describeResetTokenContract('Supabase', ready, CAPABILITIES)
   describeRateLimiterContract(

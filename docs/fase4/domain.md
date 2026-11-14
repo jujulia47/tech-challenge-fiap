@@ -72,7 +72,7 @@ Entity with `id`, `userId`, `type`, `amount` (`Money`, always the positive magni
 
 ### User
 
-`User` holds id, name, email and the password hash, which never leaves the application: use cases return `UserDTO`. The name is trimmed and has from 1 to 100 characters, counted as characters; the email is trimmed and lower-cased. `passwordPolicy.ts` holds the rules of a new password ([security.md](security.md#password-policy)).
+`User` holds id, name, email, the password hash, which never leaves the application (use cases return `UserDTO`), and `sessionsValidAfter`, the moment the user last ended their sessions, in milliseconds. `isSessionRevoked` (`domain/user/sessionRevocation.ts`) refuses a session that started before that moment ([security.md](security.md#ending-every-session)). The name is trimmed and has from 1 to 100 characters, counted as characters; the email is trimmed and lower-cased. `passwordPolicy.ts` holds the rules of a new password ([security.md](security.md#password-policy)).
 
 ### DomainError
 
@@ -115,7 +115,7 @@ With the seed and this rule, the balance is **R$ 1.150,00**:
 | Port | Methods | Implemented by |
 |---|---|---|
 | `TransactionRepository` | `findAllByUser(userId)`, `findById(id, userId)`, `create`, `update`, `delete(id, userId)`. `create` returns the stored transaction, because a backend may assign its own id | json-server and Supabase adapters, wrapped by the attachment cipher; `InMemoryTransactionRepository` in tests |
-| `UserRepository` | `findByEmail`, `findById`, `create`, `updateName`, `updatePasswordHash`. Each update sends one field, so a change of the name cannot undo a change of the password made at the same time | json-server and Supabase adapters |
+| `UserRepository` | `findByEmail`, `findById`, `create`, `updateName`, `updatePasswordHash`, `updateSessionsValidAfter`. Each update sends one field, so a change of the name cannot undo a change of the password made at the same time | json-server and Supabase adapters |
 | `PasswordResetTokens` | `create`, `findByHash`, `markUsed` (claimed once), `invalidateAllOfUser`, plus the token generator (`generate`, `hash`) | json-server and Supabase adapters; `CryptoResetTokenGenerator` |
 | `TransactionStatistics` | `summary()`, the counts of `/sobre` | json-server and Supabase adapters |
 | `RateLimiter` | `consume`, `release`, `reset` | memory and Postgres limiters |
@@ -141,7 +141,9 @@ Classes with their ports in the constructor and one `execute` method. Input and 
 | `AuthenticateUser`, `RegisterUser` | email, password, name | `UserDTO` or nothing | [security.md](security.md#login-and-registration) |
 | `RequestPasswordReset`, `ResetPassword` | email; token and password | nothing | [security.md](security.md#password-recovery) |
 | `UpdateUserProfile` | `{ userId, name }` | `UserDTO` | The rule of the name lives in `User`, so a registration and a profile agree. A user that no longer exists answers `INVALID_CREDENTIALS` |
-| `ChangePassword` | `{ userId, currentPassword, newPassword }` | nothing | Consumes the login limiter by email, verifies the current password, refuses an unchanged one (`PASSWORD_UNCHANGED`), applies the policy through `hashNewPassword` ([security.md](security.md#account-changing-the-name-and-the-password)) |
+| `ChangePassword` | `{ userId, currentPassword, newPassword }` | nothing | Consumes the login limiter by email, verifies the current password, refuses an unchanged one (`PASSWORD_UNCHANGED`), applies the policy through `hashNewPassword`, and ends every session of the user ([security.md](security.md#account-changing-the-name-and-the-password)). `ResetPassword` ends them too |
+| `EndUserSessions` | `{ userId }` | nothing | Records now as the moment every current session of the user ends: the logout |
+| `VerifySession` | `{ userId, sessionStartedAt }` | `boolean` | One read of the user, then `isSessionRevoked`. A user that no longer exists has no session |
 
 `ApplicationError` works like `DomainError`, with codes such as `TRANSACTION_NOT_FOUND`, `TRANSACTION_DATE_IN_FUTURE` and those of authentication and the account. A `DomainError` raised by an entity passes through unchanged.
 

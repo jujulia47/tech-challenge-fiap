@@ -148,6 +148,7 @@ describe('AuthenticateUser', () => {
         findById: () => Promise.resolve(null),
         updatePasswordHash: () => Promise.resolve(),
         updateName: () => Promise.resolve(),
+        updateSessionsValidAfter: () => Promise.resolve(),
         create: user => Promise.resolve(user),
       }
       const useCase = new AuthenticateUser(broken, new FakePasswordHasher(), { byEmail, byIp })

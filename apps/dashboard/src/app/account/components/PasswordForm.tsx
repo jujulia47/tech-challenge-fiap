@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Button, PasswordField, PasswordInput, useUser } from '@bytebank/design-system'
+import { Button, PasswordField, PasswordInput, signOutCompletely, useUser } from '@bytebank/design-system'
 import { passwordErrorMessage } from '@bytebank/utils'
 import { errorCodeOf } from '@/app/account/components/accountErrors'
 import { useChangePasswordMutation } from '@/store/transactionsApi'
+
+// Time to read the message before the login: a new password ends every session, this one too
+const SIGN_OUT_DELAY_MS = 2500
 
 interface PasswordFormProps {
   email: string
@@ -29,7 +32,12 @@ export function PasswordForm({ email, onSuccess, onError }: PasswordFormProps) {
       await changePassword({ currentPassword, newPassword }).unwrap()
       setCurrentPassword('')
       setNewPassword('')
-      onSuccess('Senha alterada com sucesso')
+      onSuccess('Senha alterada. Entre de novo com a nova senha.')
+      setTimeout(async () => {
+        await signOutCompletely()
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- cross-zone navigation requires a full page load
+        window.location.href = '/'
+      }, SIGN_OUT_DELAY_MS)
     } catch (caught) {
       const code = errorCodeOf(caught)
       if (code === 'INVALID_CURRENT_PASSWORD') return setCurrentError('Senha atual incorreta')

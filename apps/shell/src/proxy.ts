@@ -1,4 +1,5 @@
 import { auth } from '@/lib/auth'
+import { keepingSessionOutOfRsc } from '@bytebank/auth'
 import { withContentSecurityPolicy } from '@bytebank/utils'
 import { NextResponse } from 'next/server'
 
@@ -11,7 +12,9 @@ import { NextResponse } from 'next/server'
 // a second policy with another nonce would block their scripts.
 // APIs and static files aren't in the matcher. The zone APIs answer 401 in JSON,
 // and a redirect would hand HTML to a client that expects JSON.
-export default auth((req) => {
+// The RSC prefetches of the zones pass here too: they never renew the session (see
+// keepingSessionOutOfRsc in @bytebank/auth, and docs/fase4/security.md, "The session race")
+export default keepingSessionOutOfRsc(auth((req) => {
   const { nextUrl } = req
   // Require a user, not just an auth object: an auth object can be populated
   // with an error and fail open (defense in depth, GHSA-8fpg-xm3f-6cx3)
@@ -31,7 +34,7 @@ export default auth((req) => {
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.set('Content-Security-Policy', policy)
   return response
-})
+}))
 
 export const config = {
   matcher: ['/((?!api/|dashboard/api/|transactions/api/|_next/static|_next/image|.*\\.\\w+$).*)'],

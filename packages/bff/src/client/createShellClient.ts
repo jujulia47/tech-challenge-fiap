@@ -20,6 +20,8 @@ export interface ShellClient {
   requestPasswordReset(email: string): Promise<void>
   confirmPasswordReset(token: string, password: string): Promise<void>
   fetchSessionPolicy(): Promise<SessionPolicyDTO>
+  // "Sair": ends every session of the user on the server, before the cookie is cleared
+  endAllSessions(): Promise<void>
 }
 
 // An answer that was not ok: the code of the bff and the status, which the registration also reads.
@@ -54,5 +56,8 @@ export function createShellClient(): ShellClient {
     requestPasswordReset: email => post('/api/password-reset/request', { email }),
     confirmPasswordReset: (token, password) => post('/api/password-reset/confirm', { token, password }),
     fetchSessionPolicy: async () => (await request('/api/session-policy')).json(),
+    endAllSessions: async () => {
+      await request('/api/sessions/end', { method: 'POST' })
+    },
   }
 }

@@ -5,7 +5,7 @@ Requirements: secure authentication and encryption of sensitive data. Bytebank k
 | Sensitive data | Protection | Where |
 |---|---|---|
 | Password | scrypt hash, one salt per password, policy of OWASP ASVS 5.0 | `ScryptPasswordHasher`, `passwordPolicy.ts` |
-| Session | JWT signed and encrypted by the server, in an `httpOnly` cookie, 30 minutes, logout after 10 minutes idle | Auth.js, `sessionPolicy.ts`, `IdleSessionGuard` |
+| Session | JWT signed and encrypted by the server, in an `httpOnly` cookie, 30 minutes, logout of this browser after 10 minutes idle, every session ended on the server by "Sair" and by a new password | Auth.js, `sessionPolicy.ts`, `IdleSessionGuard`, `sessionRevocation.ts` |
 | Reset token | 32 random bytes, stored as SHA-256, 30 minutes, single use | `RequestPasswordReset`, `ResetPassword` |
 | Attachment | AES-256-GCM, tied to its owner, key in a server variable | `AesGcmCipher`, `EncryptedAttachmentRepository` |
 | Rate-limit counters | HMAC-SHA-256 of the email or IP, never the value itself | `rateLimitKey.ts` |
@@ -137,6 +137,7 @@ The values are in `packages/utils/src/sessionPolicy.ts`, the only place with the
 - **`updateAge` does nothing in Auth.js with JWT.** It only applies to database sessions: with JWT, every read of the session issues a new token. The API routes read the session but cannot set cookies, so someone working on one screen would never renew it. `IdleSessionGuard` reads the session every `updateAge` while there is activity.
 - **An expired session:** the proxies lead pages to the shell, and the zone APIs answer 401.
 - **Tolerance:** Auth.js accepts a token up to 15 seconds after it expires (`clockTolerance`), so a 30-minute session ends at 30 minutes and 15 seconds.
+- **What renews it:** page loads (through the proxies) and the reads of the session. The fetches of the router do not, since they are what wrote the old cookie back after a logout ([The session race](#the-session-race)).
 
 **Inactivity.** `IdleSessionGuard` (`packages/design-system/src/session/`) runs in the three apps. Its timing logic, `idleMonitor.ts`, has no React and no browser API, so it is tested with simulated time.
 
@@ -207,10 +208,63 @@ The reads came from the session provider of the zones (on page load and when the
 
 **Evidence.** `apps/shell/scripts/session-race.mjs` holds the session reads in the browser for 3 s after the server answered, so the request is real and only its arrival is late. Against production before the fix, 8 of 8 checks failed: the header and the session went back to the old name, and after the logout `/dashboard` still opened. After the fix, 12 of 12 passed in Docker ([testing.md](testing.md#browser-regression-the-session-race)).
 
-**The fix**, so that no write is left with a read behind it:
+**The first fix**, so that no write is left with a read behind it:
 
 1. **The zones do not read the session on their own.** `ZoneSessionProvider` (`packages/auth/src/ZoneSessionProvider.tsx`) reads the session on the server, in the layout, and starts the provider with it, with `refetchOnWindowFocus` off. The layouts were already rendered per request for the nonce, so this costs one decode of the JWT and no query, and the name is in the header from the first paint.
-2. **The writes wait for the reads.** The only read left is the renewal of the inactivity guard, which goes through `readSession` (`packages/design-system/src/session/zoneSession.ts`) and is tracked while in flight. `signOutCompletely`, used by the header and by the inactivity logout, waits for the reads, signs out, and reads the session to check; if a read from elsewhere brought it back, it signs out once more. The form of the name calls `waitForSessionReads` before `update()`.
+2. **The writes wait for the reads.** The only read left is the renewal of the inactivity guard, which goes through `readSession` (`packages/design-system/src/session/zoneSession.ts`) and is tracked while in flight. `signOutCompletely`, used by the inactivity logout and, after the server ended every session, by "Sair" (`signOutEverywhere`), waits for the reads, signs out, and reads the session to check; if a read from elsewhere brought it back, it signs out once more. The form of the name calls `waitForSessionReads` before `update()`.
+
+This fixed the name in production, but not the logout. On 2026-11-14 the regression test against production passed 6 of 6 on the name and failed 6 of 6 on the logout, while Docker passed 12 of 12.
+
+**The cause of the logout, found by recording every request after the click.** A Playwright run with the Chrome DevTools Protocol logged each request with its initiator and each `Set-Cookie` (names only), in production and in Docker:
+
+- After a page loads, the router of Next prefetches the links of the menu (`/dashboard/investments`, `/dashboard/services`, `/dashboard/account`, `/dashboard/coming-soon`) with RSC fetches, in two waves.
+- Those fetches go through `proxy.ts` of the shell (its matcher covers `/dashboard/*`) and of the zone. Both are `auth(...)` of next-auth, whose `handleAuth` reads the session on every request and copies the renewed session cookie to the response. Each prefetch answered with a new `session-token`.
+- In production each answer takes about 200 ms. In a failing run, the click on "Sair" came at +0 ms; the prefetch of `/dashboard/investments` left at +148 ms with the old cookie; the `POST /dashboard/api/auth/signout` left at +197 ms; the signout answer cleared the cookie at +353 ms; **the prefetch answered at +354 ms and wrote the session back**. The next read of the session, at +355 ms, already carried it, and the server renewed it from then on. In the runs that passed, the prefetches answered before the signout (for example +324 and +326 ms against +346 ms): the order of the answers decided.
+- In Docker the same two waves end about 280 ms after the page loads, each answer in about 25 ms, before the user can click: nothing is in flight at the logout. That is why the local runs always passed.
+
+**The second fix: the router fetches do not renew the session.** `keepingSessionOutOfRsc` (`packages/auth/src/rscSessionCookies.ts`) wraps the proxies of the shell and of the zones and removes a renewed session cookie from the answer to a fetch, keeping a cookie being cleared. Next removes the RSC headers (`RSC`, `Next-Router-Prefetch`) and the `_rsc` parameter before the proxy sees the request, so the fetch is recognised by `Sec-Fetch-Dest`, which the browser sets and the page cannot forge (`empty` on a fetch, `document` on a page load), with the RSC headers as a fallback. Page loads and the reads of the session still renew it. After this, no RSC answer carried a `session-token` in the recording.
+
+**The third fix, which does not depend on the order of anything: "Sair" ends every session on the server** ([below](#ending-every-session)). A cookie written back by any late answer is refused at its next check.
+
+### Ending every session
+
+A JWT session lives in the cookie, so clearing the cookie only ends the copy in that browser. To end a session for real, the server records when the user ended their sessions, and refuses a session that started before that moment.
+
+| Piece | Where |
+|---|---|
+| The moment, `sessionsValidAfter` (date and time) | `User` in the core; `sessionsValidAfter` (ISO) in `db.json`; `sessions_valid_after timestamptz` in Supabase (`supabase/migrations/0002_sessions_valid_after.sql`) |
+| The rule: a session that started before the moment is refused; with no moment, every session is valid | `isSessionRevoked` in `packages/core/src/domain/user/sessionRevocation.ts` |
+| The use cases | `EndUserSessions` (records now) and `VerifySession` (one read of the user), in the core |
+| The writes | `updateSessionsValidAfter` in `HttpUserRepository` and `SupabaseUserRepository`, with a contract suite for both |
+| When the session started | `sessionStartedAt`, put in the token at the login by the `jwt` callback of `baseAuthConfig` (`packages/auth/src/sessionConfig.ts`) |
+| The check | The same `jwt` callback, in the three apps, on every read of the session: it returns `null`, and Auth.js answers no session and clears the cookie |
+| "Sair" of the menu | `POST /api/sessions/end` of the shell (`createEndSessionsHandler` in the bff), called by `signOutEverywhere` (`packages/design-system/src/session/sessionWrites.ts`) before the cookie is cleared. The zones reach it on the origin of the shell. It checks the `Origin` before the session, like the other writes |
+| The inactivity logout | `signOutCompletely`: the sign-out of Auth.js only, which clears the cookie of this browser and records nothing. The config has no `signOut` event |
+| A new password | `ChangePassword` and `ResetPassword` record the moment after saving the hash |
+| The composition | `getSessionRevocation()` in `@bytebank/bff`, given to the three apps |
+
+**What it means for the user:**
+
+- **"Sair" ends the sessions of every device** of the user, not only this browser.
+- **The inactivity logout ends only the session of its own browser.** A tab forgotten on another computer that times out does not log the person out of the phone. The two are separate on purpose: leaving is a decision of the person, and a timeout is not.
+- **A new password ends every session, this one included**, which closes the open item of the account page: whoever had the old password, or a session made with it, is out. The account page says "Senha alterada. Entre de novo com a nova senha." and takes the person to the login after 2.5 s. A reset by email does the same.
+- **A copy of the cookie stops working at once**, including one written back by a late answer, a stolen one, or another tab.
+
+**Why the start of the session, not `iat`.** Auth.js signs the token again on every read, with a new `iat`. Comparing `iat` would let a token that slipped through one check come back with a new date and stay valid forever. `sessionStartedAt` is set at the login and never changes, so an old session stays old.
+
+**The cost: one read of the user per check of a session**, in every app: the proxies on each page and each RSC fetch, each read of the session, each API request. There is no cache, on purpose: a logout must hold at once in every app and instance, and a cache per instance would let another instance accept the old session for its duration. With json-server it is one local HTTP request; with Supabase, one query in the same region as the functions (`iad1`).
+
+**Failing closed.** If the database does not answer, the callback throws, and Auth.js logs the error and clears the cookie: the person logs in again rather than keep a session that cannot be checked.
+
+**Proof**, in Docker with the new code:
+
+| Check | Result |
+|---|---|
+| A copy of the session cookie, taken before the logout and put back after it | Refused by the shell and by the zone; the read clears it; `/dashboard` goes back to the login |
+| Another browser, logged in before the logout | Its session is gone, and `/transactions` goes back to the login |
+| A new login after the logout | Works |
+| `npm run test:logout-scope`, with the idle logout after 20 s | 7 of 7, twice: the inactivity logout of one browser leaves another logged in and records no moment; "Sair" in one browser logs the other out |
+| `npm run test:session-race`, 3 rounds, twice | 12 of 12 each time |
 
 ### Account: changing the name and the password
 
@@ -223,7 +277,7 @@ The reads came from the session provider of the zones (on page load and when the
 
 Both follow the other writes of the bff: the `Origin` is checked before the session, the user is always the one of the session, and the body is a strict Zod object, so an `id` or an `email` in it is refused with `400`.
 
-`ChangePassword` consumes one attempt of the login limiter by email, verifies the current password in constant time and in NFKC, refuses a new password equal to the current one (`422 PASSWORD_UNCHANGED`) and applies the policy. A wrong current password answers `422 INVALID_CURRENT_PASSWORD`, not `401`, because the client reads `401` as an expired session.
+`ChangePassword` consumes one attempt of the login limiter by email, verifies the current password in constant time and in NFKC, refuses a new password equal to the current one (`422 PASSWORD_UNCHANGED`), applies the policy, and [ends every session](#ending-every-session) of the user, this one included. A wrong current password answers `422 INVALID_CURRENT_PASSWORD`, not `401`, because the client reads `401` as an expired session.
 
 **The name in the session.** After saving, the screen calls `update()` of Auth.js. The zone answers in the `jwt` callback, with the `update` trigger, by reading the user again by the id of the token. What the browser sends with `update()` is ignored, so nobody can write a name, or another id, into their own token.
 
@@ -233,7 +287,7 @@ Both follow the other writes of the bff: the `Origin` is checked before the sess
 2. The server generates a random token of 32 bytes and stores only its SHA-256, with the user id, an expiry of 30 minutes and whether it was used. Earlier tokens of the user stop working. SHA-256 is enough here: the token has 256 random bits, so there is nothing to guess slowly, unlike a password.
 3. The link uses `SHELL_URL`, never the `Host` of the request, which a client could forge to send the token to another site.
 4. `/redefinir-senha` removes the token from the address bar as soon as it opens.
-5. On success the token is claimed, the new hash is saved, and the login attempts of that email are cleared. With Supabase the claim is one atomic statement (`use_password_reset_token`), made before the password changes, so of two uses of one link only one wins.
+5. On success the token is claimed, the new hash is saved, every session of the user ends, and the login attempts of that email are cleared. With Supabase the claim is one atomic statement (`use_password_reset_token`), made before the password changes, so of two uses of one link only one wins.
 
 An expired, used or unknown token gives one message, with a link to ask for another. A password the policy refuses does not use up the token. Both routes check the Origin and validate with Zod.
 
@@ -338,13 +392,18 @@ Server code must never reach a browser bundle: it holds the database adapters, t
 | HSTS in production | `curl -sI https://bytebank-shell.vercel.app/ \| grep -i strict-transport-security` |
 | Secrets refused | `NEXTAUTH_SECRET=replace-me docker compose up -d` stops at `secrets-check` |
 | Session race | `npm run test:session-race` against a running app ([testing.md](testing.md#browser-regression-the-session-race)) |
+| What each logout ends | `npm run test:logout-scope` with short idle times ([testing.md](testing.md#browser-regression-what-each-logout-ends)). By hand: log in on two browsers; leave one idle and the other stays in; then "Sair" on one and the other goes back to the login at its next page. The moment is in `db.json` (`sessionsValidAfter`) or in `users.sessions_valid_after` |
 | HMAC limiter against Postgres | The Supabase contract suite ([deploy.md](deploy.md#contract-tests)) |
 | Server-only | Import `@bytebank/bff` in a Client Component: the build fails |
 
 ## Known limits
 
-- **A session survives a password change, and the JWT cannot be revoked.** A copy of the token works until it expires, 30 minutes at most, after a logout or a password change. The robust fix is a mark on the user, such as "sessions valid after", checked on every request; it costs one query per session check.
-- **The session race across tabs.** A read that another tab had started before a write, and that answers after it, can still bring the old token back, since the tabs share the cookie. It needs two tabs and a read in flight in the second one at the moment of the click. The same server-side mark would close it.
+- **"Sair" ends the sessions of every device.** Someone who only wanted to leave one computer leaves the phone too: the price of a logout that no copy of the cookie can undo.
+- **The inactivity logout only clears the cookie of its browser.** A copy of that cookie, taken before, stays valid until it expires (30 minutes at most), as before the revocation. The fetches of the router no longer write it back, so the late answers of the session race do not apply.
+- **If "Sair" cannot reach the server**, the browser still clears its own cookie: the person leaves this browser, and the other sessions stay until they expire.
+- **One read of the user per check of a session**, with no cache ([Ending every session](#ending-every-session)). If the database is down, every session ends (it fails closed).
+- **The clocks of the servers.** The moment of the logout and the start of a session come from the clocks of different functions. A login within a few milliseconds of a logout, on servers whose clocks differ by more than that, could be refused once.
+- **A rename made in another tab** is not rewritten into the token of a tab that started a read of the session before it; it shows after the next page load. The logout no longer has this problem, since the server refuses the old session.
 - **The token travels in a link**, so whoever reads the email can use it within 30 minutes. It stays in the HTML of the first response and in the access logs of any proxy in front of the shell.
 - **A failed email looks like a sent one to the person**; only the server log shows it. No email warns about a changed password.
 - **An 8-character password not on the list is accepted**, such as a name and a year that the list lacks. The strength indicator shows it as weak or fair, and only that.
