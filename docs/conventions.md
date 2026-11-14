@@ -12,7 +12,7 @@ The rules every change follows. Lint and the tests check most of them; the other
 | `aria-label` and other text for screen readers | Portuguese, for pt-BR screen readers |
 | Commit messages | English |
 
-`README.md` and `docs/architecture.md` are in Portuguese, the language they were written in.
+`README.md` and the index `docs/README.md` are in Portuguese, for the evaluators of the course; every other doc is in English.
 
 ## TypeScript
 

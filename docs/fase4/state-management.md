@@ -1,8 +1,6 @@
-# Phase 4: state management (Steps 2.4b and 2.5a)
+# State management
 
-**Date:** 2026-10-30
-
-Both zones keep server data in RTK Query, built by the same factory: `createTransactionsApi(basePath)`, in `packages/store` (`@bytebank/store`).
+Requirements: state management and cache. Both zones keep server data in RTK Query, built by the same factory: `createTransactionsApi(basePath)`, in `packages/store` (`@bytebank/store`).
 
 | Zone | API | Hooks used |
 |---|---|---|
@@ -18,9 +16,9 @@ Both zones keep server data in RTK Query, built by the same factory: `createTran
 
 ## Where the code lives
 
-`@bytebank/store` also holds the RxJS search of the transactions zone (`docs/fase4/reactive-programming.md`). It holds `createTransactionsApi` and `createTransactionsStore`. It is its own package because it depends on Redux and React, and `@bytebank/bff` must not: the bff also runs on the server. The dependency points one way: `store → bff/client`.
+`@bytebank/store` holds `createTransactionsApi`, `createTransactionsStore`, `createTransactionsProvider` and the RxJS search of the transactions zone. It is its own package because it depends on Redux and React, and `@bytebank/bff` must not: the bff also runs on the server. The dependency points one way: `store → bff/client`.
 
-Each zone only has `store/transactionsApi.ts`, which picks the `basePath` and the hooks it uses, plus `store/store.ts` and `store/ReduxProvider.tsx`.
+Each zone only has `store/transactionsApi.ts`, which calls the factories with its `basePath` and picks the hooks it uses.
 
 ## One HTTP client
 
@@ -53,7 +51,7 @@ The client never sorts or inserts. After a create, the refetch brings the list i
 
 ## What stays local
 
-Search, filters and pagination of the transactions page are local state of the screen, over the list that the query returns. A refetch keeps them: editing with a filter on keeps the filter. The search will get RxJS in Block 5.
+Search, filters and pagination of the transactions page are local state of the screen, over the list that the query returns, run by an RxJS pipeline ([reactive-programming.md](reactive-programming.md)). A refetch keeps them: editing with a filter on keeps the filter.
 
 ## The zones do not share a store
 
@@ -65,3 +63,9 @@ Each zone is a separate Next.js app, and moving between them is a full page load
 - `type` narrows the bars only. The pie stays complete, because it is what the type is chosen from.
 - The store is created once per module and queries only run in the browser, so nothing from one user stays on the server.
 - A 401 redirects once per failed request. After a write, the refetches also answer 401, so a navigation to `/` can replace the previous one. The user still ends on `/`.
+
+## How to validate
+
+- `npm test` runs the factory with a simulated `fetch`: every endpoint, the tags and what each mutation invalidates ([testing.md](testing.md)).
+- In the browser, DevTools → Network: create a transaction on the dashboard, and the balance, the statement and the charts are read again once each, with no reload. Choosing a chart period already hovered sends no request.
+- The Redux DevTools extension shows the `transactionsApi` slice with its queries and tags.

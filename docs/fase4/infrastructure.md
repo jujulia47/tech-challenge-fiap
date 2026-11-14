@@ -1,25 +1,37 @@
-# Phase 4: infrastructure (Step 1.3)
+# Infrastructure: the adapters
 
-**Date:** 2026-10-30
+Requirement: Clean Architecture. `@bytebank/infrastructure` (`packages/infrastructure`) implements the ports that `@bytebank/core` defines. It depends only on the core and on native `fetch`, `Intl` and `node:crypto`, plus `@supabase/supabase-js` and `nodemailer`. It never reads `process.env`: whoever builds an adapter injects its configuration, and that happens in one place, the composition of the bff ([bff.md](bff.md)). The decision is in [ADR 0005](../adr/0005-infrastructure-as-separate-package.md), and the clock in [ADR 0006](../adr/0006-clock-in-sao-paulo-timezone.md).
 
-`@bytebank/infrastructure` (`packages/infrastructure`) implements the ports defined by `@bytebank/core`. It depends only on `@bytebank/core`, with native `fetch`, `Intl` and `crypto`. The zones use it through `@bytebank/bff` since step 2.2. The migration was run on the real data in step 2.2, and since step 2.3b the database lives in `apps/shell/data/` (see [Where the database lives](#where-the-database-lives-step-23b)).
+## The adapters
 
-See [ADR 0005](../adr/0005-infrastructure-as-separate-package.md) and [ADR 0006](../adr/0006-clock-in-sao-paulo-timezone.md).
+| Port of the core | json-server (local) | Supabase (production) | Other |
+|---|---|---|---|
+| `TransactionRepository` | `HttpTransactionRepository` | `SupabaseTransactionRepository` | `EncryptedAttachmentRepository` wraps either one |
+| `UserRepository` | `HttpUserRepository` | `SupabaseUserRepository` | |
+| `PasswordResetTokens` | `HttpPasswordResetTokenRepository` | `SupabasePasswordResetTokenRepository` | |
+| `TransactionStatistics` (`/sobre`) | `HttpTransactionStatistics` | `SupabaseTransactionStatistics` | |
+| `RateLimiter` | `InMemoryRateLimiter` | `PostgresRateLimiter` | |
+| `PasswordHasher` | | | `ScryptPasswordHasher` |
+| `DataCipher` | | | `AesGcmCipher` |
+| `CommonPasswordList` | | | `StaticCommonPasswordList` |
+| `EmailSender` | | | `SmtpEmailSender`, `DisabledEmailSender` |
+| `Clock` | | | `SaoPauloClock` |
+| `IdGenerator` | | | `CryptoIdGenerator`, `CryptoResetTokenGenerator` |
 
 ```text
 packages/infrastructure/src/
-  index.ts
-  errors/InfrastructureError.ts
-  json-server/TransactionRecord.ts
-  json-server/transactionRecordMapper.ts
-  json-server/HttpTransactionRepository.ts
-  clock/SaoPauloClock.ts
-  id/CryptoIdGenerator.ts
-  migration/legacyTransaction.ts
-  migration/migrateTransactions.ts
-packages/infrastructure/scripts/
-  migrate-db.mjs
+  json-server/     the HTTP adapters, the record mapper, the shared HTTP helpers
+  supabase/        the Postgres adapters, the rate-limit keys
+  encryption/      AES-256-GCM and the attachment wrapper
+  password/        scrypt, the lists of common passwords, reset tokens
+  email/           SMTP and the disabled sender
+  rate-limit/      the memory limiter
+  clock/, id/      the São Paulo clock, the id generators
+  contracts/       one contract suite per port, run against both backends
+  migration/       the migration of the old records, kept for reference
 ```
+
+The security adapters (scrypt, AES-GCM, rate limits, the lists) are described in [security.md](security.md), and the Supabase tables and functions in [deploy.md](deploy.md). This page covers the record format, the error codes, json-server and the local database.
 
 ## Record format
 
@@ -30,19 +42,11 @@ packages/infrastructure/scripts/
 | `type` | string (type code) | `"deposit"` |
 | `amountInCents` | integer | `15000` |
 | `date` | ISO string | `"2022-11-18"` |
-| `attachment` | string, optional | `"aes256gcm$v1$..."` since step 3.3, see `docs/fase4/security.md` |
+| `attachment` | string, optional | `"aes256gcm$v1$..."` ([security.md](security.md#attachments)) |
 
-This matches `TransactionPrimitives`. There is no `month`, no `label` and no text `amount`.
+This matches `TransactionPrimitives` of the core. `parseTransactionRecord(value: unknown)` checks the shape at runtime and drops unknown fields, then `Transaction.fromPrimitives` validates the rules, so invalid stored data becomes an error and never enters the application silently. Any failure in that read becomes `CORRUPTED_RECORD`, so a `DomainError` caused by stored data does not look like a mistake of the client.
 
-## Adapters
-
-### `transactionRecordMapper`
-
-Converts between records and the domain. `parseTransactionRecord(value: unknown)` checks the shape at runtime and drops unknown fields. `transactionFromRecord` then goes through `Transaction.fromPrimitives`, so invalid stored data becomes an error and never enters the application silently. Any failure in that read becomes an `InfrastructureError` with the code `CORRUPTED_RECORD`, so a `DomainError` caused by stored data does not look like a mistake of the client.
-
-### `HttpTransactionRepository`
-
-Implements `TransactionRepository`. It receives `baseUrl` through the constructor and never reads `process.env`: whoever builds it injects the configuration.
+## `HttpTransactionRepository`
 
 | Method | Request | Notes |
 |---|---|---|
@@ -52,31 +56,34 @@ Implements `TransactionRepository`. It receives `baseUrl` through the constructo
 | `update` | `GET` to confirm the owner, then `PUT /transactions/<id>` | `TRANSACTION_NOT_FOUND` if the owner does not match, with no write |
 | `delete` | `GET` to confirm the owner, then `DELETE /transactions/<id>` | Same |
 
-Non-2xx responses (except the handled 404) throw `InfrastructureError` with `status` and `url`. The response body is never included.
+**Timeout.** Every `fetch` carries `AbortSignal.timeout(timeoutMs)`, 5 s by default (`new HttpTransactionRepository(baseUrl, { timeoutMs })`). The signal also covers the body, so a server that sends the headers and stops is a `UPSTREAM_TIMEOUT`, not invalid JSON. `update` and `delete` make two requests, each with its own timeout. After a timeout on a write, the result is unknown.
 
-### `InfrastructureError` codes (step 2.1)
+### Error codes
 
-Every failure of the adapter has a code, so a logger can tell them apart. `@bytebank/bff` answers 502 `UPSTREAM_ERROR` for all of them, and none of these details reach the response.
+Every failure of an adapter has a code, so the logger can tell them apart. The bff answers 502 `UPSTREAM_ERROR` for all of them, and none of these details reach the response.
 
 | Code | When | Details on the error |
 |---|---|---|
 | `UPSTREAM_UNREACHABLE` | `fetch` rejects: backend down, DNS failure, connection reset | `url`, and the original error as `cause` |
-| `UPSTREAM_TIMEOUT` | The answer did not arrive in time, or stopped in the middle of the body (step 2.2) | `url`, and the `TimeoutError` as `cause` |
+| `UPSTREAM_TIMEOUT` | The answer did not arrive in time, or stopped in the middle of the body | `url`, and the `TimeoutError` as `cause` |
 | `UPSTREAM_BAD_STATUS` | Non-2xx response, except the handled 404 | `status`, `url` |
 | `UPSTREAM_INVALID_RESPONSE` | The response is not JSON, or a list was expected and something else arrived | `url` |
-| `CORRUPTED_RECORD` | A record read from the database fails in the mapper or in `Transaction.fromPrimitives` | The record id in the message (`(no id)` if it has none), and the original error as `cause` |
+| `CORRUPTED_RECORD` | A stored record fails in the mapper or in `Transaction.fromPrimitives` | The record id (`(no id)` if it has none), and the original error as `cause` |
 
-- `code` is optional, because the errors of the migration have none: they are only reported by message.
 - **`UPSTREAM_INVALID_RESPONSE` has no `cause` on purpose.** The message of a JSON parse error quotes the start of the response, and response bodies stay out of errors.
-- **Timeout.** Every `fetch` carries `AbortSignal.timeout(timeoutMs)`, 5 s by default, set through the constructor: `new HttpTransactionRepository(baseUrl, { timeoutMs })`. The signal also covers the body, so `readJson` has to tell a timeout from invalid JSON: a server that sends the headers and stops is a `UPSTREAM_TIMEOUT`, not a `UPSTREAM_INVALID_RESPONSE`. `update` and `delete` make two requests, each with its own timeout. After a timeout on a write, the result is unknown.
+- Errors name the collection, never the email or the user id ([security.md](security.md#personal-data-in-logs)).
 - `findById` reads the record before it checks the owner, so a corrupted record of another user is a `CORRUPTED_RECORD`, not a `null`.
-- Invalid input from a client never gets here: it fails in the use case, before the repository is called.
+- Invalid input from a client never gets here: it fails in the bff or the use case, before the repository is called.
 
-### json-server behavior (verified on 1.0.0-beta.15)
+## json-server
 
-Checked in the package README, in its source, and against a real server running on a temporary copy of the data.
+json-server is the local database: no setup, a file that resets, and the demonstration data in the seed. It is not a production database: no transaction, no unique index, no atomic update, no access control ([ADR 0010](../adr/0010-supabase-as-production-database.md)).
 
-**`?userId=1` does not work for string ids.** The README says "no operator -> `eq` (equal)", which is true, but `lib/parse-where.js` coerces numeric-looking values to numbers (`coerceValue`) and `lib/matches-where.js` compares with `===`. So `?userId=1` looks for the number `1` and finds nothing when the stored value is the string `"1"`:
+### Behavior verified on 1.0.0-beta.15
+
+Checked in the package README, in its source, and against a real server on a temporary copy of the data. The integration test keeps these facts true ([testing.md](testing.md)).
+
+**`?userId=1` does not work for string ids.** `lib/parse-where.js` coerces numeric-looking values to numbers and `lib/matches-where.js` compares with `===`, so `?userId=1` looks for the number `1`:
 
 | Request | Stored `userId` | Result |
 |---|---|---|
@@ -87,15 +94,15 @@ Checked in the package README, in its source, and against a real server running 
 
 `_where` takes JSON, so the value stays a string. The repository uses it.
 
-**`POST` replaces the id.** `lib/service.js` does `{ ...data, id: randomId() }`, so an id sent by the client is discarded: `client-uuid` came back as `8N9On-LoiYA`. For this reason `TransactionRepository.create` returns the stored `Transaction`, and `CreateTransaction` returns that one. **With json-server, the id from `CryptoIdGenerator` is therefore not the one that ends up stored.** It stays in place for backends that accept client ids.
+**`POST` replaces the id.** `lib/service.js` does `{ ...data, id: randomId() }`, so an id sent by the client is discarded (`client-uuid` came back as `8N9On-LoiYA`). That is why `TransactionRepository.create` returns the stored transaction: with json-server, the id from `CryptoIdGenerator` is not the one stored. Supabase keeps it.
 
-**The body limit is 102400 bytes.** `milliparsec`, which reads the bodies, refuses anything larger with a 500, `Payload too large`. This is the reason for the attachment limit, see [ADR 0009](../adr/0009-attachment-size-limit.md).
+**The body limit is 102400 bytes.** `milliparsec` refuses anything larger with a 500, `Payload too large`. This is the reason for the attachment limit of 70 KB ([ADR 0009](../adr/0009-attachment-size-limit.md)).
 
 **Other confirmed behavior:** `PUT` keeps the id from the URL and ignores the one in the body, `PUT` on an unknown id returns 404, and `GET` on a missing id returns 404.
 
-### The version must be fixed (step 2.3)
+### The version is pinned
 
-Until step 2.2, Docker ran another json-server. `npx json-server` and `npm install -g json-server`, with no version, download the `latest` tag, which is **0.17.4**, while the repository and every test use **1.0.0-beta.15**. The tag `latest` is older than the beta, so the mismatch went unnoticed: the app worked, on a backend with other rules.
+`npx json-server` and `npm install -g json-server`, with no version, download the `latest` tag, which is **0.17.4**, older than the **1.0.0-beta.15** of the repository. Docker once ran 0.17.4 by accident, and the app seemed to work on a backend with other rules:
 
 | Behavior | 1.0.0-beta.15 | 0.17.4 |
 |---|---|---|
@@ -103,41 +110,86 @@ Until step 2.2, Docker ran another json-server. `npx json-server` and `npm insta
 | Id on `POST` | Replaced by the server | Kept from the client |
 | `DELETE` | Removes the record | **Also removes every record of any collection whose `xxxId` points to something missing** |
 
-The last row is the serious one. In 0.17.4, `userId` counts as a foreign key to `users`, so a transaction whose owner is not in `users` is removed by **any** DELETE on any record. In a test with `users` empty, one DELETE wiped all the transactions.
+The last row is the serious one: in 0.17.4, `userId` counts as a foreign key to `users`, so with `users` empty one DELETE wiped all the transactions.
 
-`docker-compose.yml` and `apps/shell/Dockerfile.jsonserver` now name `1.0.0-beta.15`, the version in `package-lock.json`. **Any change of version must happen in the three places together**, and the integration test must pass, because this adapter depends on the behaviors above.
+`package-lock.json`, `docker-compose.yml` and `apps/shell/Dockerfile.jsonserver` name `1.0.0-beta.15`. **A change of version must happen in the three places together**, and the integration test must pass. This version declares `node >=22.12.0`, so the images and the CI use Node 22.
 
-**Node.** This version declares `node >=22.12.0`. Compose and `Dockerfile.jsonserver` use `node:22-alpine` since step 2.3b, and CI uses Node 22 since step 2.4a.
+### The image
 
-### `SaoPauloClock`
+`apps/shell/Dockerfile.jsonserver` installs `json-server@1.0.0-beta.15` at build time, on `node:22-alpine`, so the container starts with no network (`--network none`); before, `npx` asked the registry on every start. The seed is in the image too, outside `/app`, which let the same image run on Railway, the hosting of the first deploys.
 
-`today()` returns the calendar day in `America/Sao_Paulo`, using `Intl.DateTimeFormat`, never the server's timezone. For example, `2026-10-30T01:30:00Z` is `2026-10-29`. The constructor accepts a `now` function so that tests can fix the instant.
+### Where the database lives
 
-### `CryptoIdGenerator`
+| File | Role | In git |
+|---|---|---|
+| `apps/shell/data/db.seed.json` | The seed: 2 users and 7 transactions. json-server never writes to it | Yes |
+| `apps/shell/data/db.json` | The database in use, created from the seed when it does not exist | No (`.gitignore`, `.dockerignore`) |
 
-`next()` returns `crypto.randomUUID()`. In the browser this function only exists in secure contexts (HTTPS or localhost).
+Docker Compose mounts the folder `./apps/shell/data:/app` and creates `db.json` from the seed before starting json-server. Mounting all of `./apps/shell` would expose `.env.local` to the container.
 
-## Migration
+**Why a folder, not a file.** The compose file once mounted only `db.json`. json-server saves atomically: it writes `.db.json.tmp` and renames it over `db.json`, and the kernel refuses a rename over a mount point (`EBUSY: resource busy or locked, rename '.db.json.tmp' -> 'db.json'`). json-server changes its memory first and saves afterwards, so an edit answered 500 (502 in the bff), a reload showed the change from memory, and nothing reached the disk:
 
-`migrateTransactions(records, userId)` is a pure function. It converts each record and returns `{ transactions, errors, summary }`.
+| Mount | Version | `PUT` | `DELETE` | Reached the disk |
+|---|---|---|---|---|
+| One file | 1.0.0-beta.15 | 500 | 500 | No |
+| One file | 0.17.4 | 200 | 200 | **No, and with no error** |
+| Folder | 1.0.0-beta.15 | 200 | 200 | Yes |
+
+With the folder, verified on the real compose file: a direct `PUT` and `DELETE` reach the file on disk, the change survives `docker compose restart json-server`, and `PATCH` and `DELETE` through the bff answer 200 and 204 and reach the file. The lesson: a test only proves the setup it runs on, so anything about Docker is verified with the real `docker-compose.yml`.
+
+### Resetting the data
+
+```bash
+npm run db:reset
+docker compose restart json-server   # only when it runs in Docker
+```
+
+The restart is required in Docker: file changes do not cross the bind mount on Windows, so json-server keeps serving its memory, and the next write would overwrite the reset. With `npm run api`, json-server watches the file and reloads by itself. A `db.json` older than the current format (plain-text passwords, unencrypted attachments) also needs this reset.
+
+### Reaching json-server for debugging
+
+Docker Compose does not publish port 3001. Only the apps reach json-server, through the `bytebank` network, so `curl http://localhost:3001` is refused on purpose: the mock database has no access control. With the services up:
+
+```bash
+# Read
+docker compose exec json-server wget -qO- http://127.0.0.1:3001/transactions
+# The file in use, which is also apps/shell/data/db.json on the machine
+docker compose exec json-server cat db.json
+# Write, through Node, because the wget of the image only reads
+docker compose exec json-server node -e "fetch('http://127.0.0.1:3001/transactions/1').then(r => r.text()).then(console.log)"
+# Logs
+docker compose logs json-server --tail 40
+```
+
+Use `127.0.0.1`, not `localhost`, which may resolve to IPv6 in the image. Outside Docker, `npm run api` in `apps/shell` serves on port 3001 of the machine.
+
+## `SaoPauloClock` and `CryptoIdGenerator`
+
+`SaoPauloClock.today()` returns the calendar day in `America/Sao_Paulo`, through `bankDayOf` of the domain, never the timezone of the server: `2026-10-30T01:30:00Z` is `2026-10-29`. The constructor accepts a `now` function so that tests can fix the instant. The screens use `BrowserClock` (`@bytebank/utils`), which calls the same rule.
+
+`CryptoIdGenerator.next()` returns `crypto.randomUUID()`.
+
+## Migration of the old records
+
+Before Phase 4, records were stored with Portuguese labels, amounts as text (`R$ 1.234,56`) and dates as `dd/mm/yyyy`. `migrateTransactions(records, userId)` is a pure function that converts them:
 
 | Field | Rule |
 |---|---|
 | `id` | Kept |
-| `userId` | The parameter (`"1"` in the real migration) |
+| `userId` | The parameter |
 | `type` | Portuguese label to code; an unknown label is an error |
-| `amountInCents` | Parsed from `R$ 1.234,56` with string handling only (no `parseFloat`). Accepts spaces, and values with or without thousands separators. A negative value or anything else is an error. |
-| `date` | `transactionDate` if present, otherwise `date`, converted from `dd/mm/yyyy` and validated with `CalendarDate` |
+| `amountInCents` | Parsed from `R$ 1.234,56` with string handling only (no `parseFloat`). A negative value is an error: the domain stores magnitudes, and dropping the `-` could change the meaning of a record |
+| `date` | `transactionDate` if present, otherwise `date`, from `dd/mm/yyyy`, validated with `CalendarDate` |
 | `attachment` | Kept if present |
 | `month`, `label`, `amount` | Discarded |
 
-- **Negative amounts are errors:** a value such as `-R$ 10,00` is reported with the reason `negative amount: the domain stores magnitudes; review this record manually`. The entity holds a positive magnitude and the sign comes from the type, so dropping the `-` could silently change the meaning of a record. No stored record is negative today.
-- **Idempotent:** a record with `amountInCents` is treated as new format. It is validated and kept as it is, including its `userId`.
-- **Every result goes through `Transaction.fromPrimitives`**, so the domain has accepted everything that comes out.
-- **Errors do not stop the run:** each invalid record is reported with its id (`(no id)` if it has none), so one run shows every problem.
-- `users` does not change.
+It is idempotent (a record already in the new format is validated and kept), every result goes through `Transaction.fromPrimitives`, and an invalid record is reported with its id without stopping the run. The script refuses to write anything if any record has an error, and refuses to overwrite its input without `--in-place`:
 
-### Result on the real data (step 2.2)
+```bash
+node packages/infrastructure/scripts/migrate-db.mjs <input.json> <output.json> --user-id 1
+```
+
+Result on the real data, with 0 errors; `GetBalance` over it gives 115000 cents (R$ 1.150,00). These records are frozen in `src/migration/fixtures/legacy-db.json`, and this exact result is tested:
 
 | id | Before: label | Before: amount | Before: date | After: type | After: amountInCents | After: date |
 |---|---|---|---|---|---|---|
@@ -149,121 +201,15 @@ The last row is the serious one. In 0.17.4, `userId` counts as a foreign key to 
 | 8 | Pagamento | R$ 350,00 | 20/01/2026 | `payment` | 35000 | 2026-01-20 |
 | 11 | Câmbio de Moeda | R$ 1.200,00 | 08/03/2026 | `currency_exchange` | 120000 | 2026-03-08 |
 
-Summary: 7 total, 7 migrated, 0 already migrated, 0 errors. `GetBalance` over the result gives 115000 cents (R$ 1.150,00).
+The `.mjs` wrapper loads the TypeScript with `runnerImport` from Vite, a root dev dependency, because Node cannot import the extensionless TypeScript imports directly. If it is ever run again: stop json-server first (it keeps the data in memory), and note that it writes LF with a final newline.
 
-These records are frozen in `src/migration/fixtures/legacy-db.json` (step 2.1), and the exact result above is tested on that copy. It holds only the transactions, not the `users` collection. A second test reads the seed, `apps/shell/data/db.seed.json`, and only checks that every record migrates without errors.
+## How to validate
 
-### Running it
+- `npm test` runs the unit tests of every adapter, the integration test against the installed json-server, the timeout tests against real hanging servers, the migration CLI and the json-server contract suite ([testing.md](testing.md#infrastructure)).
+- The Supabase contract suite runs the Postgres adapters against a real project ([deploy.md](deploy.md#contract-tests)).
+- In Docker, edit and delete a transaction, then `docker compose restart json-server`: the change is still there.
 
-The real migration ran in step 2.2, with `--in-place --user-id 1`. The summary was 7 total, 7 migrated, 0 already in the new format and 0 errors. Running it again on a copy gave 7 already in the new format and 0 migrated. Two precautions if it is ever run again:
+## Known limits
 
-- **Stop json-server first.** It keeps the data in memory, so a later write would bring the old records back.
-- **Line endings.** The script writes LF and a final newline, which matters only if the output is meant to replace the seed. The `users` and `$schema` blocks did not change.
-
-```bash
-node packages/infrastructure/scripts/migrate-db.mjs <input.json> <output.json> --user-id 1
-```
-
-- `--user-id` is required. It is the owner of the migrated records.
-- `--in-place` is required to overwrite the input. Without it, an output that points to the same file is refused, even if it is written as a different path.
-- It prints total, migrated, already in the new format and errors.
-- **If any record has an error, nothing is written**: the script lists each error (id and reason) and exits with code 1.
-- Other collections and keys of the file (`users`, `$schema`) are kept as they are.
-
-`src/migration` holds the logic, tested in TypeScript. The `.mjs` file is a thin wrapper, because Node cannot import this TypeScript directly: it fails on the extensionless imports, and Node 20 has no type stripping. The wrapper loads the package with `runnerImport` from Vite, which is declared in the root `devDependencies`. So the script needs dev dependencies installed, which is fine for a one-off migration.
-
-## Where the database lives (step 2.3b)
-
-| File | Role | In git |
-|---|---|---|
-| `apps/shell/data/db.seed.json` | The seed: the 7 records in the new format. json-server never writes to it | Yes |
-| `apps/shell/data/db.json` | The database in use, created from the seed when it does not exist | No, it is in `.gitignore` and `.dockerignore` |
-
-`docker compose up` and `npm run api` create `db.json` when it is missing, and since step 3.3 Docker Compose and Railway use the same image. `Dockerfile.jsonserver`, which is what runs on Railway, copies the seed into the image, so a new deploy starts from the seed.
-
-### The problem: editing and deleting answered 502
-
-On the Docker stack, editing or deleting showed an error, and the change still appeared after a reload. The BFF was right: json-server was answering 500.
-
-```text
-Error: EBUSY: resource busy or locked, rename '.db.json.tmp' -> 'db.json'
-```
-
-### The cause: a bind mount of one file, plus an atomic rename
-
-`docker-compose.yml` mounted one file: `./apps/shell/db.json:/app/db.json`. json-server saves atomically: it writes `.db.json.tmp` and renames it over `db.json`. That file was a mount point, and the kernel refuses a rename over a mount point.
-
-json-server changes the data in memory first and saves afterwards, so:
-
-1. The record changes in memory.
-2. Saving fails, and the answer is a 500.
-3. The BFF answers 502, and the screen shows the error.
-4. A reload reads from memory, so the change seems to be saved.
-5. Nothing reached the disk. A restart of json-server loses the change.
-
-| Mount | Version | `PUT` | `DELETE` | Reached the disk |
-|---|---|---|---|---|
-| One file | 1.0.0-beta.15 | 500 | 500 | No |
-| One file | 0.17.4 | 200 | 200 | **No, and with no error** |
-| Folder | 1.0.0-beta.15 | 200 | 200 | Yes |
-
-**The problem was older than the version change.** 0.17.4 failed to save too, in silence: it answered 200, left a `.~db.json` behind, and `db.json` did not change. So writes in Docker were probably never saved. Pinning 1.0.0-beta.15 only made the failure visible.
-
-### The correction
-
-- Compose mounts a folder, `./apps/shell/data:/app`, so the rename happens inside a normal directory. Mounting all of `./apps/shell` would expose `.env.local` to the container and serve its `public` folder.
-- Compose creates `db.json` from the seed before starting json-server.
-- The image comes from `apps/shell/Dockerfile.jsonserver` since step 3.3, on `node:22-alpine`, because this version requires Node >= 22.12. It has json-server installed, so starting it needs no network.
-
-Verified with the real `docker-compose.yml`, on port 3001 and through the BFF:
-
-| Check | Result |
-|---|---|
-| Direct `PUT` | 200, and the change is in the file on disk |
-| Direct `DELETE` | 200, with the deleted record in the body, and the record left the file |
-| `docker compose restart json-server` | The change is still there |
-| `PATCH` through the BFF | 200 with the DTO, and the change is in the file |
-| `DELETE` through the BFF | 204, and the record left the file |
-
-`DELETE` answers 200 on json-server and 204 on the BFF: the 204 is the contract of the BFF.
-
-### The lesson
-
-**The integration test validates the HTTP contract, not the mount in the compose file.** It runs json-server as a local process on a temporary folder, where a rename works, so it passed all along. The browser test of step 2.3 did not catch this either, because its isolated stack mounted a folder, not a file as the compose file did. A test only proves the setup it runs on, so anything about Docker has to be verified with the real `docker-compose.yml`.
-
-### Manual testing
-
-Testing on the screen now changes `apps/shell/data/db.json`, which git ignores. To go back to the seed:
-
-```bash
-npm run db:reset
-docker compose restart json-server   # only when it runs in Docker
-```
-
-**The restart is required in Docker.** File changes do not cross the bind mount on Windows, so json-server keeps serving its memory, and the next write would overwrite the reset. With `npm run api`, it watches the file and reloads by itself. `git restore` no longer plays any part in this.
-
-## Reaching json-server for debugging (step 2.5b)
-
-Docker Compose no longer publishes port 3001. Only the apps reach json-server, through the `bytebank` network, so `curl http://localhost:3001` is refused on purpose: the mock database has no access control, and anything on the machine could read it.
-
-To look at it, run commands inside the container, with the services up:
-
-```bash
-# Read
-docker compose exec json-server wget -qO- http://127.0.0.1:3001/transactions
-
-# The file in use, which is also apps/shell/data/db.json on the machine
-docker compose exec json-server cat db.json
-
-# Write, through Node, because the wget of the image only reads
-docker compose exec json-server node -e "fetch('http://127.0.0.1:3001/transactions/1').then(r => r.text()).then(console.log)"
-
-# Logs
-docker compose logs json-server --tail 40
-```
-
-Use `127.0.0.1`, not `localhost`, which may resolve to IPv6 in the image. Outside Docker, `npm run api` in `apps/shell` still serves on port 3001 of the machine.
-
-## Integration test
-
-The unit tests simulate `fetch`. `HttpTransactionRepository.integration.test.ts` runs the repository against the installed json-server, on a temporary copy of a test database, as part of `npm test`. It covers the behaviors above: string user ids (`"1"` versus `"10"`), ownership, the id assigned on `POST`, and blocked updates and deletes. See `testing.md`.
+- **A write that times out has an unknown result.** The client gets a 502 and should read the data again before retrying.
+- **json-server cannot hold some guarantees** under concurrency (unique email, single use of a reset link); the contract suite skips those cases for it.

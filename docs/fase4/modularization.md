@@ -1,51 +1,88 @@
-# Phase 4: modularization (Steps 1.4a and 1.4b)
+# Modular architecture
 
-**Date:** 2026-10-30
+Requirement: modular architecture. Bytebank is a Turborepo monorepo (npm workspaces) with three Next.js apps served as one site through Multi-Zones, and seven packages with one responsibility each. The apps are thin: routes, pages, layouts and the assembly of the pieces. No file is copied between apps: a difference between zones becomes a prop or a factory argument.
 
-The three apps now consume `@bytebank/utils`, `@bytebank/types` and `@bytebank/design-system`, and their local copies are gone. Step 1.4a covers utilities and types, and step 1.4b covers the UI components.
+## The pieces
 
-## Why
+| App | Port | basePath | Role |
+|---|---|---|---|
+| `apps/shell` | 3000 | none | Landing, login, registration, recovery, `/sobre`, and the proxy that serves the zones under its origin |
+| `apps/dashboard` | 3003 | `/dashboard` | Balance, charts, new transaction, Minha conta |
+| `apps/transactions` | 3002 | `/transactions` | Extract, filters, search and pagination |
 
-- **One source of truth.** The same utilities existed in four places: `packages/utils` and a copy in each app (`transactions.ts` in three). The packages had no consumers, and the copies were what actually ran.
-- **The `cn` bug existed in 4 copies.** `tailwind-merge` dropped the design system typography tokens when a text color followed. With copies, the fix would have had to be applied four times. It now lives in one file.
-
-## What each app consumes
-
-| App | `@bytebank/utils` | `@bytebank/types` |
+| Package | Role | Depends on |
 |---|---|---|
-| shell | `cn`, `formatCents` (11 files) | nothing directly (it is a dependency of `@bytebank/utils`) |
-| dashboard | `cn`, `formatCents`, `getFirstName`, `groupByMonth`, `capitalizeMonth`, `TRANSACTION_OPTIONS` (16 files) | `Transaction`, `TransactionType` (9 files) |
-| transactions | `cn`, `formatCents`, `getFirstName`, `groupByMonth`, `capitalizeMonth`, `TRANSACTION_OPTIONS` (15 files) | `Transaction`, `TransactionType` (8 files) |
+| `@bytebank/core` | Domain, use cases and ports, no framework ([domain.md](domain.md)) | nothing |
+| `@bytebank/infrastructure` | Adapters of the ports: json-server, Supabase, scrypt, AES-GCM, SMTP ([infrastructure.md](infrastructure.md)) | core |
+| `@bytebank/bff` | HTTP handlers with no framework, the composition, and the browser clients in `@bytebank/bff/client` ([bff.md](bff.md)) | core, infrastructure, zod |
+| `@bytebank/store` | RTK Query factory, store and provider, the RxJS search ([state-management.md](state-management.md)) | bff/client, Redux, RxJS |
+| `@bytebank/auth` | NextAuth of the zones, proxy, binding of the session to the handlers, session config shared with the shell | bff, next-auth, next |
+| `@bytebank/utils` | Pure helpers: formatting, session policy, secrets rule, security headers, zone rewrites | core |
+| `@bytebank/design-system` | UI components, hooks, theme, header and menus, documented in Storybook | utils, bff/client |
 
-51 files had their imports swapped. In `components/ui` (18 files) only the import line changed: `@/lib/utils/cn` became `@bytebank/utils`. Step 1.4b then removed those local components.
+The direction of the dependencies is enforced by ESLint (`eslint.layers.mjs`); the table of what each layer may not import is in [conventions.md](../conventions.md#layers). The rule of where each new thing goes is there too.
 
-## Removed copies
+## How the zones work together
 
-Before the removal, each copy was compared with its package. They only differed in the type import of `transactions.ts` (and line endings), so there was no behavior difference.
+The browser only talks to the shell. Its `next.config.ts` rewrites `/dashboard/*` and `/transactions/*` to the zones, with the hosts from `DASHBOARD_URL` and `TRANSACTIONS_URL` (`packages/utils/src/zoneRewrites.ts`), the same code in development, Docker and Vercel. Each zone has its own basePath, its own proxy, its own CSP and its own session reader. The choice of Multi-Zones over Module Federation and single-spa is in [architecture.md](../architecture.md#why-multi-zones).
 
-```text
-apps/shell/src/lib/utils/cn.ts
-apps/shell/src/lib/utils/currency.ts
-apps/shell/src/lib/utils/user.ts
-apps/dashboard/src/lib/utils/cn.ts
-apps/dashboard/src/lib/utils/currency.ts
-apps/dashboard/src/lib/utils/transactions.ts
-apps/dashboard/src/lib/utils/user.ts
-apps/transactions/src/lib/utils/cn.ts
-apps/transactions/src/lib/utils/currency.ts
-apps/transactions/src/lib/utils/transactions.ts
-apps/transactions/src/lib/utils/user.ts
-apps/dashboard/src/types/transaction.ts
-apps/transactions/src/types/transaction.ts
-```
+**Navigation between zones.** `next/link` adds the basePath of the current app and only navigates inside it. So:
+
+- **Inside a zone:** `next/link` with a path relative to the zone (`/account` in the dashboard is `/dashboard/account`).
+- **Between zones:** a plain `<a href>` or `window.location`, with the absolute path, which does a full page load. Login and logout work this way too; the four `window.location` lines have a justified lint suppression (`no-location-assign-relative-destination`).
+
+The menus take their items by prop, each `{ label, href, crossZone? }`, and render `next/link` or `<a>` from `crossZone`. Each app keeps only its `nav-items.ts`:
+
+| App | Profile menu items | `crossZone` |
+|---|---|---|
+| shell | Default (`/dashboard/account`, `/dashboard/coming-soon`) | no |
+| dashboard | `/account`, `/coming-soon` | no |
+| transactions | `/dashboard/account`, `/dashboard/coming-soon` | yes |
+
+The zones do not share a client store: moving between them is a full page load, so each starts with an empty cache and reads from the server ([state-management.md](state-management.md)).
+
+## Where the shared code lives
+
+Everything that two apps used to copy now lives in a package:
+
+| What | Where |
+|---|---|
+| `useToast`, `useCurrencyInput`, `useUser`, `useFileAttachment` | `@bytebank/design-system` |
+| `ModalEditTransaction`, `ModalTransactionDetail`, `ModalConfirmDelete`, and the three lazy modals with `preloadActionModal` (`transactionModals.ts`) | `@bytebank/design-system`. The edit modal saves through an `onSave` prop, so the design system does not depend on the store |
+| The actions of a transaction: the state of delete, edit and detail, the confirmation, the three lazy modals and the toast | `TransactionActions` in `@bytebank/design-system`. The zone gives its transactions and the mutations of its store by props, and gets the actions of its list and `showToast` by a render prop |
+| `Header`, `MenuDrawer`, `MenuSidebar`, `MenuTabs`, `ProfileMenu` | `@bytebank/design-system` (`src/navigation`), items by prop |
+| The content of the 404 pages | `NotFoundMessage`, destination and text by prop |
+| The theme (tokens, typography, icon font) | `@bytebank/design-system/theme.css`, imported by the three layouts and by Storybook |
+| Store and provider | `createTransactionsProvider(api)` in `@bytebank/store`, called with the basePath of each zone |
+| The server module of the handlers | `createLazyTransactionHandlers(getUserId)` in `@bytebank/bff`; the session comes in as a function |
+| The NextAuth instance, the proxy logic and the session config | `@bytebank/auth` (`./zone`, `./zoneProxy`, `./handlers`, `./sessionProvider`, and the main entry). The shell adds its login provider to the shared config |
+| `cn`, `formatCents`, presentation of amounts, dates and types | `@bytebank/utils` |
+
+**What stays the same in more than one app, on purpose:**
+
+| File | Why |
+|---|---|
+| `app/api/*/route.ts` | Next needs one route file per zone. They only call the handlers |
+| `proxy.ts` of the zones | Next reads `export default` and the `matcher` from this file, so it cannot come from a package. It only re-exports `@bytebank/auth/zoneProxy` |
+| `next-env.d.ts`, `postcss.config.mjs`, `eslint.config.mjs` | Configuration that each app needs in its own folder |
+
+### Repeated code, measured
+
+Windows of 6 normalized lines that appear in more than one app:
+
+| | Before `TransactionActions` | After |
+|---|---|---|
+| Total | 30 | 22 |
+| The two `app/page.tsx` of the zones | 8 | 0 |
+| The layouts of the two zones | 11 | 11 |
+| The `api/transactions` routes | 6 | 6 |
+| The list of `CardStatement` and of `StatementResults` | 5 | 5 |
+
+The routes are repeated on purpose (above). The layouts and the two lists are the next candidates.
 
 ## The `cn` fix
 
-`packages/utils/src/cn.ts` uses `extendTailwindMerge` to add the design system typography tokens to the `font-size` class group:
-
-`text-meta`, `text-meta-semibold`, `text-body`, `text-body-semibold`, `text-nav`, `text-nav-bold`, `text-label`, `text-heading`, `text-display`, `text-icon-xs`, `text-icon-sm`, `text-icon-md`
-
-These are the utilities that set `font-size` in the `@layer utilities` block of `globals.css` (they are not in `@theme`). That block is identical in the three apps. Color tokens such as `text-inverse` and `text-primary-800` were not touched, so they stay in the color group. `cn.test.ts` compares its token list with `globals.css`, so a token added to the CSS but not to `cn.ts` fails the test.
+`packages/utils/src/cn.ts` uses `extendTailwindMerge` to put the typography tokens of the design system in the `font-size` group: `text-meta`, `text-meta-semibold`, `text-body`, `text-body-semibold`, `text-nav`, `text-nav-bold`, `text-label`, `text-heading`, `text-display`, `text-icon-xs`, `text-icon-sm`, `text-icon-md`. Without it, `tailwind-merge` read them as text colors and dropped them when a color followed, in four copies of `cn`. Color tokens such as `text-inverse` stay in the color group. `cn.test.ts` compares its list with `theme.css`, so a token added to the CSS but not to `cn.ts` fails the test.
 
 | Call | Before | After |
 |---|---|---|
@@ -55,82 +92,13 @@ These are the utilities that set `font-size` in the `@layer utilities` block of 
 | `cn('text-success', 'text-inverse')` | `text-inverse` | `text-inverse` |
 | `cn('text-heading', 'text-sm')` | `text-heading text-sm` | `text-sm` |
 
-**This is the one intended visual change of this step.** Components that combine a typography token with a color in `cn()`, such as `Button`, `Select`, `Input` and `Toast`, get their typography back. Text size and weight may look different from before, and that is the correct design. The Lighthouse and bundle baselines were measured with the bug present.
+This was an intended visual change: `Button`, `Select`, `Input` and `Toast` got their typography back. The Lighthouse and bundle baselines were measured with the bug present. `tailwind-merge` also treats `font-size` as conflicting with `leading-*`, so a `leading-*` placed before a typography token in the same `cn()` call is dropped; no call does that, since the `leading-*` classes are in plain `className` strings.
 
-`tailwind-merge` also treats `font-size` as conflicting with `leading-*`, so a `leading-*` class placed before a typography token in the same `cn()` call is dropped. No `cn()` call does this today: the `leading-*` classes in the apps are in plain `className` strings.
+## Tailwind `@source`
 
-## `transpilePackages`
+The apps import the components from another workspace package, so their classes are not in the app folders. Tailwind v4 only generates CSS for classes it finds in the files it scans, starting at the working directory, so `packages/design-system` was not scanned: the components rendered without those styles, and **the build still passed**. `theme.css` of the design system registers its own folder with `@source "../"` (each app's stylesheet did it with a relative path before the single theme), as the Tailwind docs say ("Use `@source` to explicitly register source paths relative to the stylesheet", [detecting classes in source files](https://tailwindcss.com/docs/detecting-classes-in-source-files)).
 
-All three `next.config.ts` files list `@bytebank/design-system`, `@bytebank/types` and `@bytebank/utils`.
-
-**It is not required with this setup.** The Next.js 16.4.3 docs (`transpilePackages` page, shipped in `node_modules/next/dist/docs`) say: "Turbopack transpiles workspace packages (npm, pnpm, or Yarn workspaces) in your monorepo automatically under both routers. Webpack does the same for the App Router." It is needed for `node_modules` dependencies that ship raw TypeScript or JSX, and for webpack with the Pages Router. These apps use Turbopack and the App Router. The entries are kept as an explicit record of which workspace packages each app compiles, and they are harmless.
-
-## Validation
-
-- `npm test`, `npx turbo lint --continue`, `npm run build`: all pass.
-- `npm run build-storybook` passes, since the shell stories render the changed components.
-- `docker compose build` passes for the three images, including a real `npm ci` with the `packages/core` and `packages/infrastructure` `COPY` lines.
-- No occurrence of `@/lib/utils` or `@/types/transaction` remains in `apps/`.
-
-## Design system (step 1.4b)
-
-The apps import the nine UI components from `@bytebank/design-system`: `Button`, `Checkbox`, `Input`, `Link`, `Modal`, `ModalConfirmDelete`, `ProfileMenu`, `Select` and `Toast`. 30 files changed, with imports merged into one line per file: 21 app files and the 9 stories, which stay in `apps/shell/src/components/ui` as the documentation of the package.
-
-In the three `Header` files only the import line changed, plus the `items` prop in the dashboard and transactions.
-
-### Removed copies
-
-`Button.tsx`, `Checkbox.tsx`, `Input.tsx`, `Link.tsx`, `Modal.tsx`, `ModalConfirmDelete.tsx`, `ProfileMenu.tsx`, `Select.tsx` and `Toast.tsx` were removed from each of these folders (27 files):
-
-```text
-apps/shell/src/components/ui/
-apps/dashboard/src/components/ui/
-apps/transactions/src/components/ui/
-```
-
-The last two folders were empty afterwards and were removed too.
-
-### Differences found between the copies
-
-Seven of the nine components were identical to the package (`ModalConfirmDelete` only differed in import paths). Two had real differences:
-
-| Component | Difference | Decision |
-|---|---|---|
-| `ProfileMenu` | Links differed per app | New `items` prop, see below |
-| `Toast` | `aria-live="assertive"` in the dashboard, `"polite"` elsewhere | Package version (`polite`), as `CLAUDE.md` requires. It only affects screen readers in the dashboard. |
-
-### Navigation between zones
-
-`next/link` adds the `basePath` of the current app, and it can only do client-side navigation inside that app. So:
-
-- **Inside a zone:** `next/link` with a path relative to the zone (`/account` in the dashboard becomes `/dashboard/account`).
-- **Between zones:** a plain `<a href>` or `window.location` with the absolute path, which does a full page load. Login and logout work this way too.
-
-`ProfileMenu` receives `items`, each one `{ label, href, crossZone? }`, and renders `next/link` or `<a>` according to `crossZone`:
-
-| App | Items | `crossZone` |
-|---|---|---|
-| shell | Default (`/dashboard/account`, `/dashboard/coming-soon`) | no |
-| dashboard | `/account`, `/coming-soon` | no |
-| transactions | `/dashboard/account`, `/dashboard/coming-soon` | yes |
-
-**Bug fixed:** in the transactions zone, "Minha conta" and "Configurações" pointed to `/account` and `/coming-soon`, which the `basePath` turned into `/transactions/account` and `/transactions/coming-soon`. Those routes do not exist. They now go to the dashboard zone with a full page load.
-
-Known limits: the shell default still uses `next/link` to reach another zone, as it did before. The active item highlight compares `usePathname()` with `href`, so it never matches for the cross-zone items of the transactions zone, which is expected because those pages are not in that zone.
-
-### `@source`
-
-The apps import the components from another workspace package, so their classes are no longer in the app folders. Tailwind v4 only generates CSS for classes it finds in the files it scans: by default it starts at the current working directory, so `packages/design-system` is not scanned. The components would render without those styles, and the build would still pass.
-
-Each `globals.css` now has this line, right after `@import "tailwindcss";`:
-
-```css
-@source "../../../../packages/design-system/src";
-```
-
-The Tailwind docs say to "Use `@source` to explicitly register source paths relative to the stylesheet" ([detecting classes in source files](https://tailwindcss.com/docs/detecting-classes-in-source-files)). The file is in `apps/<app>/src/styles/`, so four levels up is the repository root.
-
-**Proof.** Four classes that exist only in the design system, measured in the CSS generated by `npm run build`:
+**Proof.** Four classes that exist only in the design system, in the CSS generated by `npm run build`:
 
 | Class | Why it was chosen | With `@source` | Without `@source` |
 |---|---|---|---|
@@ -145,91 +113,21 @@ The Tailwind docs say to "Use `@source` to explicitly register source paths rela
 | dashboard | 55.5 KB | 43.9 KB |
 | transactions | 53.4 KB | 39.9 KB |
 
-The build passes in both cases, so **a missing `@source` only shows up visually**. The directive was restored and the check repeated. `min-w-36` was also confirmed in the CSS inside the three Docker images.
+`min-w-36` was also confirmed in the CSS inside the three Docker images. A missing `@source` only shows up visually, which is why this proof is recorded. (The CSS later shrank with the daisyUI include list, [performance.md](performance.md#lcp-on-mobile-a-fair-comparison).)
 
-### `'use client'`
+## `transpilePackages`
 
-`Checkbox` and `Input` gained `'use client'`, because they define inline event handlers. `Button` and `Toast` did not need it: `Button` only forwards an `onClick` prop, `Toast` has no events, and the build passes.
+Each `next.config.ts` lists the workspace packages the app uses. The Next.js 16.4.3 docs say that "Turbopack transpiles workspace packages (npm, pnpm, or Yarn workspaces) in your monorepo automatically under both routers", so it is not required with Turbopack and the App Router. The entries are kept as an explicit record of which packages each app compiles, and a new package goes there and into the three Dockerfiles (`COPY packages/<name>/package.json`), as [conventions.md](../conventions.md#a-new-package) lists.
 
-### Tests
+## How to validate
 
-`ProfileMenu.test.ts` covers the default items, custom items, the active highlight and both link types, by rendering to static HTML with `react-dom/server` in the existing `node` environment. No configuration was added.
+- `npm run lint` fails on an import in the wrong direction, with a message that names the layer.
+- `npm run build` builds the three apps from the packages; `docker compose up -d --build` runs a real `npm ci` with the `COPY` of every package.
+- No app has a `lib/utils`, `hooks/use-toast` or other copy: `grep -r "use-toast\|lib/utils" apps/*/src` finds nothing.
+- In the browser, through http://localhost:3000: the menus of both zones reach the right pages, and "Minha conta" from the extract goes to `/dashboard/account`.
 
-**Pending:** there is no DOM test environment, so interactions (clicks, closing on outside click, keyboard) and the other components have no tests. The cross-zone navigation itself was not exercised in a browser.
+## Known limits
 
-## Remaining duplication
-
-Files that still exist in more than one app, as candidates for future steps. "Identical" ignores line endings.
-
-**Identical copies:**
-
-| File | Apps | Candidate destination |
-|---|---|---|
-| `hooks/use-currency-input.ts` | shell, dashboard, transactions | Package for shared hooks |
-| `hooks/use-toast.ts` | shell, dashboard, transactions | Package for shared hooks, or the design system |
-| `hooks/use-user.ts` | shell, dashboard, transactions | Package for shared hooks |
-| `hooks/use-balance.ts` | dashboard, transactions | Package for shared hooks |
-| `lib/api/transactions.ts` | dashboard, transactions | Replaced by `@bytebank/infrastructure` |
-| `components/dashboard/ModalEditTransaction.tsx` | dashboard, transactions | Rewritten on top of the use cases |
-| `components/dashboard/TransactionItem.tsx` | dashboard, transactions | Shared transaction UI |
-| `components/dashboard/CardWelcome.tsx` | dashboard, transactions | Shared transaction UI |
-| `components/layout/DashboardWelcome.tsx` | dashboard, transactions | Shared transaction UI |
-| `app/api/auth/[...nextauth]/route.ts` | shell, dashboard, transactions | Thin re-export, can stay |
-| `types/fontsource.d.ts` | shell, dashboard, transactions | A shared package |
-| `tsconfig.json`, `tailwind.config.ts`, `postcss.config.mjs` | shell, dashboard, transactions | `tsconfig.base.json` and shared config |
-
-**Step 2.5b:** `@bytebank/types` was retired, `TransactionItem` moved to `@bytebank/design-system`, and the unused `DashboardWelcome.tsx`, `CardWelcome.tsx` and `use-balance.ts` of the transactions zone were removed. The mentions of `@bytebank/types` above record step 1.4a.
-
-**Dead code removed in step 2.3:** the transactions copies of `CardNewTransaction.tsx` and `CardStatement.tsx`. A search confirmed that no file referred to them. The dashboard keeps its own copies, which are in use.
-
-**Dead code removed in the code audit (step 7):** the shell copies of `use-currency-input.ts` and `use-toast.ts`, which no file imported, and the three `tailwind.config.ts`, which were empty and unread: Tailwind v4 is configured in the CSS. The copies of `use-currency-input.ts` and `use-toast.ts` in dashboard and transactions are in use and stay.
-
-**Copies that have diverged:**
-
-| File | Apps | Note |
-|---|---|---|
-| `components/layout/Header.tsx` | shell, dashboard, transactions | Different `signOut` and menu handling |
-| `components/layout/MenuDrawer.tsx`, `MenuSidebar.tsx`, `MenuTabs.tsx`, `nav-items.ts` | shell, dashboard, transactions | Differ in zone paths, a good case for the same `crossZone` rule |
-| `components/dashboard/ModalTransactionDetail.tsx` | dashboard, transactions | Should be one component |
-| `lib/auth.ts` | shell, dashboard, transactions | Reads different environment variables |
-| `styles/globals.css` | shell, dashboard, transactions | The tokens are identical, and the `.material-icons` class differs in the dashboard. Candidate for a shared stylesheet in the design system. |
-| `app/not-found.tsx`, `app/layout.tsx` | shell, dashboard, transactions | Similar structure per zone |
-
-## Step 7a: no copies between the apps
-
-The apps only keep routes, pages, layouts and the wiring of the pieces. A difference between zones, such as the basePath, the paths of the menu or the text of a link, became a prop or a factory argument, never a copy. The tables above record the state before this step.
-
-### Where each copy went
-
-| Copy | Apps | Now |
-|---|---|---|
-| `hooks/use-toast.ts`, `hooks/use-currency-input.ts` | dashboard, transactions | `useToast`, `useCurrencyInput` in `@bytebank/design-system` |
-| `hooks/use-user.ts` | shell, dashboard, transactions | `useUser` in `@bytebank/design-system`, next to `IdleSessionGuard`, which also reads the session |
-| `components/dashboard/ModalEditTransaction.tsx` | dashboard, transactions | `ModalEditTransaction` in the design system. It saves through an `onSave` prop, so the design system does not depend on the store |
-| `components/dashboard/lazy-modals.ts` | dashboard, transactions | `transactionModals.ts` in the design system: the three lazy modals and `preloadActionModal` |
-| `components/layout/Header.tsx`, `MenuDrawer.tsx`, `MenuSidebar.tsx`, `MenuTabs.tsx` | shell, dashboard, transactions | `Header`, `MenuDrawer`, `MenuSidebar`, `MenuTabs` in `design-system/src/navigation`, with the items by prop. Each app keeps only its `nav-items.ts` |
-| `app/not-found.tsx` (content) | shell, dashboard, transactions | `NotFoundMessage` in the design system, with the destination and the text by prop |
-| `styles/globals.css` | shell, dashboard, transactions | `@bytebank/design-system/theme.css`, imported by the layouts and by Storybook |
-| `types/fontsource.d.ts` | dashboard, transactions | Gone: the theme loads Inter. The shell keeps its own, for the 600 and 700 weights |
-| `store/store.ts`, `store/ReduxProvider.tsx` | dashboard, transactions | `createTransactionsProvider(api)` in `@bytebank/store`, called in the `transactionsApi.ts` of each zone |
-| `server/transactionHandlers.ts` | dashboard, transactions | `createLazyTransactionHandlers(getUserId)` in `@bytebank/bff`. The bff does not import Next or NextAuth: the session comes in as a function |
-| `lib/auth.ts` | dashboard, transactions | `@bytebank/auth/zone`: the NextAuth instance of a zone |
-| `proxy.ts` (logic) | dashboard, transactions | `@bytebank/auth/zoneProxy`. The `proxy.ts` of each zone only exports it, with the matcher, which Next reads from that file |
-| Session config of `lib/auth.ts` | shell, dashboard, transactions | `baseAuthConfig` in `@bytebank/auth`. The shell adds its login provider to it |
-| The actions of a transaction in `app/page.tsx`: the state of delete, edit and detail, the confirmation of the delete, the three lazy modals and the toast (after the review) | dashboard, transactions | `TransactionActions` in the design system. The zone gives its transactions and the mutations of its store by props, and gets the actions of its list and `showToast` by a render prop. The 8 windows of 6 lines that the two pages shared are gone |
-
-### The new package: `@bytebank/auth`
-
-Authentication of the zones on the server: the NextAuth instance (`./zone`), the proxy (`./zoneProxy`), the binding of the session to the handlers of the bff (`./handlers`), and the session config shared with the shell (main entry). It depends on `next-auth`, `next` (peers), `@bytebank/bff` and `server-only`.
-
-Since the final step, `./handlers`, `./zone`, `./zoneProxy` and `./sessionProvider` all import `server-only`. An earlier version of this page said the proxy could not, because it is not built with the `react-server` condition; Next.js 16 builds it, and the proxies of the three apps run with it (`security.md`, "Server-only entries").
-
-It follows the pattern of the other packages: `package.json` with `exports`, `tsconfig.json`, `lint`, tests in the root Vitest config, a `COPY` in the three Dockerfiles and an entry in `transpilePackages`.
-
-### What stays the same in more than one app, on purpose
-
-| File | Why |
-|---|---|
-| `app/api/*/route.ts` | Next needs one route per zone. They only call `getTransactionHandlers()` |
-| `proxy.ts` of the zones | Next reads `export default` and the `matcher` from this file, so it cannot come from a package |
-| `next-env.d.ts`, `postcss.config.mjs`, `eslint.config.mjs` of the zones | Configuration that each app needs in its own folder |
+- The shell's default profile items use `next/link` to reach another zone, which works through a full load anyway.
+- The active item highlight compares `usePathname()` with `href`, so it never matches the cross-zone items of the transactions zone, which is expected: those pages are not in that zone.
+- The layouts of the two zones and the two transaction lists still share code (table above).

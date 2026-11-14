@@ -1,38 +1,21 @@
-# Phase 4: security (Block 3)
+# Secure authentication and encryption
 
-This document follows Block 3. Each step adds what changed, why, and what is still open.
+Requirements: secure authentication and encryption of sensitive data. Bytebank keeps its own login (Auth.js with JWT sessions), stores passwords and reset tokens only as hashes, encrypts attachments before they reach the database, and sends a strict set of security headers.
 
-## Step 3.1: passwords and authentication
-
-### Before and after
-
-| | Before | After |
+| Sensitive data | Protection | Where |
 |---|---|---|
-| Stored password | Plain text in `db.seed.json` and `db.json` | Only a scrypt hash, in `passwordHash` |
-| `authorize` | 3 copies: shell, dashboard, transactions | 1, in the shell, calling `AuthenticateUser` |
-| Password check | `user.password !== password` in each copy | `ScryptPasswordHasher.verify`, with `timingSafeEqual` |
-| Unknown email | No password comparison, so it answered faster | Verifies a decoy hash, so it takes the same time |
-| Registration | Created nothing: it checked the terms and redirected | `POST /api/register`, validated with Zod and an Origin check, calling `RegisterUser` |
-| json-server variable in the shell | `NEXTAUTH_API_URL` and `JSON_SERVER_URL` | `JSON_SERVER_URL` only |
-| Session | id, name, email | The same: no hash, no password |
+| Password | scrypt hash, one salt per password, policy of OWASP ASVS 5.0 | `ScryptPasswordHasher`, `passwordPolicy.ts` |
+| Session | JWT signed and encrypted by the server, in an `httpOnly` cookie, 30 minutes, logout after 10 minutes idle | Auth.js, `sessionPolicy.ts`, `IdleSessionGuard` |
+| Reset token | 32 random bytes, stored as SHA-256, 30 minutes, single use | `RequestPasswordReset`, `ResetPassword` |
+| Attachment | AES-256-GCM, tied to its owner, key in a server variable | `AesGcmCipher`, `EncryptedAttachmentRepository` |
+| Rate-limit counters | HMAC-SHA-256 of the email or IP, never the value itself | `rateLimitKey.ts` |
+| Secrets | `.env` outside git, refused at start when missing or weak | `secrets.ts`, `docker-compose.yml`, `instrumentation.ts` |
+| Traffic | HTTPS with HSTS in production, CSP with a nonce | `securityHeaders.ts`, `proxy.ts` of each app |
+| The database | Local json-server with no published port; Supabase with RLS and the secret key on the server only | `docker-compose.yml`, [deploy.md](deploy.md) |
 
-The registration screen never reached json-server, and it had no way to. Closing port 3001 in step 2.5b changed nothing for it, because it never sent a request at all.
+## Passwords
 
-### Layers
-
-```text
-ModalLogin        -> Auth.js -> authorize (shell) -> AuthenticateUser ---+
-ModalCadastro     -> POST /api/register -> createRegisterHandler -> RegisterUser
-                                                                         |
-                          UserRepository: HttpUserRepository (json-server)
-                          PasswordHasher: ScryptPasswordHasher (node:crypto)
-```
-
-- `@bytebank/core` has the `User` entity, the `UserRepository` and `PasswordHasher` ports, and the two use cases. It does not import `node:crypto`.
-- Use cases return `UserDTO`, which has no hash. The hash only exists inside `User`, for the application and the adapter that stores it.
-- The zones have no provider: they read the JWT of the shell with the same `NEXTAUTH_SECRET`, and the only login is in the shell.
-
-### Why scrypt
+### Hashing: why scrypt
 
 | Option | Decision |
 |---|---|
@@ -41,211 +24,19 @@ ModalCadastro     -> POST /api/register -> createRegisterHandler -> RegisterUser
 | PBKDF2 | Available in `node:crypto`, but it needs little memory, so GPUs attack it cheaply |
 | scrypt | In `node:crypto`, with no dependency, and memory-hard: each guess costs memory as well as time |
 
-### Parameters and format
-
-`N = 2^17`, `r = 8`, `p = 1`, the OWASP minimum for scrypt. Each hash needs about 128 MiB and takes about 250 ms in the shell container, on the machine used for this step. Salt: 16 random bytes per password. Key: 32 bytes.
+`N = 2^17`, `r = 8`, `p = 1`, the OWASP minimum for scrypt. Each hash needs about 128 MiB and takes about 250 ms in the shell container. Salt: 16 random bytes per password. Key: 32 bytes.
 
 ```text
 scrypt$N=131072,r=8,p=1$<salt in base64url>$<hash in base64url>
 ```
 
-The hash describes itself, so the parameters can grow later: old hashes keep working, because `verify` reads the parameters stored with each one. `verify` answers `false` for anything it cannot read, and refuses parameters that would need more than 256 MiB, so a damaged record cannot ask the server for gigabytes.
+The hash describes itself, so the parameters can grow later: `verify` reads the parameters stored with each hash, so old hashes keep working. It answers `false` for anything it cannot read, and refuses parameters that would need more than 256 MiB, so a damaged record cannot ask the server for gigabytes. The comparison uses `timingSafeEqual`.
 
-`packages/infrastructure/scripts/hash-password.mjs` generates a hash for the seed. It reads the password from stdin, to keep it out of the shell history:
-
-```bash
-node packages/infrastructure/scripts/hash-password.mjs < file-with-the-password
-```
-
-The script repeats the parameters of `ScryptPasswordHasher`, because it has no dependency. A test proves that the application accepts what the script prints.
-
-### Not revealing which emails exist
-
-- **Login:** a wrong password and an unknown email give the same `INVALID_CREDENTIALS`, the same response and the same message. When the user does not exist, `AuthenticateUser` verifies a decoy hash made with the same parameters.
-- **Measured at the endpoint**, in the real Docker Compose setup, with 80 failed logins in random order: median of 249 ms for two existing emails and of 249 ms and 250 ms for two unknown ones, with one identical response.
-- **Registration:** `/api/register` answers `202 {"status":"ACCEPTED"}` for a new email and for a registered one, and the screen shows the same text. So the registration does not log the person in: they log in afterwards. An automatic login would tell the two cases apart on the screen.
-
-### Registration rules
-
-- The name has from 1 to 100 characters, and the password had from 8 to 128 until step 3.4, which moved this rule to the domain. `authorize` also ignores passwords above 128 characters, so a huge value never reaches the hash.
-- Emails are trimmed and stored in lower case, in the domain, so the same email in another case is the same user.
-- The Origin check is the one of the BFF, and it runs before the body is read. The shell needs `ALLOWED_ORIGINS` for it.
-
-### Moving an existing database
-
-`db.json` is only created when it is missing, so a copy from before this step still has plain-text passwords, and its users cannot log in: the repository reports them as `CORRUPTED_RECORD`. Run:
-
-```bash
-npm run db:reset
-docker compose restart json-server
-```
-
-### Still open after step 3.1
-
-Steps 3.2 and later answer these. What is left is at the end of this document.
-
-- No rate limiting: answered in step 3.2.
-- The email in the log: answered in step 3.2.
-
-## Step 3.2: session, inactivity and attempt limits
-
-### Values
-
-| Value | Default | Why |
-|---|---|---|
-| Session (`maxAge`) | 30 minutes | Limits what a stolen cookie is worth. A bank session should not last the 30 days of the Auth.js default |
-| Renewal (`updateAge`) | 5 minutes | How often the browser renews the session while in use |
-| Inactivity | 10 minutes | Protects a computer left open. Shorter than the session, so that the person is warned and leaves on purpose |
-| Warning | 1 minute before | Enough time to read and answer |
-| Login by email | 5 failures in 15 minutes | Stops password guessing against one account, without punishing a typing mistake |
-| Login by IP | 20 failures in 15 minutes | Stops one origin from trying many accounts. Higher than the email limit, because many people can share one address |
-| Registration by IP | 10 in 1 hour | Each registration costs one scrypt hash and creates a record |
-
-The session and inactivity values are in `packages/utils/src/sessionPolicy.ts`, and the limits in `packages/bff/src/composition/createJsonServerAuthUseCases.ts`.
-
-### Expiring on the server
-
-All three apps read the same policy, because a zone that renews the session writes the cookie with its own `maxAge`.
-
-- **`updateAge` does nothing in Auth.js with JWT.** It only applies to database sessions: with JWT, every read of the session already issues a new token. The API routes read the session but cannot set cookies, so someone working on one screen would never renew it. `IdleSessionGuard` closes this: while there is activity it reads the session every `updateAge`.
-- **Expired session:** the proxies lead pages to the shell, and the zone APIs answer 401. The shell has no route that needs a session.
-- **Tolerance:** Auth.js accepts a token up to 15 seconds after it expires (`clockTolerance`), for clocks that differ. A session of 30 minutes really ends at 30 minutes and 15 seconds.
-
-### Inactivity
-
-`IdleSessionGuard` (`packages/design-system/src/session/`) is used by the three apps, inside their `SessionProvider`. The timing logic is in `idleMonitor.ts`, with no React and no browser API, so it is tested with simulated time.
-
-- Mouse, keyboard, touch, wheel and scroll count as activity.
-- During the warning only "Continuar conectado" counts, or a moved mouse would hide the warning before anyone read it.
-- Times are calculated from timestamps, not by counting ticks: background tabs have slow timers, and a computer that slept must log out at once.
-- Tabs share the last activity through `localStorage` and its `storage` event. All zones share the origin of the shell, so this reaches every tab of the app. It holds only a timestamp.
-- The dialog has `role="alertdialog"`, with the focus on the button. The visible countdown is hidden from screen readers, and a live region speaks only at 30 and at 10 seconds.
-- This logout runs in the browser. With every tab closed, what ends the session is the `maxAge` of the server.
-
-### Shortening the times for a demonstration
-
-The times are read when the app runs, so this needs no rebuild. In PowerShell:
-
-```powershell
-$env:IDLE_TIMEOUT_SECONDS = 30
-$env:IDLE_WARNING_SECONDS = 15
-docker compose up -d --no-deps --force-recreate shell dashboard transactions
-```
-
-To go back to the defaults:
-
-```powershell
-Remove-Item Env:IDLE_TIMEOUT_SECONDS, Env:IDLE_WARNING_SECONDS
-docker compose up -d --no-deps --force-recreate shell dashboard transactions
-```
-
-`SESSION_MAX_AGE_SECONDS` shortens the session in the same way. Outside Docker, put the same variables in `apps/shell/.env.local` (for `SESSION_MAX_AGE_SECONDS`, also in the `.env.local` of each zone).
-
-These variables can only shorten. A value above the default, or one that is not a positive integer, is ignored, so a mistake cannot make a session last longer.
-
-The browser reads the times from `/api/session-policy`, on the shell. It is public and has no secret. A `NEXT_PUBLIC_` variable would be fixed at build time, and each change would need a rebuild.
-
-### Attempt limits
-
-`RateLimiter` is a port in `@bytebank/core`, because the rule belongs to the use cases: it decides whether the password is even checked, and it must run before the hash. The adapter is `InMemoryRateLimiter`, in `@bytebank/infrastructure`.
-
-- The window slides: an attempt stops counting 15 minutes after it happened. A refused attempt does not count, so it does not extend the block.
-- The attempt is counted before the hash and given back on success. Counting afterwards would let parallel attempts all pass the check.
-- A success gives back only its own attempt. It does not clear earlier failures.
-- A failure of the backend also gives the attempt back, because nobody got the password wrong.
-- Unknown emails count exactly like known ones.
-- A wrong password and an unknown email always give the same message. A blocked login gives another one: "Muitas tentativas. Tente novamente em X minutos".
-- **The block does not reveal which emails exist**, because it counts failures per email as typed, whether it exists or not, and it is decided before the user is looked up. An unknown email gets the same block and the same countdown as a real one.
-- The wait comes from the server, in the `code` that Auth.js hands to the browser. It is the time until the oldest attempt leaves the window, and refused attempts do not extend it.
-- The counter on the screen changes every minute and enables the button when the wait ends. A screen reader hears only the first message: the live region keeps that text, and the visible counter is hidden from it. The block applies to the email that was typed, so changing the email enables the button.
-
-**In memory, the limit is per instance.** Each process counts on its own, and a restart forgets everything. With several instances, as on Vercel, the real limit is the configured one times the number of instances, and serverless instances are short-lived. Production needs a shared store, such as Redis, with an atomic counter. Only the adapter changes.
-
-To clear the limits while testing: `docker compose restart shell`.
-
-### Personal data in logs
-
-- Failed requests to json-server no longer have the email or the user id in the error: `InfrastructureError` names the collection only.
-- **Auth.js logged the content of the token, with name and email, whenever an expired session was read.** It was found by running the expiry test and reading the container logs, not by searching the code. `authLogger` now logs only the name and the message of the error, in the three apps.
-- All logs of the project were reviewed: the two `logger` of the BFF handlers and `authLogger`. A stored record that is corrupted logs its id, which is an internal identifier.
-
-## Step 3.3: images, headers, attachments and secrets
-
-### Sensitive data and its protection
-
-| Sensitive data | Protection | Where |
-|---|---|---|
-| Password | scrypt hash, with one salt per password | `ScryptPasswordHasher` |
-| Attachment | AES-256-GCM, tied to the owner, with the key in a server variable | `AesGcmCipher`, `EncryptedAttachmentRepository` |
-| Session | JWT signed by the server, in a cookie, expiring in 30 minutes | Auth.js, `sessionPolicy.ts` |
-| Secrets | `.env` outside git, and required by Docker Compose | `.env.example`, `docker-compose.yml` |
-| The JSON database | No published port: only the apps reach it | `docker-compose.yml` |
-
-### json-server with no download
-
-The image installs `json-server@1.0.0-beta.15` at build time (`apps/shell/Dockerfile.jsonserver`). Before, `npx` asked the registry on every start, so a machine with no way out could not even restart the database. The container now starts with `--network none`.
-
-The seed is also in the image, outside `/app`, because Railway has no mounted folder.
-
-### Security headers
-
-`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy` come from `next.config.ts`, on every response of the three apps, APIs included. HSTS is added only when `VERCEL_ENV` is `production` at build time, the one environment where HTTPS is certain. Sent over plain HTTP, it would do nothing, and sent from a domain that loses HTTPS it would lock people out.
-
-The Content-Security-Policy comes from each `proxy.ts`, with a new nonce per request:
-
-```text
-default-src 'self';
-script-src 'self' 'nonce-<random>' 'strict-dynamic';
-style-src 'self';
-img-src 'self' data:;
-frame-src data:;
-font-src 'self';
-connect-src 'self';
-object-src 'none';
-base-uri 'none';
-form-action 'self';
-frame-ancestors 'none'
-```
-
-- **The nonce works with multi-zones.** Each app sends its own policy. The shell does not add one to the pages of the zones, because a second policy with another nonce would block their scripts.
-- **The cost is that no page is static.** Next.js can only put a nonce on a page rendered per request, so the three root layouts call `connection()`, and the root layouts of the zones became Server Components.
-- **`img-src data:` and `frame-src data:`** exist only for attachments, which reach the screen as data URLs: images in `<img>` and PDFs in `<iframe>`. A frame with a `data:` URL has an opaque origin, so it reaches nothing of the app.
-- **No exception for styles.** `style-src-attr` would be needed for `style` attributes in the server render, so those attributes were replaced by classes, and the progress bar of investments became a `<progress>`.
-- **Only in development:** `'unsafe-eval'`, `ws:` and inline styles, which fast refresh needs.
-
-### Attachment encryption
-
-`DataCipher` is a port in `@bytebank/core`, and `AesGcmCipher` is its adapter, with `node:crypto`. `EncryptedAttachmentRepository` wraps the real repository, so the use cases are unchanged.
-
-```text
-aes256gcm$v1$<IV, 12 bytes>$<auth tag, 16 bytes>$<data>
-```
-
-- **The IV is random for each attachment**, and `v1` names the key, so that a new key can be added later while old values still open. Rotation itself is not built yet.
-- **The value is tied to its owner.** The user id goes in as authenticated data, so a value copied to the transaction of another user does not open.
-- **The owner is checked first.** The inner repository filters by user, so nothing is decrypted for anyone else.
-- **Any failure gives one fixed error.** A changed value, the wrong key or an unknown version answer `502 UPSTREAM_ERROR`, and the log has only the transaction id.
-- **A value that cannot be sealed is refused**, and a value in the clear does not open: there is no fallback to plain text.
-
-**The file is encrypted, not its data URL.** Encrypting the data URL would apply base64 twice, and an attachment of 70 KB would become about 124 KB, above the 102400 bytes that json-server accepts. With the bytes of the file, it becomes about 95.6 KB, and the limit did not change. A test sends exactly 70 KB to the real json-server, and the type of the file is encrypted too.
-
-The key is `ATTACHMENT_ENCRYPTION_KEY`, 32 bytes in base64, required in the zones on the first request. **Losing or changing it makes the stored attachments unreadable.** A `db.json` from before this step with attachments needs `npm run db:reset`.
-
-### Secrets
-
-`NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY` come from a `.env` at the root of the repository, which is outside git and outside the images. Docker Compose refuses to run without them, and says which one is missing. `.env.example` has the command to generate each value.
-
-The previous `NEXTAUTH_SECRET` was in `docker-compose.yml` and in `README.md`, so it stays in the git history and must not be used again.
-
-## Step 3.4: password policy and recovery
-
-### An attachment that cannot be read
-
-Before this step, one damaged attachment made the list of its owner answer 502, and the transaction could not be deleted. Now the transaction stays in the list with `attachmentUnavailable: true` and no attachment, and the screens show "Anexo indisponível". It can be edited and deleted. Editing other fields keeps the stored value, which may open again if the problem was the key. The log has only the id of the transaction.
+`packages/infrastructure/scripts/hash-password.mjs` generates a hash for the seed. It reads the password from stdin, to keep it out of the shell history (`node packages/infrastructure/scripts/hash-password.mjs < file-with-the-password`). It repeats the parameters of `ScryptPasswordHasher`, because it has no dependency, and a test proves that the application accepts what it prints.
 
 ### Password policy
 
-It follows OWASP ASVS 5.0, chapter 6.2, and applies to new passwords only: `RegisterUser`, `ResetPassword` and, since step 7b, `ChangePassword`, all through `hashNewPassword`. **The rule is in the domain** (`passwordPolicy.ts`). The BFF only limits the size of the request, and the screens mirror the rule.
+It follows OWASP ASVS 5.0, chapter 6.2, and applies to new passwords only: `RegisterUser`, `ResetPassword` and `ChangePassword`, all through `hashNewPassword`. **The rule is in the domain** (`packages/core/src/domain/user/passwordPolicy.ts`). The BFF only limits the size of the request, and the screens mirror the rule.
 
 | Rule | Value | ASVS 5.0 | Why |
 |---|---|---|---|
@@ -256,15 +47,13 @@ It follows OWASP ASVS 5.0, chapter 6.2, and applies to new passwords only: `Regi
 | Context | `bytebank`, and parts of the name and of the email with 3 or more characters | 6.2.11: words of the context | The first guesses of anyone who knows the person |
 | Normalization | NFKC before the hash | | Two spellings of one character must give one password |
 
-The login also normalizes with NFKC, or a password with such a character could never log in again. For the passwords that already exist, which are ASCII, nothing changes. The login does not apply the policy, so `bytebank123`, the password of the demonstration, still works.
+The login also normalizes with NFKC, or a password with such a character could never log in again. The passwords that already exist are ASCII, so nothing changes for them. The login does not apply the policy, so `bytebank123`, the password of the demonstration, still works.
 
-**Why 8 and not 15.** Until this change the minimum was 15, from NIST SP 800-63B rev. 4, which asks for 15 when the password is the only factor, as it is here. ASVS 5.0 sets 8 as the minimum and recommends 15, and this project follows ASVS. The distance to NIST is made up for by:
+**Why 8 and not 15.** NIST SP 800-63B rev. 4 asks for 15 when the password is the only factor, as it is here, and the first version of the policy used 15. ASVS 5.0 sets 8 as the minimum and recommends 15, and this project follows ASVS. The distance to NIST is made up for by:
 
-- **the list of common passwords**, which now does most of the work: 2,087 of its 10,000 entries have 8 characters or more, and the word-and-digits rule covers `password123`, `senha12345` and the like;
-- **the block after 5 wrong attempts** in 15 minutes, by email and by IP (step 3.2), which keeps an online attack to a few guesses;
-- **the scrypt hash** (step 3.1), which makes each guess slow if the database leaks.
-
-What stays open: an 8-character password that is not on the list, such as a name and a year that the list lacks, is accepted. The strength indicator shows it as weak or fair, and only that.
+- **the list of common passwords**, which does most of the work: 2,087 of its 10,000 entries have 8 characters or more, and the word-and-digits rule covers `password123`, `senha12345` and the like;
+- **the block after 5 wrong attempts** in 15 minutes, by email and by IP, which keeps an online attack to a few guesses;
+- **the scrypt hash**, which makes each guess slow if the database leaks.
 
 **The list.** `10k-most-common.txt` from [SecLists](https://github.com/danielmiessler/SecLists), by Daniel Miessler and contributors, MIT license, is in `packages/infrastructure/src/password/common-passwords.json`, in lower case. It is in English: `senha` and the names of football clubs are not in it, so `common-passwords-pt.json` adds 34 Portuguese words (4 of them were already in the English list), chosen by hand for this project and not taken from a measured source. A password is also refused when what is left after removing the digits and symbols around it is a listed word of 4 letters or more: `password123`, `senha12345`, `2024brasil!`. Shorter words are left alone, so a random password does not fail on three letters that happen to make a word. Only server code reads the lists.
 
@@ -272,7 +61,7 @@ What stays open: an 8-character password that is not on the list, such as a name
 
 ### Strength indicator
 
-The bar under a new password measures; it does not decide. A password the domain accepts may show as weak, and one it refuses always shows as weak. The indicator does not add rules of composition.
+The bar under a new password measures; it does not decide. A password the domain accepts may show as weak, and one it refuses always shows as weak. The indicator adds no rule of composition.
 
 It estimates the entropy: the characters that count, times log2 of the size of the pool of characters used (`packages/design-system/src/password/passwordEntropy.ts`).
 
@@ -291,191 +80,289 @@ Discounts, so that a pattern counts as one character:
 - **A piece of 3 or more that already appeared** (`Xk9mXk9m`).
 - **A word of the context**, the same words the domain refuses.
 
-Levels, from the lowest estimate of each:
-
-| Level | Bits | Example |
+| Level | From | Example |
 |---|---|---|
-| Fraca | below 40 | `aaaaaaaaaa` (5 bits), `12345678` (3 bits), anything the domain refuses |
-| Razoável | 40 | 8 random characters with symbols, about 52 bits |
-| Boa | 60 | 11 random letters and digits, about 65 bits |
-| Forte | 70 | 15 random letters and digits, about 89 bits |
+| Fraca | below 40 bits | `aaaaaaaaaa` (5 bits), `12345678` (3 bits), anything the domain refuses |
+| Razoável | 40 bits | 8 random characters with symbols, about 52 bits |
+| Boa | 60 bits | 11 random letters and digits, about 65 bits |
+| Forte | 70 bits | 15 random letters and digits, about 89 bits |
 
-The limits were chosen on measurements of random passwords: of 20,000 passwords of 15 random letters and digits, as the password manager of Google makes them, 99.9% reach 70 bits even with a run in them by chance. A passphrase of four words also reaches Forte. The estimate is rough by design: it does not know dictionary words other than the context, so `password123` can show as fair until the server refuses it, and then it shows as weak.
+The limits were chosen on measurements: of 20,000 passwords of 15 random letters and digits, as the password manager of Google makes them, 99.9% reach 70 bits even with a run in them by chance. A passphrase of four words also reaches Forte. The estimate is rough by design: it knows no dictionary words other than the context, so `password123` can show as fair until the server refuses it, and then it shows as weak.
 
-Colors and contrast: `accessibility.md`, "Password strength colors".
+Colors and contrast: [accessibility.md](accessibility.md#password-strength-colors).
 
-### Recovery
+## Authentication
 
-1. `/forgot-password` always shows "Se o e-mail estiver cadastrado, enviamos um link". The answer leaves before the work starts, with `after()`, so its time does not depend on the email either: measured at 88 ms for an unknown email and 76 ms for a registered one.
-2. The server generates a random token of 32 bytes and stores only its SHA-256, with the user id, the expiry of 30 minutes and whether it was used, in the `passwordResetTokens` collection. Earlier tokens of the user stop working.
-3. The link in the email uses `SHELL_URL` (`NEXTAUTH_URL` until step D2), never the `Host` of the request, which a client could forge to send the token to another site.
-4. `/redefinir-senha` removes the token from the address bar as soon as it opens.
-5. On success, the new hash is saved, the token is marked as used and the login attempts of that email are cleared.
+### Login and registration
 
-SHA-256 is enough here, because a token has 256 random bits, so there is nothing to guess slowly, unlike a password.
+```text
+ModalLogin        -> Auth.js -> authorize (shell) -> AuthenticateUser ---+
+ModalCadastro     -> POST /api/register -> createRegisterHandler -> RegisterUser
+                                                                         |
+                          UserRepository: json-server or Supabase adapter
+                          PasswordHasher: ScryptPasswordHasher (node:crypto)
+```
 
-An expired, used or unknown token gives one message, with a link to ask for another. A password the policy refuses does not use up the token, so the person can try again with the same link.
+- `@bytebank/core` has the `User` entity, the `UserRepository` and `PasswordHasher` ports, and the use cases. It does not import `node:crypto`.
+- Use cases return `UserDTO`, which has no hash. The session holds id, name and email only.
+- The only login is in the shell. The zones have no provider: they read the JWT of the shell with the same `NEXTAUTH_SECRET`.
 
-Limits: 5 requests per email and 20 per IP in 15 minutes, counted apart from the login. Over the limit, the answer stays the same and no email goes out.
+| | Before Phase 4 | Now |
+|---|---|---|
+| Stored password | Plain text in the seed and in `db.json` | Only a scrypt hash, in `passwordHash` |
+| `authorize` | 3 copies: shell, dashboard, transactions | 1, in the shell, calling `AuthenticateUser` |
+| Password check | `user.password !== password` in each copy | `ScryptPasswordHasher.verify`, with `timingSafeEqual` |
+| Unknown email | No password comparison, so it answered faster | Verifies a decoy hash, so it takes the same time |
+| Registration | Created nothing: it checked the terms and redirected | `POST /api/register`, validated with Zod and an Origin check, calling `RegisterUser` |
+| Session | id, name, email | The same: no hash, no password |
 
-Both routes check the Origin and validate with Zod, as the registration does.
+**Not revealing which emails exist.**
 
-### Mailpit
+- **Login:** a wrong password and an unknown email give the same `INVALID_CREDENTIALS`, response and message. For an unknown email, `AuthenticateUser` verifies a decoy hash made with the same parameters. Measured at the endpoint in Docker Compose, with 80 failed logins in random order: a median of 249 ms for two existing emails, and of 249 ms and 250 ms for two unknown ones, with one identical response.
+- **Registration:** `/api/register` answers `202 {"status":"ACCEPTED"}` for a new email and for a registered one, and the screen shows the same text. So the registration does not log the person in: an automatic login would tell the two cases apart.
 
-Docker Compose has Mailpit, with a fixed version. Its SMTP stays inside the `bytebank` network, and the inbox is at http://localhost:8025, on this machine only.
+**Registration rules.** The name has from 1 to 100 characters, and the password follows the policy above. `authorize` ignores passwords above 128 characters, so a huge value never reaches the hash. Emails are trimmed and stored in lower case, in the domain. The Origin check is the one of the BFF ([bff.md](bff.md#csrf)), before the body is read.
 
-Outside Docker, `apps/shell/.env.example` points to `127.0.0.1:1025`. Not `localhost`: Node resolves it to `::1` first, nodemailer tries only that address, and a Mailpit published on `127.0.0.1` refuses it. Compose does not publish port 1025, so email there needs a Mailpit started by hand, as the README shows (`docker run --rm -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1.29.5`). Without it, the answer on the screen is the same, and the failure goes to the server log. The `.env.example` of each app has every variable `npm run dev` needs, with the values of the README.
+### Session
 
-### Still open
+| Value | Default | Why |
+|---|---|---|
+| Session (`maxAge`) | 30 minutes | Limits what a stolen cookie is worth. A bank session should not last the 30 days of the Auth.js default |
+| Renewal (`updateAge`) | 5 minutes | How often the browser renews the session while in use |
+| Inactivity | 10 minutes | Protects a computer left open. Shorter than the session, so that the person is warned and leaves on purpose |
+| Warning | 1 minute before | Enough time to read and answer |
 
-- **A session already open survives the password change.** The JWT is valid until it expires, 30 minutes at most, so changing the password does not throw out someone who stole the session. It needs a version of the session stored on the server.
-- **The token travels in a link**, so whoever reads the email can use it within 30 minutes. It stays in the HTML of the first response, and in the access logs of any proxy in front of the shell.
-- **Two simultaneous uses of one link can both pass.** The check and the mark are separate requests, and json-server has no transaction.
-- **A failed email looks like a sent one to the person.** Only the server log shows it.
-- **The old secret and the old plain-text passwords of the seed remain in the git history.** Rewriting it is a separate decision. The secret was replaced in `.env`, and it must not be used anywhere.
-- **Key rotation is prepared, not built.** The format has the version, and a second key needs a map of keys and a job to encrypt the stored values again.
-- **Attachments are decrypted on every read**, including the balance, because the repository does not know which fields the use case needs. It costs little at this size, and a separate route for attachments would solve it.
-- **`.env` is plain text on the disk.** Production needs the variables of the platform or a secret manager.
-- **A blocked login says so, and answers faster**, in about 10 ms instead of about 250 ms. Both show that an email typed by someone reached the limit, not that it exists, because unknown emails are blocked too.
-- **Someone can lock an account on purpose**, with 5 wrong passwords, for 15 minutes. It is the known cost of a limit by email.
-- **The limit by IP trusts `x-forwarded-for`.** On Vercel the platform sets it. In Docker there is no proxy in front of the shell, so a client can send any value and escape the limit by IP. The limit by email does not depend on this.
-- **The in-memory limit is per instance**, as described in step 3.2.
-- **The registration does not fully hide an email.** Someone can register a known email with a password of their choice and then try to log in with it: if that fails, the email already existed. Only a confirmation email closes this. A registered email also skips the final write to json-server, which is a few milliseconds faster.
-- **Two simultaneous registrations of the same email can both pass.** The lookup and the write are separate requests, and json-server has no unique index. A real database needs a unique constraint.
-- **The JWT cannot be revoked.** Logging out deletes the cookie, but a copy of the token still works until it expires, 30 minutes at most.
+The values are in `packages/utils/src/sessionPolicy.ts`, the only place with them, read by the three apps: a zone that renews the session writes the cookie with its own `maxAge`.
 
-## Step 7b: changing the name and the password
+- **`updateAge` does nothing in Auth.js with JWT.** It only applies to database sessions: with JWT, every read of the session issues a new token. The API routes read the session but cannot set cookies, so someone working on one screen would never renew it. `IdleSessionGuard` reads the session every `updateAge` while there is activity.
+- **An expired session:** the proxies lead pages to the shell, and the zone APIs answer 401.
+- **Tolerance:** Auth.js accepts a token up to 15 seconds after it expires (`clockTolerance`), so a 30-minute session ends at 30 minutes and 15 seconds.
 
-"Minha conta", in the dashboard zone, now saves. The email is read only: it is the login, and changing it needs a confirmation by email that does not exist yet.
+**Inactivity.** `IdleSessionGuard` (`packages/design-system/src/session/`) runs in the three apps. Its timing logic, `idleMonitor.ts`, has no React and no browser API, so it is tested with simulated time.
 
-### Routes
+- Mouse, keyboard, touch, wheel and scroll count as activity. During the warning only "Continuar conectado" counts, or a moved mouse would hide the warning before anyone read it.
+- Times come from timestamps, not from counting ticks: background tabs have slow timers, and a computer that slept must log out at once.
+- Tabs share the last activity through `localStorage` and its `storage` event. All zones share the origin of the shell, so this reaches every tab of the app. It holds only a timestamp.
+- The dialog has `role="alertdialog"`, with the focus on the button. The visible countdown is hidden from screen readers, and a live region speaks only at 30 and at 10 seconds.
+- This logout runs in the browser. With every tab closed, the `maxAge` of the server ends the session.
+
+**Shortening the times for a demonstration.** `IDLE_TIMEOUT_SECONDS`, `IDLE_WARNING_SECONDS` and `SESSION_MAX_AGE_SECONDS` are read when the app runs, so no rebuild is needed. They can only shorten: a value above the default, or one that is not a positive integer, is ignored. The browser reads them from `/api/session-policy`, on the shell, which is public and has no secret. In PowerShell:
+
+```powershell
+$env:IDLE_TIMEOUT_SECONDS = 30
+$env:IDLE_WARNING_SECONDS = 15
+docker compose up -d --no-deps --force-recreate shell dashboard transactions
+# back to the defaults
+Remove-Item Env:IDLE_TIMEOUT_SECONDS, Env:IDLE_WARNING_SECONDS
+docker compose up -d --no-deps --force-recreate shell dashboard transactions
+```
+
+Outside Docker, the same variables go in `apps/shell/.env.local` (and `SESSION_MAX_AGE_SECONDS` also in the `.env.local` of each zone).
+
+### Attempt limits
+
+| Limit | Value | Why |
+|---|---|---|
+| Login by email | 5 failures in 15 minutes | Stops password guessing against one account, without punishing a typing mistake |
+| Login by IP | 20 failures in 15 minutes | Stops one origin from trying many accounts. Higher, because many people can share one address |
+| Registration by IP | 10 in 1 hour | Each registration costs one scrypt hash and creates a record |
+| Reset request | 5 per email and 20 per IP in 15 minutes | Counted apart from the login. Over the limit the answer is the same and no email goes out |
+| Password change | Shares the counter of the login by email | 5 guesses spread over the login and "Minha conta" still block |
+
+The values are in `packages/bff/src/composition/rateLimits.ts`. `RateLimiter` is a port of the core, because the rule belongs to the use cases: it decides whether the password is even checked, so it runs before the hash.
+
+- The attempt is counted before the hash and given back on success. Counting afterwards would let parallel attempts all pass the check. A success gives back only its own attempt, and a failure of the backend gives it back too.
+- **The block does not reveal which emails exist.** It counts failures per email as typed, decided before the user is looked up, so an unknown email gets the same block and countdown as a real one.
+- A wrong password and an unknown email give the same message. A blocked login gives another: "Muitas tentativas. Tente novamente em X minutos". The wait comes from the server, in the `code` that Auth.js hands to the browser. The counter on the screen changes every minute and enables the button when the wait ends; a screen reader hears only the first message. Changing the email enables the button, because the block applies to the email typed.
+
+**Two adapters, chosen with the database.**
+
+| Backend | Adapter | Behavior |
+|---|---|---|
+| json-server (local) | `InMemoryRateLimiter` | A sliding window per process. A refused attempt does not count, so it does not extend the block. A restart forgets everything (`docker compose restart shell` clears it), and each app counts on its own |
+| Supabase (production) | `PostgresRateLimiter` | A fixed window in the table `rate_limits`, counted by the function `consume_rate_limit` with the row locked, so parallel attempts are counted one by one. Shared by every app and instance, so the login of the shell and the password change of the dashboard share one count |
+
+The fixed window of Postgres can give a countdown a little longer than the sliding window of the memory limiter.
+
+### Keys of the rate limits
+
+With Supabase, each counter is a row of `rate_limits`. A plain SHA-256 of `namespace:email` is not anonymous: anyone with the table and a list of emails can hash each one and find the rows. The key is an HMAC-SHA-256 (`packages/infrastructure/src/supabase/rateLimitKey.ts`):
+
+- **The HMAC key** is derived from `NEXTAUTH_SECRET` with HKDF of `node:crypto` and its own label (`bytebank/rate-limit-keys/v1`), so it is never the key that signs and encrypts the sessions, and no new variable is needed.
+- **It reaches the adapter through the composition of the bff:** `createDataAdapters` derives it and gives it to `PostgresRateLimiter`. The adapter does not read the environment.
+- **No migration.** An HMAC in hex has 64 characters, so it still passes the check of the column (`^[0-9a-f]{64}$`). Rows made with the earlier SHA-256 keys are no longer found, and they expire with their window.
+
+The memory limiter keeps no key anywhere, so it does not use the HMAC.
+
+### The session race
+
+Found by the first test of the production deployment, and fixed.
+
+**The problem.** Every answer of `GET /api/auth/session` writes the session cookie again: with JWT sessions, Auth.js signs a new token on each read. A read carries the cookie the browser has when it leaves, so a read that leaves before a write and answers after it stores the old token over the new one:
+
+- **Saving the name:** the `POST` of `update()` writes a token with the new name, and the late read puts the old name back, in the header and in the cookie.
+- **Logging out:** the sign-out clears the cookie, and the late read writes it back. The user lands on the login, but `/dashboard` opens with no password.
+
+The reads came from the session provider of the zones (on page load and when the window gets the focus) and from the renewal of the inactivity guard. Locally the answers take milliseconds and the window is too short to hit. In production every answer crosses to `iad1`, and a cold function takes seconds.
+
+**Evidence.** `apps/shell/scripts/session-race.mjs` holds the session reads in the browser for 3 s after the server answered, so the request is real and only its arrival is late. Against production before the fix, 8 of 8 checks failed: the header and the session went back to the old name, and after the logout `/dashboard` still opened. After the fix, 12 of 12 passed in Docker ([testing.md](testing.md#browser-regression-the-session-race)).
+
+**The fix**, so that no write is left with a read behind it:
+
+1. **The zones do not read the session on their own.** `ZoneSessionProvider` (`packages/auth/src/ZoneSessionProvider.tsx`) reads the session on the server, in the layout, and starts the provider with it, with `refetchOnWindowFocus` off. The layouts were already rendered per request for the nonce, so this costs one decode of the JWT and no query, and the name is in the header from the first paint.
+2. **The writes wait for the reads.** The only read left is the renewal of the inactivity guard, which goes through `readSession` (`packages/design-system/src/session/zoneSession.ts`) and is tracked while in flight. `signOutCompletely`, used by the header and by the inactivity logout, waits for the reads, signs out, and reads the session to check; if a read from elsewhere brought it back, it signs out once more. The form of the name calls `waitForSessionReads` before `update()`.
+
+### Account: changing the name and the password
+
+"Minha conta", in the dashboard zone, saves the name and the password. The email is read only: it is the login, and changing it needs a confirmation by email that does not exist.
 
 | Route | Body | Answer |
 |---|---|---|
 | `PATCH /dashboard/api/account/profile` | `{ name }` | `200 { name }` |
 | `POST /dashboard/api/account/password` | `{ currentPassword, newPassword }` | `204` |
 
-Both follow the rules of the other writes of the bff: the `Origin` is checked before the session, the user is always the one of the session, and the body is a strict Zod object, so an `id` or an `email` in it is refused with `400`. An error answers a code only.
+Both follow the other writes of the bff: the `Origin` is checked before the session, the user is always the one of the session, and the body is a strict Zod object, so an `id` or an `email` in it is refused with `400`.
 
-### Changing the password
+`ChangePassword` consumes one attempt of the login limiter by email, verifies the current password in constant time and in NFKC, refuses a new password equal to the current one (`422 PASSWORD_UNCHANGED`) and applies the policy. A wrong current password answers `422 INVALID_CURRENT_PASSWORD`, not `401`, because the client reads `401` as an expired session.
 
-`ChangePassword` in the core:
+**The name in the session.** After saving, the screen calls `update()` of Auth.js. The zone answers in the `jwt` callback, with the `update` trigger, by reading the user again by the id of the token. What the browser sends with `update()` is ignored, so nobody can write a name, or another id, into their own token.
 
-1. Consumes one attempt of the limiter of the login, by email (5 every 15 minutes), before anything else.
-2. Verifies the current password with the hasher, which compares in constant time (`timingSafeEqual`), in NFKC like the login. A wrong one answers `422 INVALID_CURRENT_PASSWORD` and keeps the attempt; a right one gives it back.
-3. Refuses a new password equal to the current one, compared in NFKC: `422 PASSWORD_UNCHANGED`.
-4. Applies the policy of the registration and of the reset, through `hashNewPassword`.
+## Password recovery
 
-A wrong current password answers `422`, not `401`: the client reads `401` as an expired session and sends the browser to the login.
+1. `/forgot-password` always shows "Se o e-mail estiver cadastrado, enviamos um link". The answer leaves before the work starts, with `after()`, so its time does not depend on the email: measured at 88 ms for an unknown email and 76 ms for a registered one.
+2. The server generates a random token of 32 bytes and stores only its SHA-256, with the user id, an expiry of 30 minutes and whether it was used. Earlier tokens of the user stop working. SHA-256 is enough here: the token has 256 random bits, so there is nothing to guess slowly, unlike a password.
+3. The link uses `SHELL_URL`, never the `Host` of the request, which a client could forge to send the token to another site.
+4. `/redefinir-senha` removes the token from the address bar as soon as it opens.
+5. On success the token is claimed, the new hash is saved, and the login attempts of that email are cleared. With Supabase the claim is one atomic statement (`use_password_reset_token`), made before the password changes, so of two uses of one link only one wins.
 
-The limiter has the values of the login but lives in the process of the dashboard zone, so its count is separate from the login of the shell. Someone can try 5 current passwords here and 5 logins there in the same 15 minutes. One shared count needs a shared store, the same open item as the in-memory limit of step 3.2.
+An expired, used or unknown token gives one message, with a link to ask for another. A password the policy refuses does not use up the token. Both routes check the Origin and validate with Zod.
 
-### The name in the session
+**Email.** Docker Compose runs Mailpit, with a fixed version. Its SMTP stays inside the `bytebank` network, and the inbox is at http://localhost:8025. Outside Docker, `apps/shell/.env.example` points to `127.0.0.1:1025`, not `localhost`: Node resolves `localhost` to `::1` first, nodemailer tries only that address, and a Mailpit published on `127.0.0.1` refuses it. The README shows the `docker run` of Mailpit for that case. Without `SMTP_HOST`, the shell uses `DisabledEmailSender`: the answer on the screen is the same and the server logs one line with no address. Production has no email service ([deploy.md](deploy.md#no-email-in-production)).
 
-The name of the header comes from the JWT, which the three zones share as one cookie. After saving, the screen calls `update()` of Auth.js. The zone answers it in the `jwt` callback, with the `update` trigger, by reading the user again from json-server by the id of the token. What the browser sends with `update()` is ignored, so nobody can write a name, or another id, into their own token. The new cookie reaches the dashboard at once, and the shell and the extract on their next page.
+## Attachments
 
-### Still open after step 7b
+`DataCipher` is a port of the core, and `AesGcmCipher` its adapter, with `node:crypto`. `EncryptedAttachmentRepository` wraps the real repository, so the use cases do not change.
 
-- **Other sessions stay valid after a password change.** The session is a JWT: a browser that was logged in before the change keeps working until its token expires, 30 minutes at most. Ending them needs a version of the password in the token, checked on every request, or a list of revoked sessions.
-- **No email warns about a changed password.**
-
-### Since step D1
-
-With `DATA_BACKEND=supabase`, the rate limits are counters in Postgres, shared by every app and instance. The password change of the dashboard and the login of the shell then count in the same namespace, so the separate count described in step 7b only applies to json-server. See `deploy.md`.
-
-## Step D3: the session race
-
-Found by the first test of the production deployment. Fixed in the same step.
-
-### The problem
-
-Every answer of `GET /api/auth/session` writes the session cookie again: with JWT sessions, Auth.js signs a new token on each read, with a later expiry. A read sends the cookie the browser has when it leaves. So when a read leaves before a write and its answer arrives after it, the browser stores the old token over the new one:
-
-- **Saving the name:** the `POST` of `update()` writes a token with the new name, and the late read puts the old name back, in the header and in the cookie.
-- **Logging out:** the `POST` of the sign-out clears the cookie, and the late read writes it back. The user lands on the login, but the session is alive: `/dashboard` opens with no password.
-
-The reads came from the session provider of the zones, which reads the session when the page loads and when the window gets the focus back, and from the renewal of the inactivity guard. Locally the answers take a few milliseconds and the window is too short to hit. In production every answer crosses to `iad1`, and a cold function takes seconds, so a click right after a page load hit it. The first run in production failed once on each flow.
-
-### Evidence
-
-`apps/shell/scripts/session-race.mjs` holds the reads in the browser for 3 s after the server answered, so the request is the real one, and only its arrival is late. Against production before the fix, 8 of 8 checks failed: the header and the session went back to the old name, and after the logout the session was still there and `/dashboard` opened. See `testing.md`, "Browser regression: the session race".
-
-### The fix
-
-Two parts, so that no write is left with a read behind it:
-
-1. **The zones do not read the session on their own.** `ZoneSessionProvider` (`packages/auth/src/ZoneSessionProvider.tsx`) reads the session on the server, in the layout, and starts the provider with it, with `refetchOnWindowFocus` off. Given a session, the provider does not read it again on load. The layouts were already rendered per request, for the nonce of the CSP, so this costs one decode of the JWT and no query. As a bonus, the name is in the header from the first paint.
-2. **The writes wait for the reads.** The only read left is the renewal of the inactivity guard, so it goes through `readSession` (`packages/design-system/src/session/zoneSession.ts`), which keeps track of the reads in flight. `signOutCompletely`, used by the header and by the inactivity logout, waits for them, signs out, and reads the session to check. If a read from elsewhere, such as another tab, brought it back, it signs out once more. The form of the name calls `waitForSessionReads` before `update()`.
-
-### What is left
-
-- **Another tab.** After a write, Auth.js tells the other tabs, which read the session. Those reads leave after the write, so they carry the new cookie. A read that another tab had started before the write, and that answers after it, can still bring the old token back, since the tabs share the cookie. The check after the sign-out catches it only when it lands before the check. It needs two tabs and a read in flight in the second one at the moment of the click.
-- **Revocation on the server.** The robust fix is a mark on the user, such as "sessions valid after", checked on every request, so that an old token is refused wherever it comes from. It costs one query per check of the session, and it would also end the other sessions after a password change, the open item of step 7b. It was left for later.
-
-## Final step: server-only entries, layers and secrets
-
-### Server-only entries
-
-Code of the server must never reach a bundle of the browser: it holds the database adapters, the secret key of Supabase and the cipher of the attachments. Three barriers keep it there.
-
-1. **`server-only`.** These files import it, and a Client Component that reaches one of them fails `next build`:
-   - `packages/bff/src/index.ts`, the main entry of the bff, with the composition of the use cases and the handlers the apps import;
-   - `packages/auth/src/zoneHandlers.ts`, `zone.ts`, `zoneProxy.ts` and `ZoneSessionProvider.tsx`, the server files of `@bytebank/auth`.
-
-   Two entries are left out on purpose. `@bytebank/bff/client` runs in the browser. `@bytebank/infrastructure` is also used by Node scripts with no bundler, such as `db:reset:supabase`, where `server-only` would throw. Unit tests run in plain Node too, so `vitest.config.mts` points `server-only` to its empty module, the one the server build already uses.
-
-   Proof: with `import { createDataAdapters } from '@bytebank/bff'` in `CardNewTransaction.tsx`, a Client Component of the dashboard, the build failed with "You're importing a module that depends on "server-only"", and the trace `bff/src/index.ts [Client Component Browser]` ← `CardNewTransaction.tsx` ← `app/page.tsx`. The import was removed after the proof.
-
-2. **The layer rules** of `eslint.layers.mjs`: `store` and `design-system` may not import `@bytebank/infrastructure` nor `@bytebank/bff`, only `@bytebank/bff/client`. See `docs/conventions.md`.
-
-3. **No direct `fetch` to the bff in the components.** The shell has its own client, `createShellClient`, in `@bytebank/bff/client`, next to the client of the zones: registration, "Esqueci a senha", reset and the session policy. Its error carries the code of the bff and the status, with the same codes as the client of the zones (`UNKNOWN_ERROR` when the body cannot be read). The screens behave as before.
-
-### Secrets checked at start
-
-`NEXTAUTH_SECRET` signs and encrypts the sessions, and `ATTACHMENT_ENCRYPTION_KEY` encrypts the attachments. Before this step, an app started with the `replace-me` of `.env.example`, so a copied example gave a secret anyone can read on GitHub.
-
-Now one rule, `packages/utils/src/secrets.ts`, refuses a missing value, `replace-me`, or anything that is not base64 of 32 bytes or more, with the same message for each case:
-
+```text
+aes256gcm$v1$<IV, 12 bytes>$<auth tag, 16 bytes>$<data>
 ```
+
+- **The IV is random for each attachment**, and `v1` names the key, so a new key can be added later while old values still open.
+- **The value is tied to its owner.** The user id goes in as authenticated data, so a value copied to the transaction of another user does not open.
+- **The owner is checked first.** The inner repository filters by user, so nothing is decrypted for anyone else.
+- **Any failure gives one fixed error** in the log, with the transaction id only. A value that cannot be sealed is refused, and a value in the clear does not open: there is no fallback to plain text.
+- **An attachment that cannot be read does not break the list.** The transaction comes with `attachmentUnavailable: true` and no attachment, and the screens show "Anexo indisponível". It can still be edited and deleted, and editing other fields keeps the stored value.
+
+**The file is encrypted, not its data URL.** Encrypting the data URL would apply base64 twice, and a 70 KB attachment would become about 124 KB, above the 102400 bytes that json-server accepts. With the bytes of the file it becomes about 95.6 KB, so the limit of [ADR 0009](../adr/0009-attachment-size-limit.md) did not change. A test sends exactly 70 KB to the real json-server, and the type of the file is encrypted too.
+
+The key is `ATTACHMENT_ENCRYPTION_KEY`, 32 bytes in base64, in the zones only. **Losing or changing it makes the stored attachments unreadable**, which is why production has its own key ([deploy.md](deploy.md#secrets-of-production)).
+
+The allowed types are `image/png`, `image/jpeg`, `image/webp` and `application/pdf`; SVG is refused because it can carry scripts ([bff.md](bff.md#security-rules)).
+
+## Security headers and CSP
+
+`X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options` and `Permissions-Policy` come from `next.config.ts` (`packages/utils/src/securityHeaders.ts`), on every response of the three apps, APIs included. HSTS is added only when `VERCEL_ENV` is `production` at build time, the one environment where HTTPS is certain: sent over plain HTTP it does nothing, and sent from a domain that loses HTTPS it would lock people out.
+
+The Content-Security-Policy comes from each `proxy.ts`, with a new nonce per request:
+
+```text
+default-src 'self';
+script-src 'self' 'nonce-<random>' 'strict-dynamic';
+style-src 'self';
+img-src 'self' data:;
+frame-src data:;
+font-src 'self';
+connect-src 'self';
+object-src 'none';
+base-uri 'none';
+form-action 'self';
+frame-ancestors 'none'
+```
+
+- **The nonce works with multi-zones.** Each app sends its own policy. The shell adds none to the pages of the zones, because a second policy with another nonce would block their scripts.
+- **The cost is that no page is static.** Next.js can only put a nonce on a page rendered per request, so the three root layouts call `connection()`. The measured cost and the reasons to accept it are in [performance.md](performance.md#no-page-is-static).
+- **`img-src data:` and `frame-src data:`** exist only for attachments, which reach the screen as data URLs. A frame with a `data:` URL has an opaque origin, so it reaches nothing of the app.
+- **No exception for styles.** The `style` attributes of the server render were replaced by classes, and the progress bar of investments became a `<progress>`.
+- **Only in development:** `'unsafe-eval'`, `ws:` and inline styles, which fast refresh needs.
+- `'strict-dynamic'` lets a script with the nonce load the lazy chunks.
+
+## Secrets
+
+`NEXTAUTH_SECRET` signs and encrypts the sessions, and `ATTACHMENT_ENCRYPTION_KEY` encrypts the attachments. Locally they come from a `.env` at the root (Docker) or the `.env.local` of each app, both outside git and outside the images; in production, from the variables of each Vercel project.
+
+**Checked at start.** One rule, `packages/utils/src/secrets.ts`, refuses a missing value, the `replace-me` of the examples, or anything that is not base64 of 32 bytes or more, with the same message for each case:
+
+```text
 Missing or invalid NEXTAUTH_SECRET. Generate 32 random bytes in base64, as in step 3 of the README
 ```
 
-It runs in two places:
+- **Docker.** The `secrets-check` service runs the rule with plain Node 22, which runs the TypeScript of `secrets.ts` as it is, with no network and no install. The apps depend on it with `service_completed_successfully`, so `docker compose up` stops before any app starts.
+- **Every start of a server**, in `instrumentation.ts` of each app: Docker, `npm run dev` and Vercel. Next only logs an error of `register()` and then answers 500 to every request, so `exitUnlessSecrets` stops the Node process instead. It runs only in the Node runtime, since Next also compiles `instrumentation.ts` for the Edge.
 
-- **Docker.** The `secrets-check` service of `docker-compose.yml` runs the rule with plain Node 22, which runs the TypeScript of `secrets.ts` as it is, with no network and no install. The apps depend on it with `service_completed_successfully`, so `docker compose up` stops before any app starts. A missing variable still stops earlier, at `${NEXTAUTH_SECRET:?...}`, now with the same message.
-- **Every start of a server**, in `instrumentation.ts` of each app: Docker, `npm run dev` and Vercel. Next only logs an error of `register()`, and then answers 500 to every request, so `exitUnlessSecrets` stops the Node process instead.
-
-Proofs:
-
-| Run | Result |
+| Proof | Result |
 |---|---|
-| `NEXTAUTH_SECRET=replace-me docker compose up -d` (the variable only in that command) | Exit 1: `service "secrets-check" didn't complete successfully`; its log has the message, and the three apps were not started |
-| `docker compose up -d` with the `.env` of this machine | `Secrets: ok`, and the shell answers 200 |
-| The standalone build of the shell with `NEXTAUTH_SECRET=replace-me` | The message, and the process ends with exit 1 |
+| `NEXTAUTH_SECRET=replace-me docker compose up -d` | Exit 1: `service "secrets-check" didn't complete successfully`; its log has the message, and no app started |
+| `docker compose up -d` with a valid `.env` | `Secrets: ok`, and the shell answers 200 |
+| The standalone build of the shell with `NEXTAUTH_SECRET=replace-me` | The message, and exit 1 |
 
-Before deploying this step, check that the secrets of the three Vercel projects are base64 of 32 bytes, as the checklist of `deploy.md` generates them. A shorter one now stops the functions.
+## Server-only entries
 
-## After the review
+Server code must never reach a browser bundle: it holds the database adapters, the secret key of Supabase and the cipher of the attachments. Three barriers keep it there.
 
-### Keys of the rate limits
+1. **`server-only`.** These files import it, and a Client Component that reaches one of them fails `next build`:
+   - `packages/bff/src/index.ts`, the main entry of the bff, with the composition and the handlers;
+   - `packages/auth/src/zoneHandlers.ts`, `zone.ts`, `zoneProxy.ts` and `ZoneSessionProvider.tsx`.
 
-With Supabase, the counters of the rate limits are rows of `rate_limits`, whose key was the SHA-256 of `namespace:email` or `namespace:ip`. A hash is not anonymous when the input is easy to guess: anyone with the table and a list of emails can hash each one and find the rows.
+   Two entries are left out on purpose. `@bytebank/bff/client` runs in the browser. `@bytebank/infrastructure` is also used by Node scripts with no bundler, such as `db:reset:supabase`, where `server-only` would throw. Unit tests run in plain Node, so `vitest.config.mts` points `server-only` to its empty module, the one the server build already uses.
 
-The key is now an HMAC-SHA-256 (`packages/infrastructure/src/supabase/rateLimitKey.ts`):
+   Proof: with `import { createDataAdapters } from '@bytebank/bff'` in `CardNewTransaction.tsx`, a Client Component of the dashboard, the build failed with "You're importing a module that depends on "server-only"" and the trace `bff/src/index.ts [Client Component Browser]` ← `CardNewTransaction.tsx` ← `app/page.tsx`. The import was removed after the proof.
 
-- **The HMAC key** is derived from `NEXTAUTH_SECRET` with HKDF of `node:crypto`, with its own label (`bytebank/rate-limit-keys/v1`), so it is never the key that signs and encrypts the sessions, and no new variable is needed.
-- **It reaches the adapter through the composition of the bff:** `createDataAdapters` derives it and gives it to `PostgresRateLimiter`. The adapter does not read the environment.
-- **No new migration.** An HMAC in hex has 64 characters, so it still passes the check of the column (`^[0-9a-f]{64}$`). The rows made with the old keys are no longer found, and they expire with their window; `npm run db:reset:supabase` empties the table anyway.
+2. **The layer rules** of `eslint.layers.mjs`: `store` and `design-system` may import neither `@bytebank/infrastructure` nor `@bytebank/bff`, only `@bytebank/bff/client` ([conventions.md](../conventions.md#layers)).
 
-The tests: the same input gives the same key, another secret gives other keys, two namespaces give two keys, and the key shows nothing of the email and is not its plain SHA-256. The contract suite against Supabase runs the limiter with the HMAC.
+3. **No direct `fetch` to the bff in the components.** The zones use `createTransactionsClient` and the shell uses `createShellClient`, both in `@bytebank/bff/client`, with the same error codes.
 
-With json-server, the limiter is in memory and keeps no key anywhere, so nothing changes there.
+## Personal data in logs
 
-### Next phase
+- Failed requests to the database name the collection only, never the email or the user id.
+- Auth.js logged the content of the token, with name and email, whenever an expired session was read. `authLogger` now logs only the name and the message of the error, in the three apps.
+- The loggers of the bff handlers log the original error, never a body. A corrupted record logs its id, an internal identifier.
 
-Found in the review and left out of this step, on purpose:
+## How to validate
 
-- **CI.** The Storybook tests (77 stories, 15 interaction tests) and `test:session-race` do not run in GitHub Actions. Storybook needs `npx playwright install chromium` in a job of its own; the session race needs a running app.
+| What | How |
+|---|---|
+| Unit rules (policy, hasher, cipher, limiter, HMAC keys, session writes) | `npm test` ([testing.md](testing.md)) |
+| Login block | Log in with an unknown email and wrong passwords: the 6th attempt shows "Muitas tentativas. Tente novamente em 15 minutos" |
+| Recovery | "Esqueci a senha" with `julia@bytebank.com`, then the email in Mailpit, http://localhost:8025 |
+| CSP | DevTools: no CSP violation in the console; the response has `Content-Security-Policy` with a nonce |
+| HSTS in production | `curl -sI https://bytebank-shell.vercel.app/ \| grep -i strict-transport-security` |
+| Secrets refused | `NEXTAUTH_SECRET=replace-me docker compose up -d` stops at `secrets-check` |
+| Session race | `npm run test:session-race` against a running app ([testing.md](testing.md#browser-regression-the-session-race)) |
+| HMAC limiter against Postgres | The Supabase contract suite ([deploy.md](deploy.md#contract-tests)) |
+| Server-only | Import `@bytebank/bff` in a Client Component: the build fails |
+
+## Known limits
+
+- **A session survives a password change, and the JWT cannot be revoked.** A copy of the token works until it expires, 30 minutes at most, after a logout or a password change. The robust fix is a mark on the user, such as "sessions valid after", checked on every request; it costs one query per session check.
+- **The session race across tabs.** A read that another tab had started before a write, and that answers after it, can still bring the old token back, since the tabs share the cookie. It needs two tabs and a read in flight in the second one at the moment of the click. The same server-side mark would close it.
+- **The token travels in a link**, so whoever reads the email can use it within 30 minutes. It stays in the HTML of the first response and in the access logs of any proxy in front of the shell.
+- **A failed email looks like a sent one to the person**; only the server log shows it. No email warns about a changed password.
+- **An 8-character password not on the list is accepted**, such as a name and a year that the list lacks. The strength indicator shows it as weak or fair, and only that.
+- **The registration does not fully hide an email.** Someone can register a known email with a password of their choice and then try to log in with it: if that fails, the email already existed. Only a confirmation email closes this. A registered email also skips the final write, which is a few milliseconds faster.
+- **A blocked login says so, and answers faster** (about 10 ms instead of about 250 ms). It shows that an email reached the limit, not that it exists.
+- **Someone can lock an account on purpose** with 5 wrong passwords, for 15 minutes: the known cost of a limit by email.
+- **The limit by IP trusts `x-forwarded-for`.** Vercel sets it; in Docker there is no proxy in front of the shell, so a client can send any value. The limit by email does not depend on it.
+- **Guarantees that only Supabase gives.** With json-server, two simultaneous registrations of one email or two uses of one reset link can both pass, and each app counts its own attempts in memory. These cases are skipped for json-server in the contract suite ([deploy.md](deploy.md#contract-tests)).
+- **Key rotation is prepared, not built.** The format has the version; a second key needs a map of keys and a job to encrypt the stored values again.
+- **Attachments are decrypted on every read**, including the balance, because the repository does not know which fields the use case needs. A separate route for attachments would solve it.
+- **The old secret and the plain-text passwords of the first seed remain in the git history.** Rewriting it is a separate decision; neither is used anywhere.
+- **Local secrets are plain text on the disk**, in `.env` and `.env.local`. Production uses the variables of the platform.
+
+## Next phase
+
+Found in the review and left out on purpose:
+
+- **CI.** The Storybook tests and `test:session-race` do not run in GitHub Actions. Storybook needs `npx playwright install chromium` in a job of its own; the session race needs a running app.
 - **Cleaning the database.** Expired reset tokens and old rows of `rate_limits` are never deleted. A scheduled job (pg_cron) or a delete when a token is created would keep the tables small.
 - **Adapters of `/sobre`.** The page builds the adapters on every request (`createDataAdapters()`), and so does the refresh of the name in `@bytebank/auth/zone`. It costs little, since Supabase is HTTP with no pool of connections, but they could be cached like the handlers.
-- **Lazy modals in Storybook** (`testing.md`): they do not load there, so `TransactionActions` is tested in the browser.
+- **Lazy modals in Storybook** ([testing.md](testing.md#storybook)): they do not load there, so `TransactionActions` is tested in the browser.

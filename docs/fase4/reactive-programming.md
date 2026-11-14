@@ -1,6 +1,6 @@
-# Phase 4: reactive programming (Block 5)
+# Reactive programming
 
-The search of the transactions zone is an RxJS pipeline. Each input is a stream of values over time, and the screen only feeds the inputs and shows the outputs.
+Requirement: reactive programming. The search of the transactions zone is an RxJS pipeline. Each input is a stream of values over time, and the screen only feeds the inputs and shows the outputs.
 
 ## The flow
 
@@ -63,3 +63,12 @@ The subscription lives as long as the screen. `useObservable` uses `useSyncExter
 The rule itself is tested apart, in `filterTransactions.test.ts`, with no time involved.
 
 `useObservable` is tested through `createObservableStore`, which holds the subscription: it subscribes once and cancels on the function React calls on unmount. The project has no DOM for tests, so the part that React plays, calling that function on a real unmount, is not tested here: it relies on the contract of `useSyncExternalStore`.
+
+## How to validate
+
+- `npm test` runs the marble tests (`createStatementSearch.test.ts`) and the filter rule ([testing.md](testing.md)).
+- In the extract: type in "Buscar" and the list changes once, about 300 ms after the last key; add a space at the end and nothing changes; change a filter and the list changes at once and goes back to page 1; edit a transaction on page 2 and you stay on page 2.
+
+## Known limits
+
+- The unmount of a real React tree is not tested, because the unit tests have no DOM; `useObservable` relies on the contract of `useSyncExternalStore`.

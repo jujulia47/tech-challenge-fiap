@@ -1,8 +1,8 @@
-# Phase 4: baseline (Step 0.1)
+# Baseline before the refactor
 
 **Date:** 2026-10-29
 
-This is a diagnosis of the current state, taken before any refactoring. No errors were fixed. They are only recorded here.
+The evidence of the starting point: the state of the project before any change of Phase 4. Nothing was fixed here; the results after the work are in [performance.md](performance.md) (bundle and Lighthouse), [accessibility.md](accessibility.md), [ci.md](ci.md) (lint and dependencies) and [history.md](history.md).
 
 Environment: Node 20 via nvm4w, npm 11.12.1, turbo 2.9.18 and Next.js 16.2.4 (Turbopack), on Windows 11.
 
@@ -121,7 +121,7 @@ Because Next did not print sizes, the `.js` files in `apps/<app>/.next/static/ch
 
 ### Client JS size (Next 16.4.3, refactor baseline)
 
-After the dependency upgrade in step 0.4. Turbopack changed chunk hashing and name mangling in 16.3/16.4, so this is the reference for the refactor comparison.
+After the dependency upgrade ([ci.md](ci.md#dependency-audit)). Turbopack changed chunk hashing and name mangling in 16.3/16.4, so this is the reference for the refactor comparison.
 
 Same method as above: all `.js` files in `apps/<app>/.next/static/chunks/`, summed right after `npm run build`, with gzip computed by `zlib` at the default level.
 
@@ -183,7 +183,7 @@ All of them rely on the `@/` alias of the consuming app or of the shell, through
 
 ## Lighthouse (before)
 
-Measured on Next 16.2.4, before the dependency upgrade (step 0.4). Kept for reference; the refactor comparison uses the re-measurement below.
+Measured on Next 16.2.4, before the dependency upgrade. Kept for reference; the refactor comparison uses the re-measurement below.
 
 ### Methodology
 - Lighthouse 13.5.0 in Chrome DevTools, Navigation mode.
@@ -192,7 +192,7 @@ Measured on Next 16.2.4, before the dependency upgrade (step 0.4). Kept for refe
 - Incognito window, no extensions, logged-in user.
 - "Clear storage" UNCHECKED to keep the session. As a result, the HTTP cache was warm: JS bundles were served from cache, so bundle size must be compared using the build output table, not Lighthouse.
 - The "after" measurement must follow exactly the same methodology.
-- Date: 2026-10-29. Full (expanded) reports in `docs/fase4/lighthouse/before/`, one PDF per page and device.
+- Date: 2026-10-29. This measurement is on Next 16.2.4, before the dependency upgrade, so it is not the reference of the comparison; its PDF reports were removed at the delivery, and the tables below are its record.
 
 ### Scores
 | Page | Device | Performance | Accessibility | Best Practices | SEO |
@@ -218,7 +218,7 @@ Measured on Next 16.2.4, before the dependency upgrade (step 0.4). Kept for refe
 | /dashboard | Desktop | 0.3 s | 0.5 s | not flagged | 14 KiB |
 | /transactions | Desktop | 0.0 s | 0.3 s | not flagged | 14 KiB |
 
-### Issues reported (to be addressed in upcoming blocks)
+### Issues reported (all addressed later: [security.md](security.md#security-headers-and-csp), [accessibility.md](accessibility.md), [performance.md](performance.md))
 - Best Practices / Trust and Safety (unscored): no effective CSP against XSS, no HSTS, no COOP, no clickjacking protection (X-Frame-Options or CSP), no Trusted Types. Both pages, both devices.
 - Accessibility:
   - Mobile only: aria-hidden="true" elements contain focusable descendants (likely the closed mobile MenuDrawer).
@@ -232,7 +232,7 @@ Measured on Next 16.2.4, before the dependency upgrade (step 0.4). Kept for refe
 
 ## Lighthouse (refactor baseline, Next 16.4.3)
 
-Measured after the dependency upgrade (step 0.4), with the same methodology as "Lighthouse (before)": single run per page and device, warm HTTP cache, logged-in user, incognito window, production build via Docker. This is the reference for the refactor comparison. Date: 2026-10-29. Full (expanded) reports in `docs/fase4/lighthouse/before-next-16.4/`, one PDF per page and device.
+Measured after the dependency upgrade, with the same methodology as "Lighthouse (before)": single run per page and device, warm HTTP cache, logged-in user, incognito window, production build via Docker. This is the reference for the refactor comparison. Date: 2026-10-29. Full (expanded) reports in [lighthouse/before/](lighthouse/before/), one PDF per page and device (`dashboard-desktop.pdf`, `dashboard-mobile.pdf`, `transactions-desktop.pdf`, `transactions-mobile.pdf`).
 
 ### Scores
 | Page | Device | Performance | Accessibility | Best Practices | SEO |
@@ -264,6 +264,6 @@ Same as "Lighthouse (before)": no new issues and none resolved by the upgrade. F
 ### Run-to-run variance
 Small differences between single runs are measurement noise, not code changes. Example: /transactions Mobile TBT went from 30 ms to 130 ms and CLS from 0 to 0.024 between the two baselines, with no relevant code change on that page. Conclusions must rely on large differences and on bundle size measured on disk, which has no run-to-run variance.
 
-### Methodology for the "after" measurement
+### Methodology of the "after" measurement ([performance.md](performance.md#lighthouse-before-and-after))
 - Same setup as above (Docker production build, incognito, logged in, "Clear storage" unchecked, expanded report).
 - 3 runs per page and device; record the median of each metric.

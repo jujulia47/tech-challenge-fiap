@@ -1,316 +1,255 @@
-# Phase 4: testing (Steps 0.5, 1.1 to 1.4b, 2.1 to 2.5b, 3.1, 3.2)
+# Testing
 
-**Date:** 2026-10-29, updated 2026-10-30
+This is the only page with test counts. The other docs link here.
+
+## Summary
+
+| Suite | Command | Result |
+|---|---|---|
+| Unit and integration tests of the packages | `npm test` | **97 files, 1492 tests passing, 22 skipped**, in about 10 s |
+| Storybook: every story in a real browser, with interaction tests | `cd apps/shell && npx vitest run --project storybook` | **24 files, 77 stories (22 components), 15 interaction tests**, all passing |
+| Contract suite against a real Supabase project | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | **19 tests**, all passing (off by default, out of the CI) |
+| Browser regression of the session race | `npm run test:session-race` | **12 of 12 checks** in Docker (3 rounds) |
+| Coverage of the packages | `npm run test:coverage` | **83.68% of statements**, per package [below](#coverage) |
+
+The 22 skipped tests are the 19 of the Supabase suite, which run only with its variable, and 3 cases of the json-server contract suite that json-server cannot hold ([deploy.md](deploy.md#contract-tests)).
 
 ## Strategy
 
-The repository has two kinds of unit test, and they answer different questions:
-
 | Package | Kind | Question it answers | When a test fails |
 |---|---|---|---|
-| `packages/utils` | **Characterization** | What does the code do today? | The behavior changed. Decide whether that was intended. |
-| `packages/core` | **Specification** | What must the domain do? | The domain is wrong. Fix the code, not the test. |
-| `packages/infrastructure` | **Specification** | Do the adapters talk to the outside correctly? | The adapter is wrong. Fix the code, not the test. |
-| `packages/bff` | **Specification** | Does the HTTP contract hold? | The contract broke. Fix the code, not the test. |
+| `utils` | **Characterization**, then specification for the new helpers | What does the code do today? | The behavior changed. Decide whether that was intended |
+| `core` | **Specification** | What must the domain do? | The domain is wrong. Fix the code, not the test |
+| `infrastructure` | **Specification** and **contract** | Do the adapters talk to the outside correctly, and do both backends obey the same rules? | The adapter is wrong |
+| `bff` | **Specification** | Does the HTTP contract hold? | The contract broke |
+| `store`, `design-system`, `auth` | **Specification** | Do the factory, the pure logic of the components and the session config behave? | The behavior is wrong |
+| Storybook | **Component and interaction** | Does each component render its states, and do the interactive ones respond to mouse and keyboard? | The component is wrong |
 
-### Characterization tests (`packages/utils`)
+**Characterization tests came first.** Before the refactor, the tests of `packages/utils` recorded what the code did, odd behavior included, so that any change in output during the refactor showed up as a failing test. A test that asserts behavior that looks like a bug is marked `// Characterization: current behavior, see docs/fase4/testing.md` and listed under [Questionable behaviors](#questionable-behaviors). An intended change updates the test and this page together.
 
-The first tests are **characterization tests**. They record what the code does today, including odd or questionable behavior, instead of what it should do. They do not fix anything. When a test asserts behavior that looks like a bug, it is marked with:
+**Specification tests** state the rules of new code: every invariant and `DomainError`, value object limits (`-0`, unsafe integers, leap years, timezone safety), immutability, the round trip of `toPrimitives`/`fromPrimitives`, every validation rule of the bff and every error translation.
 
-```ts
-// Characterization: current behavior, see docs/fase4/testing.md
-```
-
-and listed under [Questionable behaviors](#questionable-behaviors).
-
-They come before the refactor on purpose. The Phase 4 refactor (Clean Architecture, moving logic out of components, shared packages) will move this code around. With the current behavior pinned down, any change in output during the refactor shows up as a failing test. If the change is intended (for example, fixing one of the questionable behaviors), the test is updated in the same change, together with this document. If it is not intended, it is a regression.
-
-### Specification tests (`packages/core`)
-
-The `packages/core` tests are **specification tests**. The domain is new code, so there is no earlier behavior to record. The tests state the desired rules: every invariant and `DomainError`, value object limits (`-0`, unsafe integers, leap years, timezone safety), immutability, and the round trip of `toPrimitives`/`fromPrimitives`. They have no `Characterization` markers, because a surprising result there is a bug to fix. The rules themselves are documented in `docs/fase4/domain.md`.
+**Contract suites** (`packages/infrastructure/src/contracts`) hold one set of cases per port: users, transactions, reset tokens, rate limits. The same cases run against json-server (in `npm test`) and against Supabase (on demand), so both backends obey the same rules.
 
 ## How to run
 
-From the repository root:
-
 | Script | Command | Use |
 |---|---|---|
-| `npm test` | `vitest run` | Run the unit tests once |
-| `npm run test:watch` | `vitest` | Re-run on file changes during development |
-| `npm run test:coverage` | `vitest run --coverage` | Run once and print coverage (v8) |
-| `npm run test:session-race` | `node apps/shell/scripts/session-race.mjs` | The browser regression test of the session race, against a running app (below) |
+| `npm test` | `vitest run` | The unit and integration tests, once |
+| `npm run test:watch` | `vitest` | Re-run on changes |
+| `npm run test:coverage` | `vitest run --coverage` | Once, with coverage (v8) |
+| `npm run test:session-race` | `node apps/shell/scripts/session-race.mjs` | The browser regression of the session race, against a running app |
 
-Configuration is in `vitest.config.mts` at the root:
+The root config is `vitest.config.mts`: project `unit`, environment `node`, `include: ['packages/**/src/**/*.test.ts']`, coverage with `@vitest/coverage-v8` on `packages/*/src/**`, written to `/coverage` (ignored by git and Docker). `server-only` is aliased to its empty module, as on the server ([security.md](security.md#server-only-entries)). Tests import `describe`, `it` and `expect` from `'vitest'` (no globals), live next to the module they test, and go through the same lint and `tsc` as the package. The extension is `.mts` because the root `package.json` has no `"type": "module"`.
 
-- project name `unit`, environment `node`;
-- `include: ['packages/**/src/**/*.test.ts']`;
-- coverage via `@vitest/coverage-v8`, on `packages/*/src/**/*.ts` (test files excluded, new packages enter automatically), with `text` and `json-summary` reporters. The JSON summary is written to `/coverage`, which is gitignored and in `.dockerignore`.
+The Storybook project is separate: `apps/shell/vitest.config.ts`, browser mode with Playwright.
 
-The shell's `apps/shell/vitest.config.ts` (project `storybook`, browser mode with Playwright) is separate and unchanged. The root config does not include any story or anything under `apps/shell/.storybook`.
+## Unit and integration tests, per package
 
-`vitest` and `@vitest/coverage-v8` are declared in the root `devDependencies` with the same range as the shell (`^4.1.12`, installed 4.1.12). Nothing new was downloaded.
-
-Tests import `describe`, `it`, `expect` and `expectTypeOf` explicitly from `'vitest'` (no `globals: true`). Test files live next to the module they test and go through the same ESLint config (root `eslint.config.mjs`) and `tsc -p packages/utils` as the rest of the package.
-
-## Scope
-
-**Tested now:** every export of `packages/utils/src`, `packages/core/src`, `packages/infrastructure/src` and `packages/bff/src`, plus `ProfileMenu`, `TransactionItem`, `MountOnceOpen`, the focus of the modals and the list of the icon font from the design system, 1345 tests in 82 files.
-
-| Package | Test files | Tests | Kind |
+| Package | Files | Tests | Highlights |
 |---|---|---|---|
-| `packages/utils` | 15 | 203 | Characterization (the `cn` typography tests became specification tests in step 1.4a, and `transactionPresentation.test.ts` is specification) |
-| `packages/core` | 22 | 325 | Specification |
-| `packages/infrastructure` | 24 | 324 | Specification (unit, CLI, integration and timeout against real servers) |
-| `packages/bff` | 20 | 479 | Specification (handlers with real `Request` objects, and end to end) |
-| `packages/design-system` | 11 | 109 | Specification (static rendering of `ProfileMenu`, `TransactionItem`, `MountOnceOpen` and the password fields, the rule of `moveFocusInto`, the order of the session writes, and the strength estimate) |
-| `packages/store` | 3 | 41 | Specification (the RTK Query factory with a simulated `fetch`: endpoints and invalidation) |
-| `packages/auth` | 2 | 11 | Specification (the session config shared by the shell and the zones: secret, policy, the shape of the token and the refresh of the name; and the props of the session provider of the zones) |
+| `utils` | 15 | 203 | `cn` against every token of the theme, presentation of amounts and dates, secrets rule, security headers, session policy, zone rewrites |
+| `core` | 22 | 325 | Value objects, entities, aggregations, password policy, every use case against in-memory ports |
+| `infrastructure` | 24 | 324 (+22 skipped) | Adapters with a simulated `fetch`, real json-server, real hanging servers, the migration CLI, the cipher, the hasher, both contract suites |
+| `bff` | 20 | 479 | Every handler with real `Request` objects, validation, origin, errors, both browser clients, the composition, end to end against json-server |
+| `design-system` | 11 | 109 | Static rendering, focus of the modals, lazy parts, icon font list, password strength, idle monitor, order of the session writes |
+| `store` | 3 | 41 | The RTK Query factory with a simulated `fetch`, the RxJS search in virtual time, `useObservable` |
+| `auth` | 2 | 11 | The session config shared with the shell, the props of the session provider of the zones |
+| **Total** | **97** | **1492 (+22 skipped)** | |
 
-`packages/core`:
+### `core`
 
-| Module | Exports | Test file |
+Use cases run against `InMemoryTransactionRepository`, `FixedClock`, `SequentialIdGenerator` and the other fakes of `packages/core/src/testing`, which the main entry does not export; other packages import them from `@bytebank/core/testing`. They cover isolation between users, future dates on create and update, ordering and tie-breaks, positive, negative and zero balances, and the password rules. `GetBalance.test.ts` reproduces the seven records of the seed and confirms the R$ 1.150,00 balance (115000 cents).
+
+| Test file | Tests |
+|---|---|
+| `domain/value-objects/CalendarDate.test.ts` | 66 |
+| `domain/transaction/Transaction.test.ts` | 35 |
+| `domain/value-objects/Money.test.ts` | 28 |
+| `domain/user/passwordPolicy.test.ts` | 25 |
+| `domain/transaction/aggregations.test.ts` | 21 |
+| `domain/transaction/TransactionType.test.ts` | 20 |
+| `application/use-cases/PasswordReset.test.ts` | 17 |
+| `application/use-cases/AuthenticateUser.test.ts` | 15 |
+| `application/use-cases/AccountSettings.test.ts` | 14 |
+| `application/use-cases/RegisterUser.test.ts` | 13 |
+| `application/use-cases/GetChartData.test.ts`, `UpdateTransaction.test.ts` | 10 each |
+| `domain/user/User.test.ts` | 9 |
+| `application/use-cases/CreateTransaction.test.ts` | 8 |
+| `domain/transaction/typeSuggestion.test.ts` | 7 |
+| `application/use-cases/GetBalance.test.ts`, `index.test.ts` (public API) | 6 each |
+| `DeleteTransaction`, `GetStatement`, `ListTransactions` | 4 each |
+| `ApplicationError.test.ts`, `DomainError.test.ts` | 2 and 1 |
+
+### `infrastructure`
+
+| Test file | Tests | Kind |
 |---|---|---|
-| `domain/errors/DomainError.ts` | `DomainError` | `DomainError.test.ts` |
-| `domain/value-objects/Money.ts` | `Money` | `Money.test.ts` |
-| `domain/value-objects/CalendarDate.ts` | `CalendarDate` | `CalendarDate.test.ts` |
-| `domain/transaction/TransactionType.ts` | `TRANSACTION_TYPES`, `isTransactionType`, `transactionDirection` | `TransactionType.test.ts` |
-| `domain/transaction/Transaction.ts` | `Transaction` | `Transaction.test.ts` |
-| `domain/transaction/aggregations.ts` | `sortNewestFirst`, `groupByMonth`, `filterByPeriod`, `totalsByMonth`, `totalsByType` | `aggregations.test.ts` |
-| `application/errors/ApplicationError.ts` | `ApplicationError` | `ApplicationError.test.ts` |
-| `application/use-cases/*.ts` | `ListTransactions`, `CreateTransaction`, `UpdateTransaction`, `DeleteTransaction`, `GetBalance`, `GetStatement`, `GetChartData` | one test file per use case |
-| `index.ts` | barrel for all of the above | `index.test.ts` (public API surface) |
+| `migration/migrateTransactions.test.ts` | 57 | The exact result on `fixtures/legacy-db.json`, a frozen copy of the 7 legacy records, and every record of the seed |
+| `json-server/HttpTransactionRepository.test.ts` | 37 | Simulated `fetch`: URLs, methods, error codes |
+| `json-server/transactionRecordMapper.test.ts` | 26 | Shape checks and `CORRUPTED_RECORD` |
+| `encryption/AesGcmCipher.test.ts`, `EncryptedAttachmentRepository.test.ts` | 21 and 15 | Format, owner binding, tampering, wrong key, unreadable attachments |
+| `password/ScryptPasswordHasher.test.ts`, `StaticCommonPasswordList.test.ts` | 20 each | Format, parameters, refusal of costly parameters; the lists |
+| `json-server/HttpUserRepository.test.ts` | 20 | Users over HTTP |
+| `contracts/jsonServer.contract.test.ts` | 16 (+3 skipped) | The contract suite against a json-server started for the test, and the memory limiter |
+| `contracts/supabase.contract.test.ts` | 19 skipped | The same suite against Supabase, only with `SUPABASE_CONTRACT_TESTS=1` |
+| `migration/migrate-db.cli.test.ts` | 14 | The script as a real process: success, a file with errors (nothing written, exit 1), protection of the input without `--in-place` |
+| `json-server/HttpTransactionRepository.timeout.test.ts` | 13 | Real servers that accept and never write, stop in the middle of the body, or stop only on the write |
+| `rate-limit/InMemoryRateLimiter.test.ts` | 13 | Sliding window, refused attempts, give-back |
+| `json-server/HttpTransactionRepository.integration.test.ts` | 11 | The installed json-server on a temporary copy: string user ids (`"1"` versus `"10"`), another user's record, the id assigned on `POST`, blocked updates and deletes |
+| `json-server/HttpPasswordResetTokenRepository.test.ts` | 9 | Reset tokens over HTTP |
+| `clock/SaoPauloClock.test.ts` | 8 | The day in São Paulo at any instant |
+| `supabase/rateLimitKey.test.ts` | 6 | Same input gives the same key, another secret gives other keys, two namespaces give two keys, the key shows nothing of the email and is not its plain SHA-256 |
+| `email/SmtpEmailSender.test.ts`, `DisabledEmailSender.test.ts` | 5 and 2 | Sending, and the disabled sender's log line |
+| `errors/InfrastructureError.test.ts`, `password/CryptoResetTokenGenerator.test.ts` | 3 each | |
+| `id/CryptoIdGenerator.test.ts`, `password/hash-password.cli.test.ts` | 2 each | The script's output is accepted by the hasher |
+| `index.test.ts` | 1 | Public API surface |
 
-Use cases run against `InMemoryTransactionRepository`, `FixedClock` and `SequentialIdGenerator` from `packages/core/src/testing`. The main `index.ts` does not export them. Other packages import them, with `aTransaction`, from the `@bytebank/core/testing` subpath (step 2.1). They cover isolation between users, future dates on create and update, ordering and tie-breaks, and positive, negative and zero balances. `GetBalance.test.ts` also reproduces the seven records of the seed (`apps/shell/data/db.seed.json`) and confirms the R$ 1.150,00 balance (115000 cents).
+The integration test validates the HTTP contract of json-server, not the mount of `docker-compose.yml`: it runs on a temporary folder, so it could not catch the [bind mount failure](infrastructure.md#where-the-database-lives). Anything about Docker is verified on the real compose file.
 
-`packages/infrastructure` has four kinds of test:
+### `bff`
 
-- **Unit tests** simulate `fetch` with `vi.fn` and `vi.stubGlobal`. They check URLs, methods and error handling. On their own they only prove that the code matches what we believe about json-server. `migrateTransactions.test.ts` confirms the exact result on `migration/fixtures/legacy-db.json`, a frozen copy of the 7 legacy records: all of them migrate, and `GetBalance` gives 115000 cents. A separate test reads the seed, `apps/shell/data/db.seed.json`, and checks that every record migrates without errors. The database in use is not versioned, so no test reads it.
-- **The timeout test** (`HttpTransactionRepository.timeout.test.ts`, 13 tests) uses real servers, because the behavior under test is what `fetch` does when an answer never comes: one server accepts the connection and never writes, one stops in the middle of the body, and one only stops on the write.
-- **The integration test** (`HttpTransactionRepository.integration.test.ts`) guarantees that those beliefs still hold. It copies `integration-db.json` to a temporary folder, starts the installed json-server on a free port, runs the repository against it, and stops the server in `afterAll`, even if a test fails. It covers string user ids (`"1"` versus `"10"`), reading a transaction of another user, the id assigned by the server on `POST`, and blocked updates and deletes. If an upgrade changes those behaviors, this test fails. It runs with `npm test` and takes less than 1 s (11 tests). It validates the HTTP contract, not the mount in `docker-compose.yml`: it runs on a temporary folder, so it could not catch the failure described in `infrastructure.md`, step 2.3b.
-- **The CLI test** (`migrate-db.cli.test.ts`) runs `scripts/migrate-db.mjs` as a real process on temporary files: success, a file with errors (nothing written, exit 1) and the protection of the input without `--in-place`. It takes about 3 s (14 tests). The script itself is not in the coverage table, which only measures `src/**/*.ts`.
-
-`packages/bff`, all through real `Request` objects:
+All through real `Request` objects, with the in-memory ports of the core.
 
 | Test file | Tests | Covers |
 |---|---|---|
-| `http/createTransactionHandlers.test.ts` | 37 | Each handler, 401 in every handler without reading the request or running a use case, and isolation between users (404, not 403) |
 | `http/validation.test.ts` | 152 | Each validation rule, attachments, body limits, the path `id`, `period`, invalid JSON, domain rules (422) and the absence of echoes |
-| `http/origin.test.ts` | 57 | Allowed and strange origins in the three writes, the `Referer` fallback, neither header, lookalike origins, reads without `Origin`, and the order against the session |
-| `http/errors.test.ts` | 47 | Each translation, the logger, the 502 without details, and the headers of every status |
-| `http/responses.test.ts` | 5 | JSON and 204 helpers |
-| `composition/createUseCases.test.ts` | 3 | The composition of the use cases |
-| `composition/createJsonServerUseCases.e2e.test.ts` | 23 | Handlers, use cases and adapters against the installed json-server |
-| `env.test.ts` | 20 | Required variables and the parsing of `ALLOWED_ORIGINS` |
+| `http/origin.test.ts` | 57 | Allowed and strange origins in the three writes, the `Referer` fallback, neither header, lookalike origins, and the order against the session |
+| `http/errors.test.ts` | 55 | Each translation, the logger, the 502 without details, and the headers of every status |
+| `http/createTransactionHandlers.test.ts` | 37 | Each handler, 401 without reading the request or running a use case, isolation between users (404, not 403) |
+| `composition/createJsonServerUseCases.e2e.test.ts` | 31 | Handlers, use cases and adapters against the installed json-server: the id assigned by the server, an attachment at the 70 KB limit through POST and PATCH, corrupted records, the backend down and a server that never answers giving 502 without details |
 | `client/createTransactionsClient.test.ts` | 28 | URLs, methods and bodies with a simulated `fetch`, 401 and errors |
-| `client/createShellClient.test.ts` | 11 | The routes of the shell with a simulated `fetch`: bodies, the code and status of a refusal, `UNKNOWN_ERROR`, no answer, and no redirect |
-| `client/http.test.ts` | 4 | The code of an error, `UNKNOWN_ERROR`, and that the shared file has no imports |
-| `client/index.test.ts` | 8 | Both clients through `@bytebank/bff/client`, out of the main entry, with imports of types or of their own folder only, and no `server-only` |
-| `index.test.ts` | 3 | Public API surface and the `@bytebank/bff/limits` subpath |
+| `env.test.ts` | 20 | Required variables and the parsing of `ALLOWED_ORIGINS` |
+| `http/createAccountHandlers.test.ts`, `createRegisterHandler.test.ts` | 16 each | Profile and password routes; registration |
+| `http/createPasswordResetHandlers.test.ts` | 12 | Request and confirm |
+| `client/createShellClient.test.ts` | 11 | The routes of the shell: bodies, code and status of a refusal, `UNKNOWN_ERROR`, no redirect |
+| `composition/dataAdapters.test.ts` | 11 | `DATA_BACKEND`, the messages of missing variables, the HMAC key from `NEXTAUTH_SECRET` |
+| `client/index.test.ts` | 8 | Both clients through `@bytebank/bff/client`, with imports of types or of their own folder only, and no `server-only` |
+| `responses.test.ts`, `clientIp.test.ts`, `client/http.test.ts` | 5, 4, 4 | Helpers |
+| `createUseCases`, `emailDisabled`, `loginRateLimit`, `index` (public API) | 3 each | Composition |
 
-The end-to-end test reuses the structure of the integration test: a temporary copy of `e2e-db.json`, a free port, and the server stopped in `afterAll`. It adds what only the whole chain shows: the id assigned by the server, the attachment removed from the stored record, an attachment at the 70 KB limit reaching json-server through POST and PATCH, corrupted records, the backend down (a port with no server) and a server that never answers giving 502 without details, and the error code and record id reaching the logger only. See `bff.md`.
+The package was also checked by **mutation**: one deliberate change at a time (removing a check, comparing origins by prefix, letting a `DomainError` escape the mapper, keeping a parse error as the cause, leaking the code in a 502), confirming that a test fails. 53 of 53 changes were caught, plus 15 of 15 in the timeout and environment code.
 
-`packages/utils`:
+### `utils`, `design-system`, `store`, `auth`
 
-| Module | Exports | Test file |
-|---|---|---|
-| `cn.ts` | `cn` | `cn.test.ts` |
-| `currency.ts` | `formatCents` | `currency.test.ts` |
-| `transactionPresentation.ts` | `TRANSACTION_TYPE_LABELS`, `TRANSACTION_TYPE_OPTIONS`, `formatDateBR`, `formatMonthKey`, `formatSignedCents`, `groupDtosByMonth` | `transactionPresentation.test.ts` |
-| `user.ts` | `getFirstName` | `user.test.ts` |
-| `index.ts` | barrel for all of the above | `index.test.ts` (public API surface) |
+| Package | Test files (tests) |
+|---|---|
+| `utils` | `cn` (50), `transactionPresentation` (42), `secrets` (17), `filterTransactions` (17), `loginRetry` (15), `currency` (12), `sessionPolicy` (11), `securityHeaders` (9), `user` (7), `chartTypeFilter` (6), `preload` (6), `zoneRewrites` (5), `browserClock` (4), `authLogger` (1), `index` (1) |
+| `design-system` | `passwordEntropy` (23), `idleMonitor` (19), `passwordStrength` (17), `TransactionItem` (11), `modalFocus` (9), `PasswordInput` (8), `ProfileMenu` (6), `lazy` (6), `sessionWrites` (5), `iconFont` (3), `MountOnceOpen` (2) |
+| `store` | `createTransactionsApi` (21): endpoints and invalidation; `createStatementSearch` (13): marble tests; `useObservable` (7) |
+| `auth` | `sessionConfig` (9): secret, policy, shape of the token, refresh of the name; `zoneSessionProps` (2) |
 
-**Left for later:** logic that lives inside components or hooks and cannot be imported on its own yet. It will be tested once the Block 1 refactor extracts it into the domain layer.
-
-- `parseBRL` and the period filter (`3m` / `6m` / `tudo`), plus the per-month and per-type aggregation in `apps/dashboard/src/components/dashboard/CardCharts.tsx`.
-- The search, type/month filters and pagination in `apps/transactions/src/app/page.tsx`.
-- Form validation, category suggestion and the attachment size check in `CardNewTransaction.tsx`. Also the amount parsing in `ModalEditTransaction.tsx` (`.replace('R$ ', '')...`).
-- `useCurrencyInput`, `useBalance` and `useToast` (React hooks, which need a component test environment).
-- The other `packages/design-system` components, and any interaction test (clicks, keyboard, focus). `ProfileMenu.test.ts` renders to static HTML with `react-dom/server`, which works in the `node` environment. Interactions need a DOM environment, such as jsdom or happy-dom, which is not installed.
-
-## Copies vs packages
-
-Since step 1.4a the local copies are gone, and the apps import `@bytebank/utils`, so these tests cover the code that runs in the apps. Before the removal, the copies matched the packages except for the type import in `transactions.ts`. See `docs/fase4/modularization.md`.
+The `cn` tests compare the token list with `packages/design-system/src/styles/theme.css`, and check every typography token against every color token in both orders. The design system tests render to static HTML with `react-dom/server`, because the unit environment has no DOM; interactions are covered by Storybook.
 
 ## Questionable behaviors
 
-Each item matches one test marked `// Characterization: current behavior, see docs/fase4/testing.md`, except items 1 to 3, which were fixed in step 1.4a.
+Each item matches one test marked `// Characterization: current behavior, see docs/fase4/testing.md`. The numbering is the original one.
 
-### `cn` (`cn.test.ts`): fixed in step 1.4a
+**`cn` (`cn.test.ts`), items 1 to 3: fixed.** `tailwind-merge` did not know the typography tokens of the design system and treated them as text colors. They are now in the `font-size` group, and the tests state the correct behavior:
 
-These three items are no longer current behavior. `tailwind-merge` did not know the design system `text-*` tokens and treated them as text colors. They are now registered in the `font-size` group with `extendTailwindMerge`, and the tests state the correct behavior, marked `// Fixed in step 1.4a: design system typography tokens are registered in tailwind-merge`.
+1. `cn('text-body-semibold', 'text-inverse')` used to return `'text-inverse'`, so `Button`, `Select` and `Input` lost their typography. It keeps both classes now.
+2. `cn('text-icon-sm', 'text-success')` keeps both classes now.
+3. `cn('text-body', 'text-meta')` still returns `'text-meta'`, now for the right reason: both are font sizes. As a consequence, `cn('text-heading', 'text-sm')` returns `'text-sm'`.
 
-1. ~~**"drops a custom typography token when a text color follows it".**~~ **Fixed in 1.4a.** `cn('text-body-semibold', 'text-inverse')` used to return `'text-inverse'`, so `Button`, `Select` and `Input` lost their typography. It now keeps both classes.
-2. ~~**"drops a custom icon size token when a text color follows it".**~~ **Fixed in 1.4a.** `cn('text-icon-sm', 'text-success')` now keeps both classes.
-3. ~~**"treats two custom typography tokens as conflicting and keeps the last one".**~~ **Fixed in 1.4a.** `cn('text-body', 'text-meta')` still returns `'text-meta'`, but now for the right reason: both are font sizes. As a consequence, `cn('text-heading', 'text-sm')` now returns `'text-sm'`.
+**`formatCents` (`currency.test.ts`), still current.** The domain uses integer cents ([ADR 0001](../adr/0001-money-in-integer-cents.md)), so none of these inputs reaches it from the app:
 
-The test file also checks every token against every color token in both orders, and compares its token list with the theme (`globals.css` until step 7a, `packages/design-system/src/styles/theme.css` since then).
+4. `formatCents(-0)` returns `'-0,00'`. Negative zero can come out of arithmetic, for example `-1 * 0`.
+5. `formatCents(0.5)` returns `'0,01'` and `formatCents(150.5)` returns `'1,51'`: non-integers are rounded half away from zero instead of rejected.
+6. `formatCents(NaN)` returns `'NaN'` and `formatCents(Infinity)` returns `'∞'`: invalid input reaches the UI as text.
+7. `formatCents(9007199254740991)` returns `'90.071.992.547.409,90'`, not `…,91`: dividing by 100 in floating point loses the last cent at this size.
 
-### `formatCents` (`currency.test.ts`)
+**Items 8 to 13: removed.** They described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMonth`, helpers of the old record format. No screen used them after the move to the BFF, so they left with their tests.
 
-4. **"formats negative zero as "-0,00"".** `formatCents(-0)` returns `'-0,00'`. Negative zero can come out of arithmetic, for example `-1 * 0`.
-5. **"rounds fractional cents half away from zero instead of rejecting them".** `formatCents(0.5)` returns `'0,01'` and `formatCents(150.5)` returns `'1,51'`. The function expects integer cents but silently rounds non-integers.
-6. **"returns locale output for non-finite input instead of throwing".** `formatCents(NaN)` returns `'NaN'` and `formatCents(Infinity)` returns `'∞'`. Invalid input reaches the UI as text instead of failing.
-7. **"loses precision near Number.MAX_SAFE_INTEGER because it divides by 100".** `formatCents(9007199254740991)` returns `'90.071.992.547.409,90'`, not `…,91`. Floating-point division loses the last cent at this size. This is far beyond realistic amounts, but it shows that money is handled as floating point.
+**`getFirstName` (`user.test.ts`), still current:**
 
-### `transactions.ts`: removed in step 2.5b
-
-Items 8 to 13 described `TRANSACTION_OPTIONS`, `capitalizeMonth` and `groupByMonth`, the helpers of the old format. No screen uses them anymore, so they left together with their tests.
-
-### `getFirstName` (`user.test.ts`)
-
-14. **"splits only on the space character, not on tabs or line breaks".** `getFirstName('Ana\tMaria')` returns `'Ana\tMaria'`. It splits on `' '` instead of on any whitespace.
+14. `getFirstName('Ana\tMaria')` returns `'Ana\tMaria'`: it splits on `' '`, not on any whitespace.
 
 ## Coverage
 
-`npm run test:coverage` (v8), `packages/*/src/**/*.ts`:
+`npm run test:coverage` (v8), over `packages/*/src`:
 
-| File | Statements | Branches | Functions | Lines |
-|---|---|---|---|---|
-| `bff/src/client/createTransactionsClient.ts` | 100% (34/34) | 100% (8/8) | 100% (14/14) | 100% (30/30) |
-| `bff/src/env.ts` | 100% (17/17) | 100% (6/6) | 100% (6/6) | 100% (13/13) |
-| `bff/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `bff/src/composition/createJsonServerUseCases.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| `bff/src/composition/createUseCases.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| `bff/src/http/createTransactionHandlers.ts` | 100% (53/53) | 100% (16/16) | 100% (20/20) | 100% (46/46) |
-| `bff/src/http/errors.ts` | 100% (23/23) | 100% (14/14) | 100% (8/8) | 100% (17/17) |
-| `bff/src/http/limits.ts` | 100% (1/1) | 100% (0/0) | 100% (0/0) | 100% (1/1) |
-| `bff/src/http/origin.ts` | 100% (7/7) | 100% (6/6) | 100% (2/2) | 100% (6/6) |
-| `bff/src/http/responses.ts` | 100% (4/4) | 100% (1/1) | 100% (2/2) | 100% (4/4) |
-| `bff/src/http/schemas.ts` | 100% (28/28) | 100% (2/2) | 100% (6/6) | 100% (28/28) |
-| `bff/src/testing/handlerHarness.ts` | 100% (19/19) | 100% (8/8) | 100% (9/9) | 100% (18/18) |
-| `core/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `core/src/application/TransactionDTO.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `core/src/application/errors/ApplicationError.ts` | 100% (3/3) | 100% (0/0) | 100% (1/1) | 100% (3/3) |
-| `core/src/application/ports/Clock.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `core/src/application/ports/IdGenerator.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `core/src/application/ports/TransactionRepository.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `core/src/application/use-cases/CreateTransaction.ts` | 100% (7/7) | 100% (0/0) | 100% (2/2) | 100% (7/7) |
-| `core/src/application/use-cases/DeleteTransaction.ts` | 100% (5/5) | 100% (2/2) | 100% (2/2) | 100% (4/4) |
-| `core/src/application/use-cases/GetBalance.ts` | 100% (5/5) | 100% (0/0) | 100% (3/3) | 100% (4/4) |
-| `core/src/application/use-cases/GetChartData.ts` | 100% (7/7) | 100% (2/2) | 100% (3/3) | 100% (6/6) |
-| `core/src/application/use-cases/GetStatement.ts` | 100% (5/5) | 100% (0/0) | 100% (4/4) | 100% (5/5) |
-| `core/src/application/use-cases/ListTransactions.ts` | 100% (4/4) | 100% (0/0) | 100% (3/3) | 100% (3/3) |
-| `core/src/application/use-cases/UpdateTransaction.ts` | 100% (20/20) | 100% (12/12) | 100% (3/3) | 100% (14/14) |
-| `core/src/application/use-cases/assertDateNotInFuture.ts` | 100% (2/2) | 100% (2/2) | 100% (1/1) | 100% (2/2) |
-| `core/src/domain/errors/DomainError.ts` | 100% (3/3) | 100% (0/0) | 100% (1/1) | 100% (3/3) |
-| `core/src/domain/transaction/Transaction.ts` | 100% (25/25) | 100% (20/20) | 100% (13/13) | 100% (24/24) |
-| `core/src/domain/transaction/TransactionType.ts` | 100% (4/4) | 100% (0/0) | 100% (2/2) | 100% (4/4) |
-| `core/src/domain/transaction/aggregations.ts` | 100% (26/26) | 100% (12/12) | 100% (13/13) | 100% (19/19) |
-| `core/src/domain/value-objects/CalendarDate.ts` | 100% (35/35) | 100% (26/26) | 100% (12/12) | 100% (32/32) |
-| `core/src/domain/value-objects/Money.ts` | 100% (19/19) | 100% (8/8) | 100% (12/12) | 100% (17/17) |
-| `core/src/testing/InMemoryTransactionRepository.ts` | 100% (12/12) | 100% (5/5) | 100% (7/7) | 100% (9/9) |
-| `core/src/testing/fakes.ts` | 100% (6/6) | 100% (1/1) | 100% (4/4) | 100% (6/6) |
-| `core/src/testing/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `design-system/src/ProfileMenu.tsx` | 44% (11/25) | 60% (9/15) | 33.33% (2/6) | 52.63% (10/19) |
-| `design-system/src/TransactionItem.tsx` | 40% (2/5) | 100% (13/13) | 25% (1/4) | 40% (2/5) |
-| `design-system/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `infrastructure/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `infrastructure/src/clock/SaoPauloClock.ts` | 100% (6/6) | 100% (1/1) | 100% (4/4) | 100% (4/4) |
-| `infrastructure/src/errors/InfrastructureError.ts` | 100% (5/5) | 100% (1/1) | 100% (1/1) | 100% (5/5) |
-| `infrastructure/src/id/CryptoIdGenerator.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| `infrastructure/src/json-server/HttpTransactionRepository.ts` | 100% (48/48) | 100% (19/19) | 100% (14/14) | 100% (44/44) |
-| `infrastructure/src/json-server/TransactionRecord.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `infrastructure/src/json-server/transactionRecordMapper.ts` | 100% (14/14) | 100% (17/17) | 100% (5/5) | 100% (13/13) |
-| `infrastructure/src/migration/legacyTransaction.ts` | 100% (6/6) | 100% (11/11) | 100% (1/1) | 100% (5/5) |
-| `infrastructure/src/migration/migrateTransactions.ts` | 100% (35/35) | 100% (16/16) | 100% (7/7) | 100% (32/32) |
-| `store/src/createTransactionsApi.ts` | 100% (19/19) | 100% (2/2) | 100% (15/15) | 100% (14/14) |
-| `store/src/createTransactionsStore.ts` | 100% (2/2) | 100% (0/0) | 100% (2/2) | 100% (2/2) |
-| `store/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `utils/src/cn.ts` | 100% (2/2) | 100% (0/0) | 100% (1/1) | 100% (2/2) |
-| `utils/src/currency.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| `utils/src/index.ts` | 100% (0/0) | 100% (0/0) | 100% (0/0) | 100% (0/0) |
-| `utils/src/transactionPresentation.ts` | 100% (17/17) | 100% (4/4) | 100% (6/6) | 100% (15/15) |
-| `utils/src/user.ts` | 100% (1/1) | 100% (0/0) | 100% (1/1) | 100% (1/1) |
-| `core/src/domain/user/User.ts` | 100% (19/19) | 100% (8/8) | 100% (8/8) | 100% (16/16) |
-| `core/src/application/use-cases/AuthenticateUser.ts` | 100% (9/9) | 100% (6/6) | 100% (2/2) | 100% (8/8) |
-| `core/src/application/use-cases/RegisterUser.ts` | 100% (9/9) | 100% (2/2) | 100% (2/2) | 100% (9/9) |
-| `infrastructure/src/password/ScryptPasswordHasher.ts` | 100% (25/25) | 92.85% (13/14) | 100% (7/7) | 100% (22/22) |
-| `infrastructure/src/json-server/HttpUserRepository.ts` | 100% (23/23) | 100% (8/8) | 100% (7/7) | 100% (20/20) |
-| `infrastructure/src/json-server/http.ts` | 100% (16/16) | 100% (9/9) | 100% (5/5) | 100% (14/14) |
-| `bff/src/http/createRegisterHandler.ts` | 100% (12/12) | 100% (6/6) | 100% (3/3) | 100% (9/9) |
-| `bff/src/http/readJson.ts` | 100% (19/19) | 100% (6/6) | 100% (2/2) | 100% (17/17) |
-| **Total** | **97.05% (658/678)** | **97.64% (290/297)** | **96.92% (252/260)** | **97.46% (576/591)** |
+| Package | Files | Statements | Branches | Functions | Lines |
+|---|---|---|---|---|---|
+| `core` | 52 | 99.51% (408/410) | 98.47% (193/196) | 99.37% (158/159) | 99.43% (347/349) |
+| `utils` | 16 | 97.96% (96/98) | 91.67% (66/72) | 95.45% (42/44) | 98.86% (87/88) |
+| `bff` | 25 | 95.30% (304/319) | 95.88% (93/97) | 91.45% (107/117) | 94.72% (269/284) |
+| `store` | 5 | 90.38% (47/52) | 100% (6/6) | 86.11% (31/36) | 95.00% (38/40) |
+| `infrastructure` | 31 | 78.30% (487/622) | 60.98% (161/264) | 75.96% (139/183) | 81.72% (438/536) |
+| `design-system` | 26 | 61.71% (216/350) | 69.95% (149/213) | 56.00% (56/100) | 63.86% (182/285) |
+| `auth` | 6 | 54.84% (17/31) | 61.11% (11/18) | 57.14% (4/7) | 55.17% (16/29) |
+| **Total** | **161** | **83.68% (1575/1882)** | **78.40% (679/866)** | **83.12% (537/646)** | **85.47% (1377/1611)** |
 
-**This total does not cover the design-system components.** The pattern matches `.ts` only, so the `.tsx` files in `packages/design-system/src` are not measured, and they have no tests. The `0/0` rows are files with no executable code (barrels, ports and other type-only files), which v8 reports as 100%. The test helpers in `core/src/testing` and `bff/src/testing` are counted too, so they inflate the total slightly.
+How to read it:
 
-Line coverage is a weak signal for code this small: 100% only means every line ran. The value of these tests is in the asserted edge cases above. In the terminal, the `text` reporter hides files at 100%, so the per-file numbers come from `coverage/coverage-summary.json`.
+- **`infrastructure`** is lower because the Supabase adapters run only in the contract suite against a real project, which `npm test` skips.
+- **`design-system` and `auth`** hold React components and Next.js glue. Their logic is extracted into pure files that are tested (idle monitor, session writes, entropy, focus); the components are covered by Storybook and the glue by the browser checks.
+- Files with no executable code (barrels, ports, types) count as 100%, and the fakes of `core/src/testing` and `bff/src/testing` are counted too.
+- Line coverage only says that a line ran. The value is in the asserted edge cases and in the mutation check of the bff.
 
-Result: 97 test files, 1492 tests passing and 22 skipped (the Supabase contract suite and the cases json-server cannot hold, see `deploy.md`), in about 6 s.
+## Storybook
 
-The route handlers and the `proxy.ts` of the zones have no unit tests: the apps have no test setup, and a matcher can only be proved on a running server. They are covered by the smoke tests recorded in `bff.md`, which found a real bug in their first run. The screens of the transactions zone were checked in a real browser in step 2.3, as recorded in `bff.md`.
+Every component of the design system has a story, in `apps/shell/src/components/ui/`, with its main states, using props and decorators only: no real data and no request. The Storybook tests render every story in a real browser and run the `play` function of those that have one.
 
-## Storybook: stories and interaction tests
-
-Every component of the design system has a story, in `apps/shell/src/components/ui/`. Each one shows the main states with props and decorators only: no real data and no request. The Storybook tests render every story in a real browser, and run the `play` function of those that have one.
-
-| | Before the final step | After |
+| | Before the final step | Now |
 |---|---|---|
 | Components of the design system with a story | 13 | 22 |
 | Stories (each one is a test) | 57 | 77 |
 | Interaction tests (`play`) | 3 | 15 |
 
-The 8 new ones: `ModalEditTransaction`, `ModalTransactionDetail`, `NotFoundMessage`, `MenuDrawer`, `MenuSidebar`, `MenuTabs`, `IdleSessionGuard` and `ChunkBoundary`.
-
-What the interaction tests prove:
-
-| Story | Behavior |
+| Story | What the interaction test proves |
 |---|---|
 | `PasswordInput / Toggle` | The button shows and hides the password, with `aria-pressed` |
 | `MenuDrawer / OpenAndCloseWithEscape` | Opens, takes the focus, marks the current page, closes with Escape and gives the focus back |
 | `MenuSidebar`, `MenuTabs` (2 each) | The item of the current page is highlighted, and only it |
 | `ModalTransactionDetail / EscapeGivesTheFocusBack` | Escape closes the modal and the focus goes back to the button that opened it |
 | `ModalEditTransaction` (3) | Saving calls `onSave` with the form and closes; a failed save keeps the modal open with the message; Escape gives the focus back |
-| `IdleSessionGuard / WarningAndContinue` | The warning comes with the countdown and the focus on its button; "Continuar conectado" closes it and renews the session, without ending it |
+| `IdleSessionGuard / WarningAndContinue` | The warning comes with the countdown and the focus on its button; "Continuar conectado" closes it and renews the session |
 | `ChunkBoundary / FailedAndRetry` | A part that failed shows the alert, the rest of the page stays, and "Tentar novamente" calls the retry |
 | `Header / MobileMenuOpen`, `Select / Open` | Open the menu and the list |
-| `TransactionActions / List` | Every item of the list gets the three actions from the component |
+| `TransactionActions / List` | Every item of the list gets the three actions |
 
 How the stories avoid the network:
 
-- `storySession.tsx` gives the components that read the session a made-up one, through `SessionProvider` with no refetch. Before it, the two tests of `Header` failed with "`useSession` must be wrapped in a `<SessionProvider />`".
-- `IdleSessionGuard` takes an optional `services` prop (policy, renewal, expiry). The app uses the defaults, the client of the shell and Auth.js; the story gives a policy with the warning after 2 s and spies for the renewal and the expiry, so it never logs out or navigates.
-- The tests check that a modal is in the document, not `toBeVisible`: the modal of daisyUI fades in from opacity 0.
+- `storySession.tsx` gives the components that read the session a made-up one, through `SessionProvider` with no refetch.
+- `IdleSessionGuard` takes an optional `services` prop (policy, renewal, expiry). The story gives a policy with the warning after 2 s and spies for the renewal and the expiry, so it never logs out or navigates.
+- The tests check that a modal is in the document, not `toBeVisible`: the daisyUI modal fades in from opacity 0.
 
-**Known limit: the lazy modals do not load in Storybook.** `lazyModal` and `lazyPart` of the design system use `next/dynamic`, and under the Vite builder of Storybook the component never arrives: React gets `undefined` and the boundary shows "Não foi possível carregar esta parte". Called from a story, `next/dynamic` works, with an inline component and with a component of the package; called from `lazy.tsx`, the same chunk fails. A loader in the shape `{ default }`, and an inline arrow, did not change it, and there is a single copy of `next`. The cause was not found, and the code of production was left as it is: the app loads these modals, in both zones, as the browser checks of each step show. So `TransactionActions` (step after the review) has a story of its list only, and opening, saving and deleting are tested in the browser, in Docker, in both zones.
+**Running them.** `cd apps/shell && npx vitest run --project storybook`. They need the Chromium of Playwright (`npx playwright install chromium`). On a machine without it, they run on the installed Chrome with a copy of `vitest.config.ts` whose provider is `playwright({ launchOptions: { channel: 'chrome' } })`, which is how the numbers above were produced.
 
-Run them from `apps/shell` with `npx vitest run --project storybook`. They need the Chromium of Playwright (`npx playwright install chromium`). On a machine without it, they run on the installed Chrome with a copy of `vitest.config.ts` whose provider is `playwright({ launchOptions: { channel: 'chrome' } })`, which is how they were run here: 24 files, 77 tests, all passing.
+**Known limit: the lazy modals do not load in Storybook.** `lazyModal` and `lazyPart` use `next/dynamic`, and under the Vite builder of Storybook the component never arrives: React gets `undefined` and the boundary shows "Não foi possível carregar esta parte". Called from a story, `next/dynamic` works, with an inline component and with a component of the package; called from `lazy.tsx`, the same chunk fails. A loader in the shape `{ default }` and an inline arrow did not change it, and there is a single copy of `next`. The cause was not found, and the production code was left as it is: the app loads these modals in both zones. So `TransactionActions` has a story of its list only, and opening, saving and deleting are checked in the browser, in Docker, in both zones.
 
 ## Browser regression: the session race
 
-Added in step D3. `apps/shell/scripts/session-race.mjs` proves the fix of the session race (`security.md`, "The session race") in a real browser. It is not part of `npm test`, because it needs a running app and Chrome, and Vitest runs in `node` with no DOM. What `npm test` covers instead:
+`apps/shell/scripts/session-race.mjs` proves the fix of [the session race](security.md#the-session-race) in a real browser. It is not part of `npm test`, because it needs a running app and Chrome. What `npm test` covers instead:
 
-- `packages/design-system/src/session/sessionWrites.test.ts`: a read in flight is waited for before the sign-out, a sign-out undone by a late read is done again, at most twice, and a failed read does not block anything. A fake cookie and a fake server that answers when told to play the slow network.
+- `packages/design-system/src/session/sessionWrites.test.ts`: a read in flight is waited for before the sign-out, a sign-out undone by a late read is done again, at most twice, and a failed read blocks nothing. A fake cookie and a fake server that answers when told play the slow network.
 - `packages/auth/src/zoneSessionProps.test.ts`: the provider of the zones starts with the session of the server and does not read it on focus.
 
-The script logs in, then holds every `GET` of the session in the browser for 3 s after the server answered, so the real answer comes late. It starts reads the way a page does (the load, `visibilitychange` and `focus`), then saves the name and logs out. It checks that the header and the session keep the new name, and that after the logout no session is left and `/dashboard` goes back to the login. It runs 3 rounds of each by default, and puts the original name back.
+The script logs in, then holds every `GET` of the session for 3 s after the server answered, so the real answer arrives late. It starts reads the way a page does (load, `visibilitychange`, `focus`), then saves the name and logs out. It checks that the header and the session keep the new name, and that after the logout no session is left and `/dashboard` goes back to the login. It runs 3 rounds by default (`ROUNDS` changes it), puts the original name back, prints statuses and names only, never a password or a cookie, and uses the installed Chrome.
 
 ```sh
-# Local (Docker up), with the demonstration user of the README
-E2E_EMAIL=... E2E_PASSWORD=... npm run test:session-race
+# Local, with Docker up and the demonstration user of the README
+E2E_EMAIL=julia@bytebank.com E2E_PASSWORD=bytebank123 npm run test:session-race
 
-# Production, through the shell
+# Production, through the shell (finish with npm run db:reset:supabase)
 SHELL_URL=https://bytebank-shell.vercel.app E2E_EMAIL=... E2E_PASSWORD=... npm run test:session-race
 ```
 
-`ROUNDS` changes the number of rounds. The script prints statuses and names, never a password or a cookie, and uses the Chrome installed on the machine (`channel: 'chrome'`), like the Storybook tests.
-
-Results:
-
 | Where | Before the fix | After the fix |
 |---|---|---|
-| Production | 8 of 8 checks failed (2 rounds) | pending: run after the deploy |
+| Production | 8 of 8 checks failed (2 rounds) | 2026-11-14: 6 of 12 passed (3 rounds). The name passed 6 of 6; the logout failed 6 of 6: after the sign-out the session was still there and `/dashboard` opened |
 | Docker, local | not run | 12 of 12 passed (3 rounds) |
+
+## What has no automated test
+
+- **The route files and the `proxy.ts` of the apps.** A matcher can only be proved on a running server. They are covered by the smoke tests in [bff.md](bff.md#smoke-tests), whose first run found a real bug.
+- **The screens.** They are checked in a real browser in Docker after each change: create with an attachment, remove the attachment, detail, edit and delete in both zones, search, login block, and no CSP violation.
 
 ## Known instabilities
 
-Recorded in step 2.3b. Neither of these comes from an assertion about the code.
+Neither comes from an assertion about the code.
 
-**Node 24.15 on Windows crashes the test workers.** About 1 in 4 runs of `npm test` on this machine ended with `Worker exited unexpectedly` and a few tests not reported (6 of 24 full runs). The worker dies with exit code `0xC0000409`. A minimal script outside Vitest, with a plain `fetch` followed by `process.exit`, crashes in almost every run with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76`, with or without `AbortSignal`, so it is a bug in Node on Windows and not in this code. The same script had 0 crashes in 240 runs on Linux with Node 24.22. A red run with that message and no failed assertion can be run again.
+- **Node 24 on Windows crashes test workers.** About 1 in 4 runs of `npm test` on the development machine ended with `Worker exited unexpectedly` and a few tests not reported (6 of 24 full runs). The worker dies with exit code `0xC0000409`. A minimal script outside Vitest, with a plain `fetch` followed by `process.exit`, crashes almost every run with `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 76`, so it is a bug of Node on Windows. The same script had 0 crashes in 240 runs on Linux with Node 24.22. A red run with that message and no failed assertion can be run again; the counts on this page come from clean runs.
+- **One failure on Linux with Node 20, cause unknown.** In a copy of the repository on `node:20-alpine`, two rounds failed because a record answered 404 right after being created. Five rounds on `node:22-alpine` passed, and a loop of 400 `POST` and `GET` on each version did not reproduce it. CI uses Node 22 (json-server 1.0.0-beta.15 does not support 20), and twenty rounds on `node:22-alpine` passed. That points to Node 20 without proving the cause.
 
-**One failure on Linux with Node 20, cause unknown.** In a copy of the repository on `node:20-alpine`, two rounds failed because a record answered 404 right after being created (the integration test in one, and the end-to-end test in the other). Five rounds on `node:22-alpine` passed. A loop of 400 `POST` and `GET` on each version did not reproduce it, so the suspected race with the file watcher of json-server is not confirmed. CI moved to Node 22 in step 2.4a, because json-server 1.0.0-beta.15 does not support Node 20. Twenty rounds on `node:22-alpine` then passed with no failure. That points to Node 20, but it does not prove the cause: the failure was rare, and it was never reproduced on purpose.
-
-## Config file extension
-
-The root config is `vitest.config.mts`, not `.ts`. The root `package.json` has no `"type": "module"`, so a `.ts` config with ESM syntax made Vite print a notice ("uses ESM syntax in a file loaded as CommonJS", unsupported by the planned `configLoader: 'native'` default). The `.mts` extension marks the file as ESM explicitly. The file was renamed in step 0.6 without content changes, and the notice is gone.
-
-The tests also run in CI on every push and pull request to `main`. See `docs/fase4/ci.md`.
+The tests also run in CI on every push and pull request to `main` ([ci.md](ci.md)).

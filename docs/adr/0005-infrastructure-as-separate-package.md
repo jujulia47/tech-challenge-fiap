@@ -1,6 +1,6 @@
 # ADR 0005: Infrastructure as a separate package
 
-**Status:** Accepted (2026-10-30)
+**Status:** Accepted (2026-10-30). Amended by [ADR 0007](0007-bff-with-framework-agnostic-handlers.md): the adapters run on the server, behind the bff, so the last consequence (a public `baseUrl` in the browser) no longer applies.
 
 ## Context
 

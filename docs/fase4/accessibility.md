@@ -1,10 +1,10 @@
-# Phase 4: accessibility (Step 6b)
+# Accessibility
 
-An automatic audit opened every route and modal of the three apps, at 375 px and at 1280 px, on the production build in Docker. For each visible text it calculated the contrast between the real text color and the real background, including opacity and the landing gradient. It also looked for horizontal scrolling, cut text, targets under 24 px, titles and icons exposed to screen readers. A browser run then covered the keyboard.
+Accessibility is not a separate requirement of Phase 4, but it is part of every screen of a bank. An automatic audit opened every route and modal of the three apps, at 375 px and at 1280 px, on the production build in Docker. For each visible text it calculated the contrast between the real text color and the real background, including opacity and the landing gradient. It also looked for horizontal scrolling, cut text, targets under 24 px, titles and icons exposed to screen readers. A browser run then covered the keyboard.
 
 ## Contrast
 
-Target: WCAG AA, 4.5:1 for normal text and 3:1 for large text and icons. Everything was fixed through tokens, in `globals.css` of the three apps (since step 7a, the single `theme.css` of the design system), and through classes that use them.
+Target: WCAG AA, 4.5:1 for normal text and 3:1 for large text and icons. Everything was fixed through tokens, in `packages/design-system/src/styles/theme.css`, the single theme of the three apps, and through classes that use them.
 
 ### Token changes
 
@@ -77,7 +77,7 @@ Exempt from AA: disabled controls, such as "‹ Anterior" on the first page (1.5
 - **Titles and descriptions:** every route has a title in Portuguese, through a `%s | Bytebank` template in the root layouts, and a description. `lang="pt-BR"` was already in place.
 - **Icons:** the Material Icons are text, so a screen reader would read "account_balance". All are `aria-hidden` now (the font is a subset: "Icon font" in `performance.md`), and the buttons with only an icon keep their `aria-label`.
 - **Charts:** each chart is a `figure` named by its title. The drawing is hidden from screen readers, and a visually hidden table has the same data. The axis uses `nov/22`, with every month shown, and the tooltip the full name.
-- **Pie chart filter (step 6c):** the types are buttons with `aria-pressed`, tied to the same filter as a click on a slice, so it works with the keyboard. Pressing one announces "Gráfico de meses filtrado por Depósito" through a hidden `aria-live`, and pressing it again announces "Filtro removido". The focus stays on the button. The slices left the tab order (`rootTabIndex={-1}`), which solved the only error of Lighthouse, `aria-hidden-focus`: accessibility is 100 on both pages, on mobile and on desktop.
+- **Pie chart filter:** the types are buttons with `aria-pressed`, tied to the same filter as a click on a slice, so it works with the keyboard. Pressing one announces "Gráfico de meses filtrado por Depósito" through a hidden `aria-live`, and pressing it again announces "Filtro removido". The focus stays on the button. The slices left the tab order (`rootTabIndex={-1}`), which solved the only error of Lighthouse, `aria-hidden-focus`: accessibility is 100 on both pages, on mobile and on desktop.
 - **Focus:** a base rule shows the focus on every element, with two colors so that it works on light and dark surfaces. It also covers the calendar button of a date field, which only `:focus-within` sees.
 - **Modals:** Tab stays inside, and the focus goes back on close. Escape on the attachment viewer closes only the viewer.
 - **Drawer:** closed, it is `inert`. Before, the keyboard reached its links out of the screen. Open, it takes the focus and closes on Escape.
@@ -93,6 +93,13 @@ No page had horizontal scrolling, and no button was out of the screen. What brok
 | The placeholder of the type select was cut | The text of a select can use two lines |
 | "‹ Anterior" and "Próxima ›" broke in two lines | The pagination stacks on small screens, with no wrapping on the buttons |
 | Targets under 24 px: hide balance, closing the profile menu, logo, footer and navbar links, "Ver todas as transações", breadcrumb, period buttons | Minimum height of 24 px on each |
+
+## How to validate
+
+- **Lighthouse:** accessibility is 100 on `/dashboard` and `/transactions`, mobile and desktop ([performance.md](performance.md#lighthouse-before-and-after)). The reports are in [lighthouse/after/](lighthouse/after/).
+- **Storybook:** the a11y addon checks every story, and the interaction tests prove the focus of the drawer, the modals and the idle warning ([testing.md](testing.md#storybook)). The colors and their ratios are in the "Colors" page of Storybook.
+- **Keyboard, in the app:** Tab through the dashboard: every control shows the focus; the pie legend filters with Enter; a modal keeps the focus inside and gives it back on Escape; the closed drawer is out of the tab order; "Buscar" focuses the search field of the extract.
+- **375 px:** DevTools device mode, every route: no horizontal scroll, no cut text.
 
 ## Known limits
 

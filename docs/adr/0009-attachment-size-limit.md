@@ -1,6 +1,6 @@
 # ADR 0009: Attachment size limit
 
-**Status:** Accepted (2026-10-30)
+**Status:** Accepted (2026-10-30). Reviewed after the attachment encryption (`docs/fase4/security.md`) and [ADR 0010](0010-supabase-as-production-database.md): the limit stays at 70 KB.
 
 ## Context
 

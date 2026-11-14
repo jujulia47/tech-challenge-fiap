@@ -1,68 +1,57 @@
-# Phase 4: domain and application model (Steps 1.1 to 1.3)
+# Domain and use cases
 
-**Date:** 2026-10-30
+Requirement: Clean Architecture. `@bytebank/core` (`packages/core`) holds the domain and the application layers. It is pure TypeScript with no runtime dependency: no React, no Next.js, no date library, no `node:crypto`. Everything else depends on it, and it depends on nothing; the ESLint layer rules enforce this ([conventions.md](../conventions.md#layers)). The zones reach it through the bff.
 
-`@bytebank/core` (`packages/core`) holds the domain and application layers of the Clean Architecture refactor. It is pure TypeScript with no runtime dependencies: no React, no Next.js, no date library. The zones reach it through `@bytebank/bff` since step 2.2, and the screens of the transactions zone use its DTOs since step 2.3.
+| Decision | ADR |
+|---|---|
+| Money as integer cents | [0001](../adr/0001-money-in-integer-cents.md) |
+| Calendar dates without timezone | [0002](../adr/0002-calendar-dates-without-timezone.md) |
+| English type codes, each with a direction | [0003](../adr/0003-english-transaction-type-codes.md) |
+| Use cases depend on ports | [0004](../adr/0004-use-cases-depend-on-ports.md) |
 
 ```text
 packages/core/src/
-  index.ts                         public exports
+  index.ts                 public exports
   domain/
-    errors/DomainError.ts
-    value-objects/Money.ts
-    value-objects/CalendarDate.ts
-    transaction/TransactionType.ts
-    transaction/Transaction.ts
-    transaction/aggregations.ts
+    errors/                DomainError
+    value-objects/         Money, CalendarDate, bankDayOf
+    transaction/           Transaction, TransactionType, aggregations, typeSuggestion
+    user/                  User, passwordPolicy
   application/
-    TransactionDTO.ts
-    errors/ApplicationError.ts
-    ports/                         TransactionRepository, Clock, IdGenerator
-    use-cases/                     List, Create, Update, Delete, GetBalance, GetStatement, GetChartData
-  testing/                         test doubles, not exported by index.ts
+    ports/                 the interfaces the use cases need
+    use-cases/             transactions, authentication, recovery, account
+    errors/                ApplicationError, RateLimitedError
+    emails/                the text of the reset email
+  testing/                 in-memory ports and fakes, exported only as @bytebank/core/testing
 ```
 
-Each file has a test file next to it. Decisions are recorded in [docs/adr](../adr).
+Each file has its test next to it. `@bytebank/core/testing` is declared in `exports`, and any other deep import of the core fails.
 
 ## Model
 
-### DomainError
-
-`Error` subclass with a typed `code`:
-
-| Code | Raised by | When |
-|---|---|---|
-| `MONEY_INVALID_CENTS` | `Money` | Not a safe integer (fractions, `NaN`, `Infinity`, or an arithmetic result out of range) |
-| `CALENDAR_DATE_INVALID_FORMAT` | `CalendarDate.fromISO` | Not `YYYY-MM-DD` |
-| `CALENDAR_DATE_INVALID_VALUE` | `CalendarDate` | The date does not exist, or the year is outside 1 to 9999 |
-| `TRANSACTION_INVALID_ID` | `Transaction` | `id` is empty or blank |
-| `TRANSACTION_INVALID_USER_ID` | `Transaction` | `userId` is empty or blank |
-| `TRANSACTION_INVALID_TYPE` | `Transaction` | `type` is not a `TransactionType` |
-| `TRANSACTION_INVALID_AMOUNT` | `Transaction` | `amount` is not greater than zero |
-
 ### Money
 
-Immutable value object holding integer cents ([ADR 0001](../adr/0001-money-in-integer-cents.md)).
+Immutable value object holding integer cents.
 
-- Private constructor. The factories are `Money.fromCents(cents)` and `Money.zero()`.
+- Private constructor; factories `Money.fromCents(cents)` and `Money.zero()`.
 - `toCents`, `add`, `subtract`, `negate`, `isZero`, `isNegative`, `isPositive`, `equals`, `compare`.
-- Invariants: always a safe integer, and `-0` never exists. `add` and `subtract` go through `fromCents`, so overflow throws instead of losing precision.
-- It does not format to a currency string. That is presentation.
+- Always a safe integer, and `-0` never exists. `add` and `subtract` go through `fromCents`, so overflow throws instead of losing precision.
+- It does not format to a currency string: that is presentation (`@bytebank/utils`).
 
 ### CalendarDate
 
-Immutable value object for a calendar day with no time and no timezone ([ADR 0002](../adr/0002-calendar-dates-without-timezone.md)).
+Immutable value object for a calendar day with no time and no timezone.
 
 - `CalendarDate.fromISO('2022-11-18')` and `CalendarDate.fromParts(year, month, day)`.
 - `toISO`, `year`, `month` (1 to 12), `day`, `monthKey` (`'2022-11'`), `subtractMonths`, `isAfter`, `isBefore`, `equals`, `compare`.
-- Invariants: the date exists (leap years and month lengths included) and the year is within 1 to 9999, which keeps `YYYY` at four digits.
-- It never uses `Date`.
+- The date exists (leap years and month lengths included) and the year is within 1 to 9999. It never uses `Date`.
+- `bankDayOf(instant)` gives the calendar day of an instant in São Paulo, the one rule behind `SaoPauloClock` on the server and `BrowserClock` on the screens ([ADR 0006](../adr/0006-clock-in-sao-paulo-timezone.md)).
 
 ### TransactionType
 
-Seven English codes ([ADR 0003](../adr/0003-english-transaction-type-codes.md)), the `isTransactionType` type guard, and `transactionDirection(type)`.
+Seven English codes, the `isTransactionType` type guard, and `transactionDirection(type)`. There are no Portuguese labels in the core; the presentation maps codes to labels.
 
-| Current label | Code | Direction | Assumption |
+| Label | Code | Direction | Assumption |
 |---|---|---|---|
 | Depósito | `deposit` | income | Obvious |
 | Empréstimo e Financiamento | `loan` | income | **Amount received**, not an installment paid |
@@ -72,31 +61,44 @@ Seven English codes ([ADR 0003](../adr/0003-english-transaction-type-codes.md)),
 | DOC/TED | `doc_ted` | expense | **Transfer sent** |
 | Câmbio de Moeda | `currency_exchange` | expense | **Purchase of foreign currency**, because only a BRL account exists |
 
-There are no Portuguese labels in the core. Mapping codes to labels belongs to the presentation layer.
-
 ### Transaction
 
-Entity with `id`, `userId`, `type`, `amount` (`Money`, always the positive magnitude), `date` (`CalendarDate`, the day the transaction happened) and optional `attachment`.
+Entity with `id`, `userId`, `type`, `amount` (`Money`, always the positive magnitude), `date` (`CalendarDate`) and an optional `attachment`, which the entity treats as an opaque string.
 
-- Private constructor. `Transaction.create(props)` validates the invariants: `id` and `userId` not empty, `type` valid, `amount > 0`.
-- Read-only getters. The instance and its props are frozen.
-- `monthKey()` delegates to the date.
-- `signedAmount()` returns a positive `Money` for income and a negative one for expense.
-- `update(changes)` returns a new instance with `type`, `amount`, `date` and/or `attachment` changed, revalidated through `create`. `id` and `userId` never change. `attachment: undefined` removes the attachment, and leaving the key out keeps it.
-- `toPrimitives()` returns `{ id, userId, type, amountInCents, date, attachment? }`, and `Transaction.fromPrimitives(...)` is the inverse, through `create`. It accepts `type` as a plain string, so raw storage data is validated rather than cast.
+- Private constructor. `Transaction.create(props)` validates: `id` and `userId` not blank, `type` valid, `amount > 0`. The instance and its props are frozen.
+- `signedAmount()` is positive for income and negative for expense. `monthKey()` delegates to the date.
+- `update(changes)` returns a new instance, revalidated through `create`. `id` and `userId` never change. `attachment: undefined` removes the attachment, and leaving the key out keeps it.
+- `toPrimitives()` returns `{ id, userId, type, amountInCents, date, attachment? }`, and `Transaction.fromPrimitives(...)` is the inverse, through `create`. It accepts `type` as a plain string, so raw storage data is validated, never cast.
 
-## Direction rule
+### User
 
-**There was no direction rule in the code before this step**, so `transactionDirection` is a new business rule, not an extraction. Findings from reading the apps:
+`User` holds id, name, email and the password hash, which never leaves the application: use cases return `UserDTO`. The name is trimmed and has from 1 to 100 characters, counted as characters; the email is trimmed and lower-cased. `passwordPolicy.ts` holds the rules of a new password ([security.md](security.md#password-policy)).
 
-- `useBalance` (both zones) only toggles visibility. The balance is the hardcoded `balance="R$ 2.500,00"` in `DashboardWelcome.tsx` and does not reflect the data.
-- `CardCharts` sums every amount as positive, including withdrawals and payments.
-- `TransactionItem` shows the amount as stored, with the same styling for every type.
-- No stored amount is negative: 0 of 7 records in `db.json`, and both forms write `R$ ${formatted}` from a digits-only input. The only `-R$` values are hardcoded sample bills in `apps/dashboard/src/app/cards/page.tsx`, which are not `Transaction`s.
+### DomainError
 
-The rule above was approved for Phase 4, with the assumptions listed in the table.
+An `Error` subclass with a typed `code`:
 
-**Intended change to the displayed balance.** Moving from the fixed R$ 2.500,00 to a calculated balance is acceptable and intentional, because today the balance does not reflect the data. With the current `db.json` and this rule, the calculated balance is **R$ 1.150,00**:
+| Code | Raised by | When |
+|---|---|---|
+| `MONEY_INVALID_CENTS` | `Money` | Not a safe integer (fractions, `NaN`, `Infinity`, or an arithmetic result out of range) |
+| `CALENDAR_DATE_INVALID_FORMAT` | `CalendarDate.fromISO` | Not `YYYY-MM-DD` |
+| `CALENDAR_DATE_INVALID_VALUE` | `CalendarDate` | The date does not exist, or the year is outside 1 to 9999 |
+| `TRANSACTION_INVALID_ID`, `TRANSACTION_INVALID_USER_ID` | `Transaction` | Empty or blank |
+| `TRANSACTION_INVALID_TYPE` | `Transaction` | Not a `TransactionType` |
+| `TRANSACTION_INVALID_AMOUNT` | `Transaction` | Not greater than zero |
+
+Plus the codes of `User` and of the password policy.
+
+## The direction rule and the balance
+
+Before Phase 4 there was no direction rule in the code, so `transactionDirection` is a new business rule, approved with the assumptions in the table above. What the old screens did:
+
+- The balance was a fixed `balance="R$ 2.500,00"` in `DashboardWelcome.tsx`, unrelated to the data.
+- `CardCharts` summed every amount as positive, withdrawals and payments included.
+- `TransactionItem` showed every type with the same styling.
+- No stored amount was negative (0 of 7 records), and the only `-R$` values were hardcoded sample bills on the cards page.
+
+With the seed and this rule, the balance is **R$ 1.150,00**:
 
 | Type | Sum | Signed |
 |---|---|---|
@@ -106,101 +108,89 @@ The rule above was approved for Phase 4, with the assumptions listed in the tabl
 | `currency_exchange` | R$ 1.200,00 | −R$ 1.200,00 |
 | **Balance** | | **R$ 1.150,00** |
 
-**Possible evolution:** the model does not distinguish a transfer sent from one received, because a type maps to a single direction. Supporting received transfers would need new types (for example `transfer_received`) or an explicit direction on the transaction. The same applies to `doc_ted`, `currency_exchange` (selling foreign currency) and `loan` (paying an installment).
+**Volume versus balance.** Charts use magnitudes (volume moved): `totalsByMonth` and `totalsByType` add `amount`, whatever the direction. The balance uses signed amounts: `GetBalance` adds `signedAmount()`. A R$ 350,00 payment adds 350 to the chart and subtracts 350 from the balance.
 
-## What stays out of the domain
-
-The entity has no clock and no repository. These rules live outside it:
-
-- **"The date cannot be in the future"** and the **balance**: implemented in the use cases (see below).
-- **Type suggestion** (amount ≥ R$ 1.000 suggests deposit, otherwise payment): since step 7b, `suggestTransactionType` in `domain/transaction/typeSuggestion.ts`. It is a hint for the form and decides nothing, so no use case calls it.
-- **Attachment size and format** (70 KB, image or PDF). The entity treats `attachment` as an opaque string. These rules are in `@bytebank/bff`, see `bff.md`.
-- **Search and pagination.**
-- **Formatting and labels** (`R$ 150,00`, Portuguese type names, month names).
-
-## Application layer
-
-`packages/core/src/application` holds the use cases and the ports they depend on (step 1.2). See [ADR 0004](../adr/0004-use-cases-depend-on-ports.md).
-
-### Ports
+## Ports
 
 | Port | Methods | Implemented by |
 |---|---|---|
-| `TransactionRepository` | `findAllByUser(userId)`, `findById(id, userId)`, `create(transaction)`, `update(transaction)`, `delete(id, userId)`. `create` returns the stored transaction, because a backend may assign its own id, as json-server does. | `HttpTransactionRepository`; `InMemoryTransactionRepository` in tests |
-| `Clock` | `today(): CalendarDate` | `SaoPauloClock` on the server and `BrowserClock` (`@bytebank/utils`) on the screens, both through `bankDayOf`; `FixedClock` in tests |
+| `TransactionRepository` | `findAllByUser(userId)`, `findById(id, userId)`, `create`, `update`, `delete(id, userId)`. `create` returns the stored transaction, because a backend may assign its own id | json-server and Supabase adapters, wrapped by the attachment cipher; `InMemoryTransactionRepository` in tests |
+| `UserRepository` | `findByEmail`, `findById`, `create`, `updateName`, `updatePasswordHash`. Each update sends one field, so a change of the name cannot undo a change of the password made at the same time | json-server and Supabase adapters |
+| `PasswordResetTokens` | `create`, `findByHash`, `markUsed` (claimed once), `invalidateAllOfUser`, plus the token generator (`generate`, `hash`) | json-server and Supabase adapters; `CryptoResetTokenGenerator` |
+| `TransactionStatistics` | `summary()`, the counts of `/sobre` | json-server and Supabase adapters |
+| `RateLimiter` | `consume`, `release`, `reset` | memory and Postgres limiters |
+| `PasswordHasher`, `CommonPasswordList`, `DataCipher`, `EmailSender` | hash and verify; `has`; `encrypt` and `decrypt` with the owner as context; `send` | scrypt, static lists, AES-GCM, SMTP or disabled |
+| `Clock` | `today(): CalendarDate` | `SaoPauloClock`, `BrowserClock`; `FixedClock` in tests |
 | `IdGenerator` | `next(): string` | `CryptoIdGenerator`; `SequentialIdGenerator` in tests |
 
-`packages/core/src/testing` is not exported by `index.ts`. Other packages import these helpers from the `@bytebank/core/testing` subpath (step 2.1), declared in `exports` in `packages/core/package.json`. Importing any other deep path from the core now fails.
+The adapters are described in [infrastructure.md](infrastructure.md).
 
-### Use cases
+## Use cases
 
-`GetChartData` keeps `byType` complete when `type` is given. The pie chart is what the user picks the type from, and the bar chart shows the months of that type, so filtering both would leave a single slice and no way to change the choice. This is what `CardCharts` already does on the client (step 2.4a).
-
-Classes with dependencies in the constructor and one `execute` method. Input and output are DTOs made of primitives (`amountInCents`, ISO `date`, `type` code). The presentation layer never receives or builds entities.
+Classes with their ports in the constructor and one `execute` method. Input and output are DTOs made of primitives (`amountInCents`, ISO `date`, type code), so the presentation never receives or builds entities.
 
 | Use case | Input | Output | Rules |
 |---|---|---|---|
-| `ListTransactions` | `userId` | `TransactionDTO[]` | Newest date first. Ties break on id, in descending plain string order, so the result is deterministic and does not depend on locale. |
-| `CreateTransaction` | `{ userId, type, amountInCents, date, attachment? }` | `TransactionDTO` | Id comes from `IdGenerator`. A future date is rejected; today is allowed. Entity invariants still apply. Returns what the repository stored, so the id can differ from the generated one. |
-| `UpdateTransaction` | `{ id, userId, changes }` | `TransactionDTO` | Looks up by owner first. The future-date check runs only if the date changed, so an old record can still be edited. In `changes`, `attachment: undefined` removes the attachment and an absent key keeps it. |
-| `DeleteTransaction` | `{ id, userId }` | nothing | Looks up by owner first. |
-| `GetBalance` | `userId` | `{ amountInCents }` | Sum of `signedAmount()`. It can be negative. |
-| `GetStatement` | `userId` | `{ groups: [{ monthKey, transactions: TransactionDTO[] }] }` | Uses `groupByMonth`: newest month first, newest transaction first, years never mixed. |
-| `GetChartData` | `{ userId, period, type? }`, where `period` is `3`, `6` or `'all'`, and `type` narrows `byMonth` only | `{ byMonth: [{ monthKey, amountInCents }], byType: [{ type, amountInCents }] }` | Uses `filterByPeriod` with `Clock`, then `totalsByMonth` and `totalsByType`. Magnitudes only. |
+| `ListTransactions` | `userId` | `TransactionDTO[]` | Newest date first. Ties break on id, in descending plain string order, so the result is deterministic and does not depend on locale |
+| `CreateTransaction` | `{ userId, type, amountInCents, date, attachment? }` | `TransactionDTO` | Id from `IdGenerator`. A future date is refused; today is allowed. Returns what the repository stored |
+| `UpdateTransaction` | `{ id, userId, changes }` | `TransactionDTO` | Looks up by owner first. The future-date check runs only if the date changed, so an old record can still be edited |
+| `DeleteTransaction` | `{ id, userId }` | nothing | Looks up by owner first |
+| `GetBalance` | `userId` | `{ amountInCents }` | Sum of `signedAmount()`. It can be negative |
+| `GetStatement` | `userId` | `{ groups: [{ monthKey, transactions }] }` | Newest month first, newest transaction first, years never mixed |
+| `GetChartData` | `{ userId, period, type? }`, `period` is `3`, `6` or `'all'` | `{ byMonth, byType }` | `filterByPeriod` with the `Clock`, then the totals. `type` narrows `byMonth` only: the pie is what the type is chosen from, so filtering both would leave one slice and no way to change the choice |
+| `AuthenticateUser`, `RegisterUser` | email, password, name | `UserDTO` or nothing | [security.md](security.md#login-and-registration) |
+| `RequestPasswordReset`, `ResetPassword` | email; token and password | nothing | [security.md](security.md#password-recovery) |
+| `UpdateUserProfile` | `{ userId, name }` | `UserDTO` | The rule of the name lives in `User`, so a registration and a profile agree. A user that no longer exists answers `INVALID_CREDENTIALS` |
+| `ChangePassword` | `{ userId, currentPassword, newPassword }` | nothing | Consumes the login limiter by email, verifies the current password, refuses an unchanged one (`PASSWORD_UNCHANGED`), applies the policy through `hashNewPassword` ([security.md](security.md#account-changing-the-name-and-the-password)) |
 
-`ApplicationError` works like `DomainError`, with the codes `TRANSACTION_NOT_FOUND` and `TRANSACTION_DATE_IN_FUTURE` (and, since the later steps, the codes of authentication and of the account). A `DomainError` raised by the entity passes through the use cases unchanged.
+`ApplicationError` works like `DomainError`, with codes such as `TRANSACTION_NOT_FOUND`, `TRANSACTION_DATE_IN_FUTURE` and those of authentication and the account. A `DomainError` raised by an entity passes through unchanged.
 
-### Not revealing transactions of other users
+**Not revealing other users' transactions.** `findById` returns `null` both when a transaction does not exist and when it belongs to another user, and the use cases turn both into the same `TRANSACTION_NOT_FOUND`. The ownership check runs before the changes are validated, so a validation error cannot reveal existence either.
 
-`findById` returns `null` both when a transaction does not exist and when it belongs to another user, and the use cases turn both into the same `TRANSACTION_NOT_FOUND`. A caller therefore cannot probe which ids exist. The ownership check also runs before the changes are validated, so a validation error cannot reveal existence either.
+### Account
 
-### Aggregations
+"Minha conta" uses `UpdateUserProfile` and `ChangePassword`. The routes, the session update and the limits are in [security.md](security.md#account-changing-the-name-and-the-password).
 
-Pure functions over `Transaction[]`, in `domain/transaction/aggregations.ts`. The presentation layer reaches them through `GetStatement` and `GetChartData`, which return DTOs:
+### Rules that left the screens
+
+| Rule | Before | Now |
+|---|---|---|
+| Type suggestion | An expression in `CardNewTransaction` | `suggestTransactionType(amountInCents)` in the domain: R$ 1.000 or more suggests deposit, otherwise payment. It is a hint for the form and decides nothing, so no use case calls it |
+| "Today" in São Paulo | `toLocaleDateString` in the form, a copy of the rule of the server clock | `bankDayOf(instant)` in the domain, called by both clocks |
+| "The date cannot be in the future" | A string comparison in the form | The same `assertDateNotInFuture` as `CreateTransaction`, with `BrowserClock` |
+
+`BrowserClock` lives in `@bytebank/utils` because the screens cannot import `@bytebank/infrastructure`, which is server code. It holds no rule of its own.
+
+## Aggregations
+
+Pure functions over `Transaction[]`, in `domain/transaction/aggregations.ts`, reached by the screens through `GetStatement` and `GetChartData`:
 
 | Function | Result |
 |---|---|
 | `sortNewestFirst(transactions)` | New array, newest date first, ties broken as in `ListTransactions` |
-| `groupByMonth(transactions)` | `{ monthKey, transactions }[]`, newest month first, newest transaction first inside each group. Months of different years never mix, because the key includes the year. |
-| `filterByPeriod(transactions, months, today)` | `months` is `3`, `6` or `'all'`. Keeps transactions from the start date on (inclusive), with no upper limit. |
+| `groupByMonth(transactions)` | `{ monthKey, transactions }[]`, newest month first, newest transaction first. The key includes the year, so months of different years never mix |
+| `filterByPeriod(transactions, months, today)` | `months` is `3`, `6` or `'all'`. Keeps transactions from the start date on (inclusive) |
 | `totalsByMonth(transactions)` | `{ monthKey, amountInCents }[]` in chronological order |
 | `totalsByType(transactions)` | `{ type, amountInCents }[]` in `TRANSACTION_TYPES` order, omitting types with no transactions |
 
-**End-of-month rule in `filterByPeriod`.** The start date is the same day N months ago, **clamped to the last day of the target month** when that day does not exist. For example, May 31 minus 3 months is February 28 (February 29 in a leap year), and July 31 minus 3 months is April 30. This keeps the start date inside the target month instead of spilling into the next one. The calculation is `CalendarDate.subtractMonths`.
+**End of month in `filterByPeriod`.** The start date is the same day N months ago, **clamped to the last day of the target month** when that day does not exist: May 31 minus 3 months is February 28 (29 in a leap year), and July 31 minus 3 months is April 30 (`CalendarDate.subtractMonths`).
 
-**Volume versus balance.** Charts use **magnitudes** (volume moved): `totalsByMonth` and `totalsByType` add `amount`, whatever the direction. The balance uses **signed amounts**: `GetBalance` adds `signedAmount()`. So a R$ 350,00 payment adds 350 to the chart and subtracts 350 from the balance. This matches what `CardCharts` shows today.
+**Bugs of the old screens that these functions fixed:**
 
-**Behavior changes compared with the apps, once they adopt these functions:**
+- The old `groupByMonth` of `packages/utils` ordered by array position and merged the same month of different years.
+- `CardCharts` listed months in the order they first appeared and keyed them by month name.
+- `CardCharts` computed the 3 and 6 month cutoff with `new Date(year, month - N, day)`, which rolls over at month ends (May 31 minus 3 months became March 3).
 
-- `groupByMonth` in `packages/utils` orders by array position and merges the same month of different years. The core version orders by date and keeps years apart.
-- `CardCharts` lists months in the order they first appear and keys them by month name. `totalsByMonth` is chronological and keyed by year and month.
-- `CardCharts` computes the 3 and 6 month cutoff with `new Date(year, month - N, day)`, which rolls over at month ends (May 31 minus 3 months becomes March 3). `filterByPeriod` clamps instead.
+## What stays out of the domain
 
-## Pending items
+- **Attachment size and format** (70 KB, image or PDF): the number comes from the backend, so it lives in the bff ([ADR 0009](../adr/0009-attachment-size-limit.md)).
+- **Search and pagination**: local state of the extract ([reactive-programming.md](reactive-programming.md)).
+- **Formatting and labels** (`R$ 150,00`, Portuguese type names, month names): `@bytebank/utils`.
 
-- **Dead code in `ModalEditTransaction.tsx`** (both zones, line 30). `.replace('-R$ ', '')` never has any effect: the previous `.replace('R$ ', '')` already consumes that text, so a negative value would become `-1000` instead of `1000`. Remove it when the form is rewritten. It was not changed in this step.
+## How to validate
 
-## Tests and coverage
+`npm test` runs the specification tests of the core, with in-memory ports and a fixed clock. The core has nearly full coverage; the numbers are in [testing.md](testing.md). On the screen, the balance of `julia@bytebank.com` after `npm run db:reset` is R$ 1.150,00.
 
-1492 tests pass in total: 203 in `packages/utils`, 325 in `packages/core`, 324 in `packages/infrastructure`, 479 in `packages/bff`, 41 in `packages/store`, 109 in `packages/design-system` and 11 in `packages/auth`. The core has 100% coverage. The per-file table is in `docs/fase4/testing.md`.
+## Known limits
 
-## Step 7b: rules that left the screens, and the account
-
-### Out of the screens
-
-| Rule | Before | Now |
-|---|---|---|
-| Type suggestion | An expression in `CardNewTransaction` | `suggestTransactionType(amountInCents)` in the domain, with `DEPOSIT_SUGGESTION_MIN_CENTS` |
-| "Today" in São Paulo | `toLocaleDateString` in `CardNewTransaction`, a copy of the rule of `SaoPauloClock` | `bankDayOf(instant)` in the domain. `SaoPauloClock` (server) and `BrowserClock` (`@bytebank/utils`, screens) both call it |
-| "The date cannot be in the future" | A string comparison in `CardNewTransaction` | The same `assertDateNotInFuture` of `CreateTransaction`, with the `BrowserClock` |
-
-`BrowserClock` exists because the screens cannot import `@bytebank/infrastructure`, which is server code. It holds no rule of its own.
-
-### The account
-
-| Use case | Input | Output | Rules |
-|---|---|---|---|
-| `UpdateUserProfile` | `{ userId, name }` | `UserDTO` | The name is trimmed and has from 1 to 100 characters, counted as characters. The rule lives in `User` (`withName`, and `create` since this step), so a registration and a profile agree. A user that no longer exists answers `INVALID_CREDENTIALS`. |
-| `ChangePassword` | `{ userId, currentPassword, newPassword }` | nothing | Consumes the limiter of the login by email, verifies the current password with the hasher, refuses a new password equal to the current one (`PASSWORD_UNCHANGED`) and applies the policy through `hashNewPassword`. Details in `security.md`. |
-
-`UserRepository` gained `updateName(id, name)`. Each update sends one field, so a change of the name cannot undo a change of the password made at the same time.
+- **A type has one direction.** The model cannot tell a transfer sent from one received. Received transfers would need new types (for example `transfer_received`) or an explicit direction on the transaction; the same goes for `doc_ted`, `currency_exchange` (selling foreign currency) and `loan` (paying an installment).

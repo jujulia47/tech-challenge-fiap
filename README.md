@@ -6,8 +6,6 @@ Banco digital fictício desenvolvido como Tech Challenge da pós-graduação em 
 
 **App publicado:** https://bytebank-shell.vercel.app
 
-**Vídeo de demonstração:** (link em breve)
-
 | Usuário de demonstração | Senha |
 |---|---|
 | `julia@bytebank.com` (com 7 transações) | `bytebank123` |
@@ -55,11 +53,13 @@ As apps são finas. O código fica nos packages:
 | `utils` | Funções puras compartilhadas: formatação, política de sessão, rewrites das zonas |
 | `design-system` | Componentes de UI, tema, cabeçalho e menus, documentados no Storybook |
 
-Detalhes em [docs/architecture.md](docs/architecture.md), nas decisões de [docs/adr/](docs/adr/) e na documentação da fase em [docs/fase4/](docs/fase4/). As regras de código (camadas, imports, testes, estilo, commits) estão em [docs/conventions.md](docs/conventions.md).
+Detalhes em [docs/architecture.md](docs/architecture.md), nas decisões de [docs/adr/](docs/adr/) e na documentação da fase, com o índice em [docs/README.md](docs/README.md). As regras de código (camadas, imports, testes, estilo, commits) estão em [docs/conventions.md](docs/conventions.md).
 
 ---
 
 ## Requisitos da Fase 4
+
+O índice completo, com o que foi feito, por quê e como validar cada requisito, está em [docs/README.md](docs/README.md).
 
 | Requisito | Como o projeto atende | Doc |
 |---|---|---|
@@ -201,9 +201,9 @@ Acesse http://localhost:3000. Sem o Mailpit, deixe `SMTP_HOST` de fora: o envio 
 
 | Comando | O que faz |
 |---|---|
-| `npm test` | Os testes unitários e de integração dos packages: 1492 testes, em cerca de 10 s |
+| `npm test` | Os testes unitários, de integração e de contrato dos packages, em cerca de 10 s |
 | `npm run test:coverage` | Os mesmos, com a cobertura (v8) |
-| `cd apps/shell && npx vitest run --project storybook` | As 77 stories do design system num navegador real, com 15 testes de interação. Precisa do Chromium do Playwright (`npx playwright install chromium`) |
+| `cd apps/shell && npx vitest run --project storybook` | As stories do design system num navegador real, com os testes de interação. Precisa do Chromium do Playwright (`npx playwright install chromium`) |
 | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | A suíte de contrato contra um projeto Supabase real, com `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env`. Desligada por padrão, e fora do CI |
 | `npm run test:session-race` | O teste de regressão da corrida de sessão, num navegador real, contra o app rodando (abaixo) |
 
@@ -215,7 +215,7 @@ O `test:session-race` precisa do app no ar e do Chrome instalado. Ele usa o usu�
 E2E_EMAIL=julia@bytebank.com E2E_PASSWORD=bytebank123 npm run test:session-race
 ```
 
-Com `SHELL_URL=https://bytebank-shell.vercel.app`, ele roda contra a produção. Detalhes em [docs/fase4/testing.md](docs/fase4/testing.md). O CI (GitHub Actions) roda lint, testes, build e auditoria a cada push: [docs/fase4/ci.md](docs/fase4/ci.md).
+Com `SHELL_URL=https://bytebank-shell.vercel.app`, ele roda contra a produção. As contagens e os detalhes de cada suíte estão em [docs/fase4/testing.md](docs/fase4/testing.md). O CI (GitHub Actions) roda lint, testes, build e auditoria a cada push: [docs/fase4/ci.md](docs/fase4/ci.md).
 
 O Storybook do design system abre com `cd apps/shell && npm run storybook`, em http://localhost:6006.
 
@@ -236,7 +236,7 @@ Em produção, o envio de e-mail fica desligado: "Esqueci a senha" responde a me
 1. No antivírus, adicione uma exceção para `https://registry.npmjs.org/*` (no Avast, em Menu › Configurações › Geral › Exceções), ou desligue a verificação HTTPS do escudo da web durante o build.
 2. Rode `docker compose up -d --build` de novo.
 
-O mesmo antivírus pode bloquear o domínio de uma das zonas na Vercel, como aconteceu com `bytebank-transactions-virid.vercel.app`. Isso não afeta o uso do app: o navegador só fala com o shell. Para usar o Supabase de dentro do Docker numa máquina assim, veja "HTTPS inspected by an antivirus" em [docs/fase4/deploy.md](docs/fase4/deploy.md).
+O mesmo antivírus pode bloquear o domínio de uma das zonas na Vercel, como aconteceu com `bytebank-transactions-virid.vercel.app`. Isso não afeta o uso do app: o navegador só fala com o shell. Para usar o Supabase de dentro do Docker numa máquina assim, veja "HTTPS inspected by an antivirus" em [docs/fase4/deploy.md](docs/fase4/deploy.md#https-inspected-by-an-antivirus).
 
 **A porta 3000 já está em uso.** Pare o que estiver nela, ou outro `docker compose` deste projeto, com `docker compose down`.
 
