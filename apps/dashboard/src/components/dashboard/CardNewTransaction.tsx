@@ -152,10 +152,11 @@ export function CardNewTransaction({ onSuccess, onError }: CardNewTransactionPro
           )}
           {attachmentName && (
             <button type="button" onClick={removeAttachment} aria-label={`Remover anexo ${attachmentName}`}
-              className="flex items-center gap-1 self-start min-h-6 text-meta text-error underline hover:no-underline rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
+              className="group flex items-center gap-1 self-start min-h-6 text-meta text-error rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-900"
             >
-              <span className="material-icons text-icon-xs" aria-hidden="true">close</span>
-              Remover anexo
+              <span className="material-icons text-icon-xs no-underline" aria-hidden="true">close</span>
+              {/* Only the text is underlined: a line under the icon reads as a broken glyph */}
+              <span className="underline group-hover:no-underline">Remover anexo</span>
             </button>
           )}
           {attachmentError && (

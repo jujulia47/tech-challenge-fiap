@@ -1,5 +1,6 @@
 // src/components/ui/Toast.stories.tsx
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { expect, fn, userEvent, within } from 'storybook/test'
 import { Toast } from '@bytebank/design-system'
 
 const meta: Meta<typeof Toast> = {
@@ -10,7 +11,7 @@ const meta: Meta<typeof Toast> = {
     docs: {
       description: {
         component:
-          'Toast de feedback exibido no canto inferior esquerdo (`fixed bottom-6 left-6 z-50`). Aparece após ações assíncronas (criar, editar, deletar transação) e desaparece automaticamente após 3 segundos. A escolha por bottom-left evita colisão com elementos de UI tipicamente posicionados à direita (chat widgets, FABs, botões scroll-to-top).',
+          'Toast de feedback exibido no canto inferior esquerdo (`fixed bottom-6 left-6 z-50`). Aparece após ações assíncronas (criar, editar, deletar transação) e desaparece sozinho depois de 5 segundos (8 para erros), pelo botão × ("Fechar aviso") ou pela tecla Escape. Só a mensagem é anunciada ao leitor de tela. A escolha por bottom-left evita colisão com elementos de UI tipicamente posicionados à direita (chat widgets, FABs, botões scroll-to-top).',
       },
     },
   },
@@ -49,4 +50,16 @@ export const Positioned: Story = {
       </div>
     ),
   ],
+}
+
+export const ClosesByButtonAndEscape: Story = {
+  args: { message: 'Erro ao excluir transação', type: 'error', visible: true, onClose: fn() },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Erro ao excluir transação')
+    await userEvent.click(canvas.getByRole('button', { name: 'Fechar aviso' }))
+    await expect(args.onClose).toHaveBeenCalledTimes(1)
+    await userEvent.keyboard('{Escape}')
+    await expect(args.onClose).toHaveBeenCalledTimes(2)
+  },
 }

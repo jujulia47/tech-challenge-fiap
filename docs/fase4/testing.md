@@ -4,8 +4,8 @@ This is the only page with test counts. The other docs link here.
 
 | Suite | Command | Result |
 |---|---|---|
-| Unit, integration and contract tests of the packages | `npm test` | 103 files, 1542 passing, 26 skipped |
-| Storybook stories in a real browser | `cd apps/shell && npx vitest run --project storybook` | 77 stories of 22 components, 15 with interaction tests, all passing |
+| Unit, integration and contract tests of the packages | `npm test` | 104 files, 1557 passing, 26 skipped |
+| Storybook stories in a real browser | `cd apps/shell && npx vitest run --project storybook` | 78 stories of 22 components, 16 with interaction tests, all passing |
 | Contract suite against a real Supabase project | `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | 23 passing, with migration 0002 applied |
 | Session race in a real browser | `npm run test:session-race` | 12 of 12 checks in production and in Docker |
 | What each logout ends, in a real browser | `npm run test:logout-scope` | 7 of 7 checks in Docker |
@@ -35,10 +35,10 @@ The root config is `vitest.config.mts`: environment `node`, files `packages/**/s
 
 | Package | Files | Tests | What they cover |
 |---|---|---|---|
-| `utils` | 15 | 203 | `cn` against every token of the theme, presentation of amounts and dates, secrets rule, security headers, session policy, zone rewrites |
+| `utils` | 15 | 208 | `cn` against every token of the theme, presentation of amounts and dates, secrets rule, security headers, session policy, zone rewrites |
 | `core` | 23 | 340 | Value objects, entities, aggregations, password policy, revocation of sessions, every use case |
 | `infrastructure` | 25 | 334 (+26 skipped) | Adapters with a simulated `fetch`, json-server and servers that never answer, the migration script, cipher, hasher, both contract suites |
-| `bff` | 22 | 486 | Every handler, validation, origin check, error translation, both browser clients, composition, end to end against json-server |
+| `bff` | 23 | 496 | Every handler, validation, origin check, error translation, both browser clients, composition, end to end against json-server |
 | `design-system` | 11 | 112 | Static rendering, modal focus, lazy parts, icon font list, password strength, idle monitor, the order of session reads and writes |
 | `store` | 3 | 41 | The RTK Query factory, the RxJS search with marble tests, `useObservable` |
 | `auth` | 4 | 26 | Session config, revocation in the `jwt` callback, router fetches that do not renew the session |
@@ -94,6 +94,7 @@ Every component of the design system has a story in `apps/shell/src/components/u
 | `ChunkBoundary / FailedAndRetry` | A failed part shows the alert and "Tentar novamente" retries |
 | `Header / MobileMenuOpen`, `Select / Open` | The menu and the list open |
 | `TransactionActions / List` | Every item gets the three actions |
+| `Toast / ClosesByButtonAndEscape` | The message is in the alert region, and the × button and Escape both close the toast |
 
 `storySession.tsx` gives the components that read the session a made-up one, and `IdleSessionGuard` takes its services by prop, so no story touches the network or logs out.
 

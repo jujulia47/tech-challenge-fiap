@@ -107,6 +107,8 @@ docker compose up -d --no-deps --force-recreate shell dashboard transactions
 
 The values are in `packages/bff/src/composition/rateLimits.ts`. `RateLimiter` is a port of the core, because the use case decides whether the password is checked at all. The attempt is counted before the hash and given back on success. The block counts the email as typed, before looking the user up, so an unknown email gets the same block as a real one. A blocked login shows "Muitas tentativas. Tente novamente em X minutos", with the wait sent by the server.
 
+`RATE_LIMIT_WINDOW_SECONDS` shortens the window of the login and of the password change for a demonstration, like the idle times: the 5 attempts stay, and a value above 15 minutes, empty or invalid is ignored. Below one minute the login screen counts down in seconds.
+
 With json-server the limiter lives in memory, with a sliding window per process. With Supabase it is a counter in `rate_limits`, updated by `consume_rate_limit` with the row locked, and shared by every app and instance.
 
 ### Keys of the rate limits

@@ -1,13 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { minutesLeft, msUntilNextMinute } from '@bytebank/utils'
+import { msUntilNextChange } from '@bytebank/utils'
 
 interface LoginBlock {
   email: string
   until: number
-  initialMinutes: number
-  minutes: number
+  // What a screen reader hears once, and what the counter shows now
+  initialRemainingMs: number
+  remainingMs: number
 }
 
 export function useLoginBlock() {
@@ -15,10 +16,11 @@ export function useLoginBlock() {
   const until = block?.until
 
   const startBlock = useCallback((email: string, retryAfterMs: number) => {
-    const minutes = minutesLeft(retryAfterMs)
-    setBlock({ email, until: Date.now() + retryAfterMs, initialMinutes: minutes, minutes })
+    setBlock({ email, until: Date.now() + retryAfterMs, initialRemainingMs: retryAfterMs, remainingMs: retryAfterMs })
   }, [])
 
+  // Wakes up when the text changes: once a minute, then once a second in the last minute.
+  // The block ends, and the button comes back, when the wait is over.
   useEffect(() => {
     if (until === undefined) return
     let timer: ReturnType<typeof setTimeout>
@@ -31,9 +33,9 @@ export function useLoginBlock() {
           setBlock(null)
           return
         }
-        setBlock(current => current && { ...current, minutes: minutesLeft(left) })
+        setBlock(current => current && { ...current, remainingMs: left })
         schedule()
-      }, msUntilNextMinute(Math.max(remaining, 1)))
+      }, msUntilNextChange(remaining))
     }
 
     schedule()

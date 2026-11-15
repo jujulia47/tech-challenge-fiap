@@ -57,6 +57,7 @@ services:
       - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
       - IDLE_TIMEOUT_SECONDS=${IDLE_TIMEOUT_SECONDS:-}
       - IDLE_WARNING_SECONDS=${IDLE_WARNING_SECONDS:-}
+      - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-}
     depends_on:
       secrets-check:
         condition: service_completed_successfully
@@ -89,6 +90,8 @@ services:
       - SHELL_URL=http://localhost:3000
       - ATTACHMENT_ENCRYPTION_KEY=${ATTACHMENT_ENCRYPTION_KEY:?Missing or invalid ATTACHMENT_ENCRYPTION_KEY. Generate 32 random bytes in base64, as in step 3 of the README}
       - SESSION_MAX_AGE_SECONDS=${SESSION_MAX_AGE_SECONDS:-}
+      # The password change counts with the login: the same demonstration window
+      - RATE_LIMIT_WINDOW_SECONDS=${RATE_LIMIT_WINDOW_SECONDS:-}
     depends_on:
       secrets-check:
         condition: service_completed_successfully

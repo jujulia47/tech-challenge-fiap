@@ -34,7 +34,7 @@ interface TransactionActionsProps {
 
 // Details, edit and delete of a transaction, with their modals and the toast, the same in every zone
 export function TransactionActions({ transactions, remove, save, children }: TransactionActionsProps) {
-  const { toast, showToast } = useToast()
+  const { toast, showToast, hideToast } = useToast()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editing, setEditing] = useState<TransactionDTO | null>(null)
   const [detail, setDetail] = useState<TransactionDTO | null>(null)
@@ -80,7 +80,7 @@ export function TransactionActions({ transactions, remove, save, children }: Tra
         onSuccess={() => showToast('Transação editada com sucesso', 'success')}
         onError={message => showToast(message, 'error')}
       />
-      <Toast message={toast.message} type={toast.type} visible={toast.visible} />
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </>
   )
 }

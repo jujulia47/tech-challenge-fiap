@@ -85,8 +85,12 @@
   .text-icon-md { font-size: 32px; }
 
   /* ── Toast progress bar animation ── */
+  /* The times of TOAST_DURATION_MS in Toast.tsx: success, then error */
   .toast-progress {
-    animation: toast-shrink 3s linear forwards;
+    animation: toast-shrink 5s linear forwards;
+  }
+  .toast-progress-long {
+    animation-duration: 8s;
   }
   @keyframes toast-shrink {
     from { width: 100%; }

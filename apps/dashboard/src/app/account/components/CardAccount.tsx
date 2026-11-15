@@ -10,7 +10,7 @@ interface CardAccountProps {
 }
 
 export function CardAccount({ initialName, email }: CardAccountProps) {
-  const { toast, showToast } = useToast()
+  const { toast, showToast, hideToast } = useToast()
 
   return (
     <div className="relative bg-surface-form rounded-md p-6 overflow-hidden flex flex-col gap-8">
@@ -29,7 +29,7 @@ export function CardAccount({ initialName, email }: CardAccountProps) {
         onError={message => showToast(message, 'error')}
       />
 
-      <Toast message={toast.message} type={toast.type} visible={toast.visible} />
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </div>
   )
 }

@@ -49,7 +49,7 @@ Every route has a Portuguese title through a `%s | Bytebank` template, and a des
 
 Each chart is a `figure` named by its title. The drawing is hidden from screen readers, and a visually hidden table holds the same data. The pie chart filter uses buttons with `aria-pressed`, tied to the same filter as a click on a slice, and a hidden live region announces "Gráfico de meses filtrado por Depósito" and "Filtro removido". The slices left the tab order, which fixed the only Lighthouse error, `aria-hidden-focus`.
 
-A base rule shows the focus on every element, with two colors so that it works on light and dark surfaces. Modals keep Tab inside and give the focus back on close. The closed drawer is `inert`, and the open one takes the focus and closes on Escape.
+A base rule shows the focus on every element, with two colors so that it works on light and dark surfaces. Modals keep Tab inside and give the focus back on close. Toasts close by themselves after 5 seconds, or 8 for an error, and also with their × button ("Fechar aviso") or Escape; only the message is in the alert region. The closed drawer is `inert`, and the open one takes the focus and closes on Escape.
 
 The file input of a new transaction is `sr-only`, so the keyboard reaches it and its label shows the focus. It empties after each transaction is created, and "Remover anexo" removes a chosen file and returns the focus to the field. The "Buscar" label points to the search field of the extract, and the breadcrumb is a `nav` named "Navegação estrutural".
 

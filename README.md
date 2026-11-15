@@ -118,6 +118,14 @@ Entre com `julia@bytebank.com` e `bytebank123`. Para ver a recuperação de senh
 
 O dashboard (3003) e o extrato (3002) também ficam publicados, mas o uso é sempre pelo shell, na porta 3000. O json-server só é acessível dentro da rede do Docker.
 
+### Encurtar os tempos para demonstração
+
+`IDLE_TIMEOUT_SECONDS` e `IDLE_WARNING_SECONDS` encurtam o logout por inatividade, e `RATE_LIMIT_WINDOW_SECONDS` encurta o bloqueio de login depois de 5 senhas erradas; valores maiores que o padrão são ignorados:
+
+```powershell
+$env:RATE_LIMIT_WINDOW_SECONDS = 30; docker compose up -d --no-deps --force-recreate shell dashboard
+```
+
 ### Voltar aos dados iniciais
 
 ```bash

@@ -8,6 +8,7 @@ interface ToastState {
   visible: boolean
 }
 
+// The Toast closes itself (time, × and Escape) through hideToast: pass it as onClose
 export function useToast() {
   const [toast, setToast] = useState<ToastState>({
     message: '',
@@ -17,10 +18,11 @@ export function useToast() {
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type, visible: true })
-    setTimeout(() => {
-      setToast(prev => ({ ...prev, visible: false }))
-    }, 3000)
   }, [])
 
-  return { toast, showToast }
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, visible: false }))
+  }, [])
+
+  return { toast, showToast, hideToast }
 }

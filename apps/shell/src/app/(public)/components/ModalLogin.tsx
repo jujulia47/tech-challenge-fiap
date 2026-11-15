@@ -84,12 +84,12 @@ export function ModalLogin({ isOpen, onClose }: ModalLoginProps) {
 
         {activeBlock && (
           <>
-            {/* Announced once: the counter below changes every minute, so it stays silent */}
+            {/* Announced once: the counter below changes every minute, then every second, so it stays silent */}
             <span className="sr-only" role="alert" aria-live="polite">
-              {retryMessage(activeBlock.initialMinutes)}
+              {retryMessage(activeBlock.initialRemainingMs)}
             </span>
             <span className="text-meta text-error" aria-hidden="true">
-              {retryMessage(activeBlock.minutes)}
+              {retryMessage(activeBlock.remainingMs)}
             </span>
           </>
         )}

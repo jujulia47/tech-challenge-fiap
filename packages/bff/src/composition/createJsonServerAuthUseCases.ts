@@ -9,7 +9,14 @@ import {
   type SmtpConfig,
 } from '@bytebank/infrastructure'
 import { createJsonServerAdapters, type DataAdapters } from './dataAdapters'
-import { LIMIT_NAMESPACES, LOGIN_BY_EMAIL, LOGIN_BY_IP, REGISTER_BY_IP } from './rateLimits'
+import {
+  LIMIT_NAMESPACES,
+  REGISTER_BY_IP,
+  RESET_REQUEST_BY_EMAIL,
+  RESET_REQUEST_BY_IP,
+  readLoginLimits,
+  type LoginLimits,
+} from './rateLimits'
 
 export interface AuthUseCases {
   authenticateUser: AuthenticateUser
@@ -26,21 +33,29 @@ export interface AuthUseCasesOptions {
   smtp: (() => SmtpConfig) | null
   // Where the disabled sender says that a message was dropped
   log?: (message: string) => void
+  // The limits of the login; by default the ones of the environment (RATE_LIMIT_WINDOW_SECONDS)
+  loginLimits?: LoginLimits
 }
 
-export function createAuthUseCases({ adapters, resetUrl, smtp, log = () => undefined }: AuthUseCasesOptions): AuthUseCases {
+export function createAuthUseCases({
+  adapters,
+  resetUrl,
+  smtp,
+  log = () => undefined,
+  loginLimits = readLoginLimits(process.env),
+}: AuthUseCasesOptions): AuthUseCases {
   const { users, resetTokens: tokens } = adapters
   const hasher = new ScryptPasswordHasher()
   const commonPasswords = new StaticCommonPasswordList()
   const generator = new CryptoResetTokenGenerator()
   // Shared by the login and the reset, which frees the email it belongs to. In Postgres the
   // password change of the dashboard counts in this same namespace.
-  const loginByEmail = adapters.rateLimiter(LIMIT_NAMESPACES.loginByEmail, LOGIN_BY_EMAIL)
+  const loginByEmail = adapters.rateLimiter(LIMIT_NAMESPACES.loginByEmail, loginLimits.byEmail)
 
   return {
     authenticateUser: new AuthenticateUser(users, hasher, {
       byEmail: loginByEmail,
-      byIp: adapters.rateLimiter(LIMIT_NAMESPACES.loginByIp, LOGIN_BY_IP),
+      byIp: adapters.rateLimiter(LIMIT_NAMESPACES.loginByIp, loginLimits.byIp),
     }),
     registerUser: new RegisterUser(
       users,
@@ -55,8 +70,8 @@ export function createAuthUseCases({ adapters, resetUrl, smtp, log = () => undef
       generator,
       emails: smtp ? new SmtpEmailSender(smtp) : new DisabledEmailSender(log),
       limiters: {
-        byEmail: adapters.rateLimiter(LIMIT_NAMESPACES.resetRequestByEmail, LOGIN_BY_EMAIL),
-        byIp: adapters.rateLimiter(LIMIT_NAMESPACES.resetRequestByIp, LOGIN_BY_IP),
+        byEmail: adapters.rateLimiter(LIMIT_NAMESPACES.resetRequestByEmail, RESET_REQUEST_BY_EMAIL),
+        byIp: adapters.rateLimiter(LIMIT_NAMESPACES.resetRequestByIp, RESET_REQUEST_BY_IP),
       },
       resetUrl,
     }),
