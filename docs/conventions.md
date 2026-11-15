@@ -1,6 +1,6 @@
 # Code conventions
 
-The rules every change follows. Lint and the tests check most of them; the others are reviewed by hand.
+The rules every change follows. Lint and the tests check most of them, and the rest are reviewed by hand.
 
 ## Languages
 
@@ -12,11 +12,11 @@ The rules every change follows. Lint and the tests check most of them; the other
 | `aria-label` and other text for screen readers | Portuguese, for pt-BR screen readers |
 | Commit messages | English |
 
-`README.md` and the index `docs/README.md` are in Portuguese, for the evaluators of the course; every other doc is in English.
+`README.md` and the index `docs/README.md` are in Portuguese, for the evaluators of the course. Every other doc is in English.
 
 ## TypeScript
 
-- No `any`, no `@ts-ignore`: `tseslint.configs.recommended` refuses both. Fix the type instead.
+- No `any` and no `@ts-ignore`. `tseslint.configs.recommended` refuses both, so fix the type instead.
 - Props always have a named interface, such as `interface CardChartsProps`.
 - No `console.log` in production code. Server code that must log uses the logger it is given, or `console.error` / `console.warn` with no personal data.
 
@@ -29,7 +29,7 @@ The rules every change follows. Lint and the tests check most of them; the other
 
 ## Where each thing goes
 
-The apps are thin: routes, pages, layouts and the assembly of the pieces. No file is copied between apps; a difference between zones becomes a prop or a factory.
+The apps keep only routes, pages, layouts and the assembly of the pieces. No file is copied between apps, and a difference between zones becomes a prop or a factory.
 
 | What | Where |
 |---|---|
@@ -42,12 +42,12 @@ The apps are thin: routes, pages, layouts and the assembly of the pieces. No fil
 | A UI component or hook, the header and the menus (items by prop) | `@bytebank/design-system` |
 | A pure helper shared by several packages | `@bytebank/utils` |
 
-A new UI component is created in the design system, never in an app. The same goes for a block of screen behavior that two zones share, such as the actions of a transaction with their modals and toast (`TransactionActions`): it is a design system component, which takes the data of the zone by props, such as the mutations of its store, and gives the page what it needs by a render prop. The design system never imports the store.
+A new UI component goes in the design system, never in an app. So does a block of screen behavior that two zones share, such as `TransactionActions`, which takes the data of the zone by props and gives the page what it needs by a render prop. The design system never imports the store.
 
 ## Imports
 
 - In the apps, always the alias `@/`, never `../` between folders.
-- Inside a package, relative imports. There is no `@/` in the packages, on purpose, so that they are not tied to an app.
+- Inside a package, relative imports. The packages have no `@/` on purpose, so they are not tied to an app.
 - Between packages, always by name (`@bytebank/...`), from the most specific entry available.
 
 ### Layers
@@ -61,17 +61,17 @@ Each package has an `eslint.config.mjs` built from `eslint.layers.mjs` at the ro
 | `bff` | `react`, `react-dom`, `next` |
 | `store`, `design-system` | `@bytebank/infrastructure`, `@bytebank/bff`, except `@bytebank/bff/client` |
 
-`auth` and `utils` have no layer rule: `auth` is the bridge between Next and the bff, and `utils` imports only `core`.
+`auth` and `utils` have no layer rule. `auth` is the bridge between Next and the bff, and `utils` imports only `core`.
 
 ### Server only
 
-The server entries import `server-only`: `@bytebank/bff` (its main entry, with the composition and the handlers) and the server files of `@bytebank/auth`. A Client Component that reaches one of them fails the build. `@bytebank/bff/client` runs in the browser and has no such import. `@bytebank/infrastructure` has none either, because Node scripts with no bundler use it (`db:reset:supabase`). See `docs/fase4/security.md`.
+The main entry of `@bytebank/bff` and the server files of `@bytebank/auth` import `server-only`, so a Client Component that reaches them fails the build. `@bytebank/bff/client` runs in the browser and does not import it, and neither does `@bytebank/infrastructure`, which Node scripts such as `db:reset:supabase` also use ([fase4/security.md](fase4/security.md#server-only-entries)).
 
 ## Style
 
-- Tailwind CSS with the tokens of `packages/design-system/src/styles/theme.css`, the single theme of the three apps. Never a hex color in a component; the only exception is the `COLORS` array of Recharts.
+- Tailwind CSS with the tokens of `packages/design-system/src/styles/theme.css`, the one theme of the three apps. No hex color in a component, except the `COLORS` array of Recharts.
 - `rounded-md` (8 px) is the radius of the project.
-- Icons come from a subset font: a new icon goes into `packages/design-system/fonts/icons.txt`, and the font is generated again (`docs/fase4/performance.md`, "Icon font").
+- Icons come from a subset font. A new icon goes into `packages/design-system/fonts/icons.txt`, and the font is generated again ([fase4/performance.md](fase4/performance.md#icon-font)).
 - `cn()` of `@bytebank/utils` joins classes, with the typography tokens known to tailwind-merge.
 
 ## Accessibility
@@ -86,10 +86,10 @@ The server entries import `server-only`: `@bytebank/bff` (its main entry, with t
 ## Tests
 
 - Unit tests sit next to the module they test, as `*.test.ts`, and run with `npm test` (Vitest, Node environment).
-- The rules of core have specification tests; a port has a contract suite that every adapter passes (`docs/fase4/deploy.md`).
-- **Every component of the design system has a story** in `apps/shell/src/components/ui/`, with its main states and with no real data or request: props and decorators only.
-- **Every interactive component has an interaction test**, a `play` function in its story, run by the Storybook tests (`docs/fase4/testing.md`).
-- What only a browser shows, such as the session race, has a script under `apps/shell/scripts/`, documented in `docs/fase4/testing.md`.
+- The rules of the core have specification tests, and each port has a contract suite that every adapter passes ([fase4/deploy.md](fase4/deploy.md#contract-tests)).
+- Every component of the design system has a story in `apps/shell/src/components/ui/`, with its main states, built from props and decorators only.
+- Every interactive component has an interaction test, a `play` function in its story ([fase4/testing.md](fase4/testing.md#storybook)).
+- What only a browser shows, such as the session race, has a script under `apps/shell/scripts/` ([fase4/testing.md](fase4/testing.md)).
 
 ## Commits
 
@@ -103,6 +103,6 @@ Conventional commits, in English: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`
 
 ## Secrets and environment
 
-- Values of `.env` and secrets are never committed, logged or shown. `.env.example` lists the names only.
-- `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY` are 32 random bytes in base64. The apps refuse to start with a missing, example or short value (`docs/fase4/security.md`).
-- A variable read by the browser has the `NEXT_PUBLIC_` prefix; nothing secret ever does.
+- Values of `.env` and secrets are never committed, logged or shown. The `.env.example` files hold the local values and `replace-me` in place of each secret.
+- `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY` are 32 random bytes in base64. The apps refuse to start with a missing, example or short value ([fase4/security.md](fase4/security.md#secrets)).
+- A variable read by the browser has the `NEXT_PUBLIC_` prefix, and nothing secret ever does.

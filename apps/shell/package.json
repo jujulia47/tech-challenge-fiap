@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "api": "node scripts/db.mjs ensure && json-server data/db.json --port 3001",
+    "api": "node scripts/db.mjs serve",
     "db:reset": "node scripts/db.mjs reset",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"

@@ -1,15 +1,13 @@
 # Reactive programming
 
-Requirement: reactive programming. The search of the transactions zone is an RxJS pipeline. Each input is a stream of values over time, and the screen only feeds the inputs and shows the outputs.
-
-## The flow
+The search of the extract is an RxJS pipeline. Each input is a stream of values over time, and the screen only feeds the inputs and shows the outputs.
 
 | Part | Where |
 |---|---|
-| Pure filter, with the comparison rule | `filterTransactions` in `@bytebank/utils` |
-| Pipeline: inputs to outputs, with no React | `createStatementSearch` in `@bytebank/store` |
-| React bridge, generic | `useObservable` in `@bytebank/store` |
-| Connection with the screen | `use-statement-search.ts` in the transactions zone |
+| The filter rule, pure | `filterTransactions` in `@bytebank/utils` |
+| The pipeline, with no React | `createStatementSearch` in `@bytebank/store` |
+| The React bridge | `useObservable` in `@bytebank/store` |
+| The connection with the screen | `use-statement-search.ts` in the transactions zone |
 
 ```text
 text$           ──trim──debounceTime(300)──startWith──distinctUntilChanged──skip(1)──share──┐
@@ -33,42 +31,36 @@ pageRequests$ ──────────────────────
 | Operator | Why |
 |---|---|
 | `map(trim)` | Spaces around the text do not change the search |
-| `debounceTime(300)` | Waits for a pause, so the list does not filter at each key |
-| `startWith('')` | The list appears at once: `combineLatest` needs one value from each input, and the first text would only come after the debounce |
-| `distinctUntilChanged` | The same text after a pause changes nothing, so nothing is redone or announced |
-| `skip(1)` | The initial value is not a change, so it must not touch the page |
-| `share` | The results and the page use one debounce, so they change together |
-| `combineLatest` | Any input can change on its own, and the result always uses the latest of the three |
-| `merge` | The page has two sources: a change of the query, which goes to 1, and a click on the pagination |
+| `debounceTime(300)` | The list filters after a pause, not at each key |
+| `startWith('')` | The list shows at once, since `combineLatest` needs a value from each input |
+| `distinctUntilChanged` | The same text after a pause changes nothing |
+| `skip(1)` | The initial value is not a change, so it does not reset the page |
+| `share` | The results and the page use one debounce and change together |
+| `combineLatest` | Any input can change alone, and the result always uses the latest of the three |
+| `merge` | The page has two sources: a new query sends it to 1, and the pagination moves it |
 
-The filters skip the debounce because a choice in a select is one deliberate action, with no keys to wait for.
+The filters skip the debounce, because choosing in a select is one deliberate action. A change in the list keeps the page, so editing a transaction leaves the person where they were. `useObservable` uses `useSyncExternalStore`, so React subscribes on mount and unsubscribes on unmount.
 
-A change in the list does not go back to page 1, so that editing a transaction keeps the person where they were.
+## Marble tests
 
-The subscription lives as long as the screen. `useObservable` uses `useSyncExternalStore`: React subscribes on mount and cancels on unmount.
-
-## What the marble tests prove
-
-`TestScheduler` runs the pipeline in virtual time, so 300 ms take no real time and the moment of each emission is exact to the millisecond.
+`TestScheduler` runs the pipeline in virtual time, so the debounce takes no real time and each emission happens at an exact moment.
 
 | Test | What it proves |
 |---|---|
-| The debounce waits | The result comes exactly 300 ms after the text, not before |
-| Fast typing | Three keys give one emission, 300 ms after the last |
-| A repeated text | Typing the same text after a pause, or only adding spaces, emits nothing |
-| A filter | The result changes in the same millisecond |
-| A list change | The result is calculated again, keeping the search |
-| The page | It goes to 1 when the settled search or a filter changes, and stays when only the list changes |
+| The debounce waits | The result comes 300 ms after the text, not before |
+| Fast typing | Three keys give one result, 300 ms after the last |
+| A repeated text | The same text after a pause, or added spaces, emits nothing |
+| A filter | The result changes at once |
+| A list change | The result is computed again with the same search |
+| The page | It goes to 1 when the search or a filter changes, and stays when only the list changes |
 
-The rule itself is tested apart, in `filterTransactions.test.ts`, with no time involved.
-
-`useObservable` is tested through `createObservableStore`, which holds the subscription: it subscribes once and cancels on the function React calls on unmount. The project has no DOM for tests, so the part that React plays, calling that function on a real unmount, is not tested here: it relies on the contract of `useSyncExternalStore`.
+`filterTransactions.test.ts` tests the rule on its own. `useObservable` is tested through `createObservableStore`, which subscribes once and unsubscribes when React calls its cleanup.
 
 ## How to validate
 
 - `npm test` runs the marble tests (`createStatementSearch.test.ts`) and the filter rule ([testing.md](testing.md)).
-- In the extract: type in "Buscar" and the list changes once, about 300 ms after the last key; add a space at the end and nothing changes; change a filter and the list changes at once and goes back to page 1; edit a transaction on page 2 and you stay on page 2.
+- In the extract, type in "Buscar": the list changes once, shortly after the last key. Add a space at the end and nothing changes. Change a filter and the list changes at once and goes back to page 1. Edit a transaction on page 2 and you stay on page 2.
 
 ## Known limits
 
-- The unmount of a real React tree is not tested, because the unit tests have no DOM; `useObservable` relies on the contract of `useSyncExternalStore`.
+The unit tests have no DOM, so a real unmount is not tested. `useObservable` relies on the contract of `useSyncExternalStore` for it.

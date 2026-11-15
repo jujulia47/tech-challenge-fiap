@@ -1,4 +1,4 @@
-# Bytebank — Dashboard Financeiro
+# Bytebank: Dashboard Financeiro
 
 Banco digital fictício desenvolvido como Tech Challenge da pós-graduação em Front-End Engineering da FIAP POSTECH. Tem login, dashboard com saldo e gráficos, extrato com busca reativa, transações com anexo cifrado e recuperação de senha. Na Fase 4, o projeto virou um monorepo de microfrontends com Clean Architecture, BFF próprio e deploy na Vercel com Supabase.
 
@@ -11,11 +11,7 @@ Banco digital fictício desenvolvido como Tech Challenge da pós-graduação em 
 | `julia@bytebank.com` (com 7 transações) | `bytebank123` |
 | `test@bytebank.com` (sem transações) | `bytebank123` |
 
-A senha é um dado de demonstração, pública de propósito. O banco guarda só o hash scrypt dela. Em "Abrir minha conta" você cria um usuário seu.
-
-A política de senha vale só para senhas novas, no cadastro, na redefinição e na troca de senha. Por isso `bytebank123` continua entrando, mas uma senha nova parecida seria recusada, porque contém "bytebank" e é comum. É o esperado.
-
----
+A senha de demonstração é pública de propósito, e o banco guarda só o hash scrypt dela. Em "Abrir minha conta" você cria um usuário seu. A política de senha vale só para senhas novas, por isso `bytebank123` continua entrando, mas uma senha nova parecida seria recusada por conter "bytebank" e ser comum.
 
 ## Tecnologias
 
@@ -29,11 +25,9 @@ A política de senha vale só para senhas novas, no cadastro, na redefinição e
 | Testes | Vitest 4.1 (com cobertura v8), Playwright 1.64, testes de Storybook |
 | Infraestrutura | Node 22, Docker e Docker Compose, Mailpit 1.29, Nodemailer 10.3, Vercel, GitHub Actions |
 
----
-
 ## Arquitetura
 
-Três apps Next.js, servidas pela mesma origem: o shell recebe o navegador e repassa `/dashboard` e `/transactions` para as zonas.
+Três apps Next.js são servidas pela mesma origem: o shell recebe o navegador e repassa `/dashboard` e `/transactions` para as zonas.
 
 | App | Porta local | Papel |
 |---|---|---|
@@ -41,7 +35,7 @@ Três apps Next.js, servidas pela mesma origem: o shell recebe o navegador e rep
 | `apps/dashboard` | 3003 | Saldo, gráficos, nova transação, Minha conta |
 | `apps/transactions` | 3002 | Extrato completo, filtros, busca e paginação |
 
-As apps são finas. O código fica nos packages:
+As apps só montam as peças. O código fica nos packages:
 
 | Package | Papel |
 |---|---|
@@ -53,133 +47,115 @@ As apps são finas. O código fica nos packages:
 | `utils` | Funções puras compartilhadas: formatação, política de sessão, rewrites das zonas |
 | `design-system` | Componentes de UI, tema, cabeçalho e menus, documentados no Storybook |
 
-Detalhes em [docs/architecture.md](docs/architecture.md), nas decisões de [docs/adr/](docs/adr/) e na documentação da fase, com o índice em [docs/README.md](docs/README.md). As regras de código (camadas, imports, testes, estilo, commits) estão em [docs/conventions.md](docs/conventions.md).
-
----
+Os detalhes estão em [docs/architecture.md](docs/architecture.md), as decisões em [docs/adr/](docs/adr/) e as regras de código em [docs/conventions.md](docs/conventions.md).
 
 ## Requisitos da Fase 4
 
-O índice completo, com o que foi feito, por quê e como validar cada requisito, está em [docs/README.md](docs/README.md).
+O índice em [docs/README.md](docs/README.md) mostra, para cada requisito, o que foi feito, a doc que explica e como validar.
 
-| Requisito | Como o projeto atende | Doc |
-|---|---|---|
-| Arquitetura modular | Multi-Zones e sete packages com responsabilidade única, sem código copiado entre apps | [modularization.md](docs/fase4/modularization.md) |
-| State management | RTK Query nas duas zonas, pela mesma fábrica, com tags e invalidação por mutação | [state-management.md](docs/fase4/state-management.md) |
-| Clean Architecture | Domínio e casos de uso no `core`, portas implementadas no `infrastructure`, BFF na borda | [domain.md](docs/fase4/domain.md), [bff.md](docs/fase4/bff.md) |
-| Lazy loading e pré-carregamento | Modais e gráficos sob demanda, prefetch das páginas da zona e dos dados de cada período | [performance.md](docs/fase4/performance.md) |
-| Cache | Cache do RTK Query com invalidação, prefetch que o clique reaproveita, `no-store` nos dados financeiros e chunks imutáveis | [state-management.md](docs/fase4/state-management.md), [performance.md](docs/fase4/performance.md) |
-| Programação reativa | Busca e filtros do extrato como um fluxo RxJS (`debounceTime`, `combineLatest`, `distinctUntilChanged`), com testes de marble | [reactive-programming.md](docs/fase4/reactive-programming.md) |
-| Autenticação segura | scrypt, JWT com expiração, logout por inatividade, bloqueio após 5 tentativas, CSP e correção da corrida de sessão. Política de senha do OWASP ASVS 5.0: mínimo de 8 caracteres, sem regras de composição, recusa das senhas mais comuns e de palavras do contexto. Indicador de força por estimativa de entropia, em 4 níveis, que só mede | [security.md](docs/fase4/security.md) |
-| Criptografia | Anexos cifrados com AES-256-GCM antes de chegar ao banco, senhas e tokens de recuperação só como hash, HTTPS com HSTS | [security.md](docs/fase4/security.md) |
-
----
+| Requisito | Como o projeto atende |
+|---|---|
+| Arquitetura modular | Multi-Zones e sete packages com responsabilidade única, sem código copiado entre apps |
+| State management | RTK Query nas duas zonas, pela mesma fábrica, com tags e invalidação por mutação |
+| Clean Architecture | Domínio e casos de uso no `core`, portas implementadas no `infrastructure`, BFF na borda |
+| Lazy loading e pré-carregamento | Modais e gráficos sob demanda, prefetch das páginas da zona e dos dados de cada período |
+| Cache | Cache do RTK Query com invalidação, prefetch que o clique reaproveita, `no-store` nos dados financeiros e chunks imutáveis |
+| Programação reativa | Busca e filtros do extrato como um fluxo RxJS, com testes de marble |
+| Autenticação segura | scrypt, JWT com expiração, logout por inatividade, bloqueio após 5 tentativas, CSP, política de senha do OWASP ASVS 5.0 e sessões encerradas no servidor |
+| Criptografia | Anexos cifrados com AES-256-GCM antes de chegar ao banco, senhas e tokens só como hash, HTTPS com HSTS |
 
 ## Pré-requisitos
 
-- [Node.js 22](https://nodejs.org/) (o npm vem junto)
+- [Node.js 22](https://nodejs.org/), que já traz o npm
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/), aberto e com o engine rodando
 - [Git](https://git-scm.com/)
 
----
-
 ## Como rodar com Docker (recomendado)
 
-Os comandos valem para o Git Bash, macOS e Linux. No PowerShell, troque `cp` por `Copy-Item`.
+Os comandos valem para Git Bash, macOS e Linux. No PowerShell, troque `cp` por `Copy-Item`.
 
-**1. Clonar**
+### 1. Clonar
 
 ```bash
 git clone https://github.com/jujulia47/tech-challenge-fiap.git
 cd tech-challenge-fiap
 ```
 
-**2. Criar o `.env`** a partir do modelo. Ele fica fora do git, e o Docker Compose não sobe sem ele.
+### 2. Criar o `.env`
+
+O `.env` fica fora do git, e o Docker Compose não sobe sem ele.
 
 ```bash
 cp .env.example .env
 ```
 
-**3. Gerar os segredos.** Rode o comando abaixo duas vezes e, no `.env`, troque cada `replace-me` por uma saída diferente: uma em `NEXTAUTH_SECRET`, outra em `ATTACHMENT_ENCRYPTION_KEY`.
+### 3. Gerar os segredos
+
+Rode o comando abaixo duas vezes e troque cada `replace-me` do `.env` por uma saída diferente, uma em `NEXTAUTH_SECRET` e outra em `ATTACHMENT_ENCRYPTION_KEY`.
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-Deixe `DATA_BACKEND=json-server` e as variáveis do Supabase vazias: localmente o banco é o json-server, que já vem com os dados de demonstração.
+Deixe `DATA_BACKEND=json-server` e as variáveis do Supabase vazias. Localmente o banco é o json-server, que já vem com os dados de demonstração.
 
-**4. Subir**
+### 4. Subir
 
 ```bash
 docker compose up -d --build
 ```
 
-Na primeira vez, o build leva cerca de 2 minutos. O shell responde alguns segundos depois de os containers subirem.
+Na primeira vez o build leva cerca de 2 minutos, e o shell responde alguns segundos depois.
 
-**5. Usar**
+### 5. Usar
 
 | O quê | Endereço |
 |---|---|
 | App | http://localhost:3000 |
 | Mailpit (e-mails de recuperação de senha) | http://localhost:8025 |
 
-Entre com `julia@bytebank.com` / `bytebank123`. Para ver a recuperação de senha: saia, clique em "Esqueci a senha", informe o mesmo e-mail e abra o Mailpit. O link do e-mail leva para `http://localhost:3000/redefinir-senha`.
+Entre com `julia@bytebank.com` e `bytebank123`. Para ver a recuperação de senha, saia, clique em "Esqueci a senha", informe o mesmo e-mail e abra o Mailpit. O link do e-mail leva para `http://localhost:3000/redefinir-senha`.
 
 O dashboard (3003) e o extrato (3002) também ficam publicados, mas o uso é sempre pelo shell, na porta 3000. O json-server só é acessível dentro da rede do Docker.
 
-**Voltar aos dados iniciais**
+### Voltar aos dados iniciais
 
 ```bash
 npm run db:reset
 docker compose restart json-server
 ```
 
-Não precisa de `npm install`: o script só copia `apps/shell/data/db.seed.json` sobre o banco em uso.
+O script só copia `apps/shell/data/db.seed.json` sobre o banco em uso, sem precisar de `npm install`. O json-server não observa o arquivo, por isso precisa ser reiniciado.
 
-**Parar**
+### Parar
 
 ```bash
 docker compose down
 ```
 
----
-
 ## Como rodar sem Docker
 
-Ainda é suportado, para desenvolvimento.
-
-**1. Instalar as dependências**
+### 1. Instalar as dependências
 
 ```bash
 npm ci
 ```
 
-**2. Criar um `.env.local` em cada app**, a partir dos `.env.example` delas, com os acréscimos abaixo. Gere os segredos com o mesmo comando do passo 3 acima. `NEXTAUTH_SECRET` precisa ser o mesmo nas três apps, e `ATTACHMENT_ENCRYPTION_KEY` o mesmo nas duas zonas.
+### 2. Criar um `.env.local` em cada app
 
-`apps/shell/.env.local`:
+Copie o `.env.example` de cada app para `.env.local` e troque cada `replace-me` por um segredo gerado com o comando do passo 3 acima. `NEXTAUTH_SECRET` precisa ser o mesmo nas três apps, e `ATTACHMENT_ENCRYPTION_KEY` o mesmo nas duas zonas.
 
-```
-NEXTAUTH_SECRET=<segredo>
-SHELL_URL=http://localhost:3000
-JSON_SERVER_URL=http://localhost:3001
-ALLOWED_ORIGINS=http://localhost:3000
-SMTP_HOST=127.0.0.1
-SMTP_PORT=1025
-MAIL_FROM=Bytebank <no-reply@bytebank.local>
+```bash
+cp apps/shell/.env.example apps/shell/.env.local
+cp apps/dashboard/.env.example apps/dashboard/.env.local
+cp apps/transactions/.env.example apps/transactions/.env.local
 ```
 
-`apps/dashboard/.env.local` e `apps/transactions/.env.local`:
+O exemplo do shell usa `SMTP_HOST=127.0.0.1`, e não `localhost`, porque o Node resolve `localhost` primeiro para IPv6 (`::1`) e o envio falha. As variáveis precisam estar nos `.env.local`, porque o Turbo não repassa as do terminal para o `npm run dev`.
 
-```
-NEXTAUTH_SECRET=<o mesmo do shell>
-ATTACHMENT_ENCRYPTION_KEY=<chave>
-SHELL_URL=http://localhost:3000
-JSON_SERVER_URL=http://localhost:3001
-ALLOWED_ORIGINS=http://localhost:3000
-```
+### 3. Subir o json-server, o Mailpit e as apps
 
-Use `SMTP_HOST=127.0.0.1`, não `localhost`: o Node resolve `localhost` primeiro para IPv6 (`::1`), e o envio falha. As variáveis precisam estar nos `.env.local`, e não no terminal, porque o Turbo não repassa variáveis de ambiente para o `npm run dev`.
-
-**3. Subir o json-server, o Mailpit e as apps**, cada um num terminal:
+Cada comando num terminal:
 
 ```bash
 cd apps/shell && npm run api
@@ -193,51 +169,47 @@ docker run --rm -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit:v1
 npm run dev
 ```
 
-Acesse http://localhost:3000. Sem o Mailpit, deixe `SMTP_HOST` de fora: o envio fica desligado, a tela mostra a mensagem de sempre e o servidor registra uma linha no log.
-
----
+Acesse http://localhost:3000. Sem o Mailpit, tire `SMTP_HOST` do `.env.local` do shell: o envio fica desligado, a tela mostra a mensagem de sempre e o servidor registra uma linha no log. Depois de um `npm run db:reset`, pare e rode `npm run api` de novo.
 
 ## Testes
 
 | Comando | O que faz |
 |---|---|
-| `npm test` | Os testes unitários, de integração e de contrato dos packages, em cerca de 10 s |
-| `npm run test:coverage` | Os mesmos, com a cobertura (v8) |
+| `npm test` | Testes unitários, de integração e de contrato dos packages |
+| `npm run test:coverage` | Os mesmos, com a cobertura |
 | `cd apps/shell && npx vitest run --project storybook` | As stories do design system num navegador real, com os testes de interação. Precisa do Chromium do Playwright (`npx playwright install chromium`) |
-| `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | A suíte de contrato contra um projeto Supabase real, com `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env`. Desligada por padrão, e fora do CI |
-| `npm run test:session-race` | O teste de regressão da corrida de sessão, num navegador real, contra o app rodando (abaixo) |
+| `SUPABASE_CONTRACT_TESTS=1 npx vitest run supabase.contract` | A suíte de contrato contra um projeto Supabase real, com `SUPABASE_URL` e `SUPABASE_SECRET_KEY` no `.env` |
+| `npm run test:session-race` | A corrida de sessão num navegador real, contra o app rodando |
+| `npm run test:logout-scope` | O que cada logout encerra, contra o app rodando com tempos curtos de inatividade |
 
-Os mesmos casos de contrato rodam contra o json-server no `npm test`, então os dois bancos cumprem as mesmas regras.
-
-O `test:session-race` precisa do app no ar e do Chrome instalado. Ele usa o usuário de demonstração:
+Os mesmos casos de contrato rodam contra o json-server no `npm test`, então os dois bancos cumprem as mesmas regras. Os testes de navegador precisam do app no ar e do Chrome instalado, e usam o usuário de demonstração:
 
 ```bash
 E2E_EMAIL=julia@bytebank.com E2E_PASSWORD=bytebank123 npm run test:session-race
 ```
 
-Com `SHELL_URL=https://bytebank-shell.vercel.app`, ele roda contra a produção. As contagens e os detalhes de cada suíte estão em [docs/fase4/testing.md](docs/fase4/testing.md). O CI (GitHub Actions) roda lint, testes, build e auditoria a cada push: [docs/fase4/ci.md](docs/fase4/ci.md).
+Com `SHELL_URL=https://bytebank-shell.vercel.app`, o teste roda contra a produção. As contagens e os detalhes de cada suíte estão em [docs/fase4/testing.md](docs/fase4/testing.md). O GitHub Actions roda lint, testes, build e auditoria a cada push ([docs/fase4/ci.md](docs/fase4/ci.md)).
 
-O Storybook do design system abre com `cd apps/shell && npm run storybook`, em http://localhost:6006.
-
----
+O Storybook abre com `cd apps/shell && npm run storybook`, em http://localhost:6006.
 
 ## Deploy
 
-Cada app é um projeto na Vercel, com as funções na região `iad1`, a mesma do banco. O shell serve as três pela própria origem, repassando as zonas pelos rewrites. O banco de produção é um Postgres no Supabase, acessado só pelo servidor (RLS ligado, sem política pública). O checklist de variáveis, as configurações de build e a ordem dos passos estão em [docs/fase4/deploy.md](docs/fase4/deploy.md).
+Cada app é um projeto na Vercel, com as funções na região `iad1`, a mesma do banco. O shell serve as três apps pela própria origem, repassando as zonas pelos rewrites. O banco de produção é um Postgres no Supabase, acessado só pelo servidor, com RLS ligado e sem política pública. As variáveis, a configuração de build e a ordem dos passos estão em [docs/fase4/deploy.md](docs/fase4/deploy.md).
 
-Em produção, o envio de e-mail fica desligado: "Esqueci a senha" responde a mensagem de sempre, mas nenhum e-mail sai. A recuperação de senha é demonstrada localmente, pelo Mailpit.
-
----
+Em produção o envio de e-mail fica desligado: "Esqueci a senha" responde a mensagem de sempre, mas nenhum e-mail sai. A recuperação de senha é demonstrada localmente, pelo Mailpit.
 
 ## Problemas comuns
 
-**Antivírus que inspeciona HTTPS (ex.: Avast).** Ele assina de novo as conexões HTTPS com um certificado próprio, em que o Windows confia e os containers Linux não. O `npm ci` dentro do `docker compose up --build` pode então falhar com erros de certificado como `SELF_SIGNED_CERT_IN_CHAIN` ou `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`. Para resolver:
+### Antivírus que inspeciona HTTPS
 
-1. No antivírus, adicione uma exceção para `https://registry.npmjs.org/*` (no Avast, em Menu › Configurações › Geral › Exceções), ou desligue a verificação HTTPS do escudo da web durante o build.
-2. Rode `docker compose up -d --build` de novo.
+Antivírus como o Avast assinam de novo as conexões HTTPS com um certificado próprio, em que o Windows confia e os containers Linux não. O `npm ci` dentro do `docker compose up --build` pode falhar com `SELF_SIGNED_CERT_IN_CHAIN` ou `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`. Adicione no antivírus uma exceção para `https://registry.npmjs.org/*` (no Avast, em Menu › Configurações › Geral › Exceções), ou desligue a verificação HTTPS durante o build, e rode `docker compose up -d --build` de novo.
 
-O mesmo antivírus pode bloquear o domínio de uma das zonas na Vercel, como aconteceu com `bytebank-transactions-virid.vercel.app`. Isso não afeta o uso do app: o navegador só fala com o shell. Para usar o Supabase de dentro do Docker numa máquina assim, veja "HTTPS inspected by an antivirus" em [docs/fase4/deploy.md](docs/fase4/deploy.md#https-inspected-by-an-antivirus).
+O mesmo antivírus pode bloquear o domínio de uma das zonas na Vercel, o que não afeta o uso, já que o navegador só fala com o shell. Para usar o Supabase de dentro do Docker numa máquina assim, veja "HTTPS inspected by an antivirus" em [docs/fase4/deploy.md](docs/fase4/deploy.md#https-inspected-by-an-antivirus).
 
-**A porta 3000 já está em uso.** Pare o que estiver nela, ou outro `docker compose` deste projeto, com `docker compose down`.
+### A porta 3000 já está em uso
 
-**`Missing or invalid NEXTAUTH_SECRET` ou `Missing or invalid ATTACHMENT_ENCRYPTION_KEY` ao subir.** Falta o `.env` na raiz, ou o segredo está vazio, ainda é `replace-me` ou é curto demais para 32 bytes em base64. O `docker compose up` para no serviço `secrets-check`, antes de subir as apps, e fora do Docker o servidor se recusa a iniciar com a mesma mensagem. Volte aos passos 2 e 3.
+Pare o que estiver nela, ou outro `docker compose` deste projeto, com `docker compose down`.
+
+### `Missing or invalid NEXTAUTH_SECRET` ou `ATTACHMENT_ENCRYPTION_KEY` ao subir
+
+Falta o `.env` na raiz, ou o segredo está vazio, ainda é `replace-me` ou é curto demais para 32 bytes em base64. O `docker compose up` para no serviço `secrets-check`, antes de subir as apps, e fora do Docker o servidor se recusa a iniciar com a mesma mensagem. Volte aos passos 2 e 3.

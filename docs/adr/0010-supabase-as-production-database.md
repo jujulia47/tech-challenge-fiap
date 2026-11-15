@@ -4,9 +4,9 @@
 
 ## Context
 
-json-server is a good backend for development: no setup, a file that resets, and the repositories that talk to it are already tested. It is not a database for production. It has no transaction, no unique index, no atomic update and no access control, so it cannot keep two registrations of one email apart, use a reset link only once under concurrency, or share a rate limit between the shell and the zones. The in-memory limiter is per process, which step 7b recorded as an open item.
+json-server is a good backend for development: no setup, a file that resets, and the repositories that talk to it are already tested. It is not a database for production. It has no transaction, no unique index, no atomic update and no access control, so it cannot keep two registrations of one email apart, use a reset link only once under concurrency, or share a rate limit between the shell and the zones. The in-memory limiter is per process, which was recorded as an open item.
 
-The mobile app of the challenge uses Firebase Authentication. The web keeps its own login (scrypt, Auth.js, the limits of step 3.2), and the two apps do not share accounts. So the web database does not have to be Firebase, and choosing it to "share" with the mobile would bring nothing.
+The mobile app of the challenge uses Firebase Authentication. The web keeps its own login (scrypt, Auth.js, its attempt limits), and the two apps do not share accounts. So the web database does not have to be Firebase, and choosing it to "share" with the mobile would bring nothing.
 
 ## Decision
 
@@ -23,7 +23,7 @@ The mobile app of the challenge uses Firebase Authentication. The web keeps its 
 
 - **Firestore.** It fits the mobile, but the web has no use for its auth, and a unique email needs a second collection written in a transaction. The rate limit would need a transaction per attempt.
 - **A Postgres of our own** (Railway, Neon). The same SQL would work, but the project would host and secure the database itself. Supabase gives the same Postgres with backups and an admin panel.
-- **Supabase Auth.** It would replace the login of step 3, with its tests and limits, and the users would move to another table. The gain does not pay for it.
+- **Supabase Auth.** It would replace the existing login, with its tests and limits, and the users would move to another table. The gain does not pay for it.
 
 ## Consequences
 

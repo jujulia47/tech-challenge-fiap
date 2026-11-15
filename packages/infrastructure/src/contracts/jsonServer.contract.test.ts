@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -60,7 +60,15 @@ beforeAll(async () => {
   writeFileSync(database, JSON.stringify({ users: [], transactions: [], passwordResetTokens: [] }))
   const port = await freePort()
   const baseUrl = `http://${HOST}:${port}`
-  server = spawn(process.execPath, [JSON_SERVER_BIN, database, '--host', HOST, '--port', String(port)], { stdio: 'ignore' })
+  // Without its file watcher (NODE_ENV=production): the watcher reloads the file after a write and,
+  // under load, the reload lands on top of the next PATCH and undoes it (docs/fase4/testing.md,
+  // "Known instabilities"). In production mode json-server serves ./public, so the cwd has one.
+  mkdirSync(join(directory, 'public'))
+  server = spawn(process.execPath, [JSON_SERVER_BIN, database, '--host', HOST, '--port', String(port)], {
+    cwd: directory,
+    env: { ...process.env, NODE_ENV: 'production' },
+    stdio: 'ignore',
+  })
   await waitUntilReady(`${baseUrl}/users`)
   context = {
     users: new HttpUserRepository(baseUrl),

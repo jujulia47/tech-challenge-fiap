@@ -22,9 +22,9 @@ The HTTP layer lives in its own package, `@bytebank/bff`, and is written against
 
 - **Testable without Next.js.** The tests call the handlers with real `Request` objects and an in-memory repository, with no server, no session and no framework mocks.
 - **Reused by both zones.** Validation, error translation and the security rules exist once, instead of in two copies that can drift apart, as `lib/api/transactions.ts` did.
-- **Ready for RTK Query in Block 4.** The handlers offer a plain HTTP contract with JSON bodies and stable error codes, so a client state library only needs a base URL. The response bodies are core DTOs, so the types can be shared.
+- **Ready for RTK Query.** The handlers offer a plain HTTP contract with JSON bodies and stable error codes, so a client state library only needs a base URL. The response bodies are core DTOs, so the types can be shared.
 - **Changing the backend changes one function.** A new `createXUseCases` replaces `createJsonServerUseCases`. The handlers do not change.
 - **Changing the framework keeps the rules.** Any runtime with `Request` and `Response` can call the handlers. Only `getUserId` and the route files are specific to Next.js.
 - `getUserId` gets the `Request`, even though NextAuth's `auth()` reads the session on its own, so that other session strategies work without changing the contract.
 - There is one more layer to go through, and every call makes a server-side round trip. That is the cost of having a boundary at all.
-- Each zone still has to add the route files and list the packages in `transpilePackages`. That is step 2.2.
+- Each zone still has to add the route files and list the packages in `transpilePackages`.

@@ -1,6 +1,6 @@
 # Production database and deploy
 
-Production runs on Vercel, one project per app, with a Postgres database on Supabase. Locally, json-server stays the default database, in Docker. The decision and its alternatives (Firestore, a Postgres of our own, Supabase Auth) are in [ADR 0010](../adr/0010-supabase-as-production-database.md).
+Production runs on Vercel, one project per app, with a Postgres database on Supabase. Locally, json-server stays the default database. The decision and its alternatives (Firestore, a self-hosted Postgres, Supabase Auth) are in [ADR 0010](../adr/0010-supabase-as-production-database.md).
 
 | Service | Platform | URL |
 |---|---|---|
@@ -21,175 +21,127 @@ Browser ──▶ shell / dashboard / transactions (Next.js, server)
                                    secret key, server only
 ```
 
-Supabase is only the database: no Supabase Auth, Storage or Realtime. The browser never talks to Supabase. Every query goes from the server, with the secret key, through the adapters of `@bytebank/infrastructure` (`packages/infrastructure/src/supabase/`). `DATA_BACKEND` is read in one place, `createDataAdapters` in `packages/bff/src/composition/dataAdapters.ts`; the use cases, the handlers and the screens are the same for both backends.
+Supabase is only the database, with no Supabase Auth, Storage or Realtime. The browser never talks to it: every query leaves the server with the secret key, through the adapters in `packages/infrastructure/src/supabase/`. `DATA_BACKEND` is read in one place, `createDataAdapters` in `packages/bff/src/composition/dataAdapters.ts`, so the use cases, handlers and screens are the same for both databases.
 
 ### Tables
 
 The migrations are `supabase/migrations/0001_init.sql` and `0002_sessions_valid_after.sql`, run in that order.
 
-| Table | What it holds | Rules |
+| Table | Columns | Rules |
 |---|---|---|
-| `users` | `id`, `name`, `email`, `password_hash`, `sessions_valid_after` | Unique email in any case (`lower(email)`). Name from 1 to 100 characters, as in the domain. `sessions_valid_after` is the moment the user last ended their sessions, null if never ([security.md](security.md#ending-every-session)) |
-| `transactions` | `id`, `user_id`, `type`, `amount_in_cents`, `date`, `attachment` | `user_id` references `users` with `on delete cascade`. `type` is one of the 7 codes. Amount is a positive integer. Index on `(user_id, date desc)` |
+| `users` | `id`, `name`, `email`, `password_hash`, `sessions_valid_after` | Email unique in any case (`lower(email)`). Name from 1 to 100 characters. `sessions_valid_after` is when the user last ended their sessions ([security.md](security.md#ending-every-session)) |
+| `transactions` | `id`, `user_id`, `type`, `amount_in_cents`, `date`, `attachment` | `user_id` references `users` with `on delete cascade`. `type` is one of the 7 codes. Positive amount. Index on `(user_id, date desc)` |
 | `password_reset_tokens` | `id`, `user_id`, `token_hash`, `expires_at`, `used_at` | Only the hash of the token |
-| `rate_limits` | `key`, `window_start`, `hits` | One counter per key and window. The key is an HMAC-SHA-256 made by the server with a key derived from `NEXTAUTH_SECRET`, so no email or IP is stored, and none can be found back without that key ([security.md](security.md#keys-of-the-rate-limits)) |
+| `rate_limits` | `key`, `window_start`, `hits` | One counter per key and window. The key is an HMAC, so no email or IP is stored ([security.md](security.md#keys-of-the-rate-limits)) |
 
-The ids are text, because the domain makes them (`CryptoIdGenerator`) and the seed uses `"1"` and `"2"`. The attachment column holds the value encrypted by the server (`aes256gcm$v1$...`), never the file.
+Ids are text, because the domain creates them and the seed uses `"1"` and `"2"`. The attachment column holds the encrypted value, never the file.
 
-### Atomic functions
-
-- **`use_password_reset_token(id)`** claims a token in one `update ... where used_at is null`. Of two calls at the same time, only one gets `true`. `ResetPassword` claims the token before it changes the password, so the call that loses changes nothing.
-- **`consume_rate_limit(key, max, window)`** locks the row of the key, counts the attempt and answers whether it may go on and the time left. Parallel attempts are counted one by one.
-- **`release_rate_limit(key)`** gives the last attempt back.
-
-With Supabase the rate limits are shared by every app and instance: the login of the shell and the password change of the dashboard count in the same namespace (`login-email`), so 5 guesses spread over both still block. With json-server each process counts in memory.
+Three functions give the guarantees that json-server lacks. `use_password_reset_token(id)` claims a token in one `update ... where used_at is null`, so of two simultaneous calls only one succeeds. `consume_rate_limit(key, max, window)` locks the row of the key and counts the attempt. `release_rate_limit(key)` gives the last attempt back.
 
 ### Why RLS with no policy
 
-Supabase exposes every table of `public` through a REST API that anyone with the publishable key can call. Our access control is not in the database: it is the session of Auth.js, checked by the bff.
-
-- **RLS on with no policy** denies every row to the roles that RLS applies to.
-- **The revokes** remove the default grants of `anon` and `authenticated`, so the publishable key gets `401 permission denied` on every table and function.
-- **The secret key** uses `service_role`, which bypasses RLS. It lives on the server only, never in a `NEXT_PUBLIC_` variable.
-
-Proof: with the publishable key against the real project, the four tables and the function answer `401` with code `42501`.
+Supabase exposes every table of `public` through a REST API that anyone with the publishable key can call. Access control here is the Auth.js session, checked by the bff, not the database. So RLS is on with no policy, which denies every row, and the default grants of `anon` and `authenticated` are revoked. The secret key uses `service_role`, which bypasses RLS, and lives only on the server. A request with the publishable key gets `401` with code `42501` on every table and function.
 
 ### Vercel
 
-- **Rewrites from variables.** `next.config.ts` of the shell builds the rewrites from `DASHBOARD_URL` and `TRANSACTIONS_URL` (`packages/utils/src/zoneRewrites.ts`), the same code in development, Docker and Vercel. On Vercel a missing host stops the build instead of falling back to a fixed one. They are read at build time, so a change of URL needs a new deploy. `vercel.json` has no rewrites or hosts.
-- **One region.** The three `vercel.json` set `regions: ["iad1"]`, the region of the database (us-east-1), so every query stays in Washington, D.C.
-- **The link of the reset email** uses `SHELL_URL`, the public address of the shell, never the Host of the request.
-- **HSTS** goes out when `VERCEL_ENV` is `production`, on production deployments only.
-- **`/sobre`** reads its numbers through `createDataAdapters().statistics`, so it works with both backends. It only counts: no row and no user leaves the database.
+`next.config.ts` of the shell builds its rewrites from `DASHBOARD_URL` and `TRANSACTIONS_URL` (`packages/utils/src/zoneRewrites.ts`), the same code as in development and Docker. On Vercel a missing host stops the build. The hosts are read at build time, so a new URL needs a new deploy.
+
+The three `vercel.json` set `regions: ["iad1"]`, the region of the database, so every query stays in Washington, D.C. HSTS goes out only on production deployments. The reset link uses `SHELL_URL`. `/sobre` reads its counts through `createDataAdapters().statistics`, so it works with both databases.
 
 ### No email in production
 
-There is no email service in production. Password recovery is the only flow that sends email, and it is shown locally, with Mailpit. With no `SMTP_HOST`, the shell uses `DisabledEmailSender`:
-
-- "Esqueci a senha" answers the same generic message, for a known email and an unknown one, with no error.
-- The reset runs as with email: the token is made and stored, so the time and the database behave alike.
-- The server log gets one line, with no address, no link and no content: `Email sending is disabled (SMTP_HOST is not set): a message was not sent`.
-
-Locally, Docker sets `SMTP_HOST=mailpit`.
+Production has no email service. Password recovery is shown locally with Mailpit. With no `SMTP_HOST`, the shell uses `DisabledEmailSender`: "Esqueci a senha" answers the usual message, the token is still created, and the server logs one line with no address: `Email sending is disabled (SMTP_HOST is not set): a message was not sent`.
 
 ## Configuration
 
 ### Variables of the database
 
-| Variable | Where | Note |
-|---|---|---|
-| `DATA_BACKEND` | shell, dashboard, transactions | `json-server` (default) or `supabase`. Any other value stops the app with a clear message |
-| `SUPABASE_URL` | the same | Required with `supabase` |
-| `SUPABASE_SECRET_KEY` | the same | Required with `supabase`. Server only |
-| `SUPABASE_PUBLISHABLE_KEY` | `.env` only | Not used by the apps. Only for the proof that it reads nothing |
-| `JSON_SERVER_URL` | the same | Required with `json-server` |
+| Variable | Note |
+|---|---|
+| `DATA_BACKEND` | `json-server` (default) or `supabase`. Any other value stops the app |
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | Required with `supabase`. The secret key is server only, never `NEXT_PUBLIC_` |
+| `JSON_SERVER_URL` | Required with `json-server` |
+| `SUPABASE_PUBLISHABLE_KEY` | Only in `.env`, to prove that it reads nothing. The apps do not use it |
 
-A missing variable says which one and why, for example `Missing required environment variable: SUPABASE_URL (DATA_BACKEND is supabase)`. The build never needs them: the adapters are made on the first request.
+A missing variable says which one and why, for example `Missing required environment variable: SUPABASE_URL (DATA_BACKEND is supabase)`. The build never needs them.
 
 ### Variables per Vercel project
 
-Set for the **Production** environment. "Same" means the same value in every project that uses it.
+Set them for the Production environment.
 
 **shell**
 
-| Variable | Value comes from | Secret |
+| Variable | Value | Secret |
 |---|---|---|
 | `DATA_BACKEND` | `supabase` | no |
-| `SUPABASE_URL` | Supabase → Project Settings → Data API → API URL, without the trailing `/rest/v1/` (`https://<project>.supabase.co`) | no |
-| `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys → the secret key made for production. Same in the 3 projects | **yes** |
-| `NEXTAUTH_SECRET` | New, generated (below). Same in the 3 projects | **yes** |
-| `NEXTAUTH_URL` | `https://bytebank-shell.vercel.app` | no |
-| `SHELL_URL` | `https://bytebank-shell.vercel.app` | no |
-| `ALLOWED_ORIGINS` | `https://bytebank-shell.vercel.app` | no |
-| `DASHBOARD_URL` | `https://bytebank-dashboard.vercel.app` (read at build time) | no |
-| `TRANSACTIONS_URL` | `https://bytebank-transactions-virid.vercel.app` (read at build time) | no |
+| `SUPABASE_URL` | Supabase → Project Settings → Data API → API URL, without `/rest/v1/` | no |
+| `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys, the key created for production. Same in the 3 projects | yes |
+| `NEXTAUTH_SECRET` | Generated (below). Same in the 3 projects | yes |
+| `NEXTAUTH_URL`, `SHELL_URL`, `ALLOWED_ORIGINS` | `https://bytebank-shell.vercel.app` | no |
+| `DASHBOARD_URL` | `https://bytebank-dashboard.vercel.app` (build time) | no |
+| `TRANSACTIONS_URL` | `https://bytebank-transactions-virid.vercel.app` (build time) | no |
 
 **dashboard**
 
-| Variable | Value comes from | Secret |
+| Variable | Value | Secret |
 |---|---|---|
-| `DATA_BACKEND` | `supabase` | no |
-| `SUPABASE_URL` | the same as the shell | no |
-| `SUPABASE_SECRET_KEY` | the same as the shell | **yes** |
-| `NEXTAUTH_SECRET` | the same as the shell | **yes** |
-| `ATTACHMENT_ENCRYPTION_KEY` | New, generated (below). Same in dashboard and transactions | **yes** |
-| `NEXTAUTH_URL` | `https://bytebank-dashboard.vercel.app` (its own address, as in Docker) | no |
-| `SHELL_URL` | `https://bytebank-shell.vercel.app` (where the proxy of the zone sends a visitor with no session) | no |
-| `ALLOWED_ORIGINS` | `https://bytebank-shell.vercel.app` (the browser calls the zone through the shell) | no |
+| `DATA_BACKEND`, `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `NEXTAUTH_SECRET` | The same as the shell | as above |
+| `ATTACHMENT_ENCRYPTION_KEY` | Generated (below). Same in dashboard and transactions | yes |
+| `NEXTAUTH_URL` | `https://bytebank-dashboard.vercel.app` | no |
+| `SHELL_URL`, `ALLOWED_ORIGINS` | `https://bytebank-shell.vercel.app` | no |
 
-**transactions:** the same as the dashboard, except `NEXTAUTH_URL`, which is `https://bytebank-transactions-virid.vercel.app`.
+**transactions** uses the same as the dashboard, with `NEXTAUTH_URL` set to `https://bytebank-transactions-virid.vercel.app`.
 
-No SMTP variable in any project. `SESSION_MAX_AGE_SECONDS`, `IDLE_TIMEOUT_SECONDS` and `IDLE_WARNING_SECONDS` are only for demonstrations and stay unset.
-
-Earlier deploys used a json-server on Railway. These variables may still be in the panels and must go:
-
-| Variable | Why |
-|---|---|
-| `NEXT_PUBLIC_API_URL` | The browser called json-server directly. Now it only calls the bff, and a `NEXT_PUBLIC_` variable is public |
-| `NEXTAUTH_API_URL` | Read by an old login. Nothing reads it now |
-| `JSON_SERVER_URL` | Only with `DATA_BACKEND=json-server`, which production does not use |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Any of them would turn the email on, with no server to send it |
-| `DOCKER` | Only for the Docker image |
+No project sets an SMTP variable, and the demonstration variables (`SESSION_MAX_AGE_SECONDS`, `IDLE_TIMEOUT_SECONDS`, `IDLE_WARNING_SECONDS`) stay unset. Earlier deploys used a json-server on Railway, so delete these if they are still in a panel: `NEXT_PUBLIC_API_URL` (public, and nothing reads it), `NEXTAUTH_API_URL`, `JSON_SERVER_URL`, `SMTP_*`, `MAIL_FROM` (any of them would turn the email on) and `DOCKER`.
 
 ### Secrets of production
 
-The secrets of production are new, different from the local ones. `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY` are 32 random bytes in base64, each generated on its own; the apps refuse anything else at start ([security.md](security.md#secrets)):
+The production secrets are new, different from the local ones. Generate `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY` separately; the apps refuse anything that is not 32 random bytes in base64 ([security.md](security.md#secrets)):
 
 ```sh
 node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 
-`SUPABASE_SECRET_KEY`: in Supabase → Project Settings → API Keys, create a new secret key with a name such as `vercel-production`. It can be revoked alone, without touching the key of local development.
+For `SUPABASE_SECRET_KEY`, create a key named for example `vercel-production` in Supabase → Project Settings → API Keys, so it can be revoked without touching the local one. A new `ATTACHMENT_ENCRYPTION_KEY` cannot open attachments encrypted with another key, so local and production attachments show "Anexo indisponível" to each other.
 
-A new `ATTACHMENT_ENCRYPTION_KEY` cannot read an attachment encrypted with the local key: a local run against Supabase shows "Anexo indisponível" for attachments made in production, and the other way around.
-
-### Build settings per project
+### Build settings
 
 | Setting | shell | dashboard | transactions |
 |---|---|---|---|
 | Framework Preset | Next.js | Next.js | Next.js |
 | Root Directory | `apps/shell` | `apps/dashboard` | `apps/transactions` |
 | Include files outside the Root Directory | on | on | on |
-| Install Command | from `vercel.json`: `cd ../.. && npm ci` | the same | the same |
-| Build Command | from `vercel.json`: `cd ../.. && npx turbo build --filter=@bytebank/shell` | `... --filter=@bytebank/dashboard` | `... --filter=@bytebank/transactions` |
-| Output Directory | default | default | default |
+| Install and Build Command | from `vercel.json` | from `vercel.json` | from `vercel.json` |
 | Node.js Version | 22.x | 22.x | 22.x |
-| Function Region | `iad1`, from `vercel.json` | the same | the same |
 
-The commands live in `vercel.json`, so the overrides of the panel stay off.
+`vercel.json` runs `cd ../.. && npm ci` and `cd ../.. && npx turbo build --filter=@bytebank/<app>`, so the overrides of the panel stay off.
 
 ### Order of the steps
 
-1. **Supabase.** Run `supabase/migrations/0001_init.sql` and then `0002_sessions_valid_after.sql` once each in the SQL Editor, before deploying the code that reads the new column. Create the secret key of production. Leave only the demonstration in the database, from a local machine with the key of `.env`: `npm run db:reset:supabase`.
-2. **Generate** `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY`, and keep them in a password manager.
-3. **dashboard and transactions:** build settings as in the table, delete the old variables, add the new ones, redeploy with the build cache off.
-4. **shell**, last: it proxies the zones, and its build reads their URLs.
-5. **Test** the production deployment, as below.
+1. Run `0001_init.sql` and then `0002_sessions_valid_after.sql` in the SQL Editor of Supabase, before deploying code that reads the new column. Create the production secret key, and leave only the demonstration data with `npm run db:reset:supabase`.
+2. Generate `NEXTAUTH_SECRET` and `ATTACHMENT_ENCRYPTION_KEY`.
+3. Configure dashboard and transactions, delete the old variables, add the new ones, and redeploy with the build cache off.
+4. Configure the shell last, since its build reads the URLs of the zones.
+5. Test the production deployment, as below.
 
 ## Running locally against Supabase
 
-1. Run the two migrations once, in order, in the SQL Editor of the project.
+1. Run the two migrations in order in the SQL Editor of the project.
 2. Put `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in the `.env` of the root.
-3. Seed the demonstration: `npm run db:seed:supabase`. It can run twice: it adds what is missing and changes nothing else.
+3. Seed the demonstration with `npm run db:seed:supabase`. It only adds what is missing.
 4. Start with the variable, in PowerShell:
 
    ```powershell
    $env:DATA_BACKEND='supabase'; docker compose up -d --build; Remove-Item Env:DATA_BACKEND
    ```
 
-5. Back to the default: `docker compose up -d`, then `npm run db:reset` and `docker compose restart json-server`.
+5. Go back with `docker compose up -d`, then `npm run db:reset` and `docker compose restart json-server`.
 
-| Script | What it does |
-|---|---|
-| `npm run db:seed:supabase` | Creates the demonstration users and transactions that are missing |
-| `npm run db:clean:supabase` | Deletes the demonstration users and all that belongs to them |
-| `npm run db:reset:supabase` | Empties every table, then seeds: only the demonstration is left |
+`npm run db:clean:supabase` deletes the demonstration users and everything that belongs to them. `npm run db:reset:supabase` empties every table and seeds the demonstration again.
 
 ### HTTPS inspected by an antivirus
 
-On a machine whose antivirus inspects HTTPS (Avast does), the containers refuse the certificate of Supabase with `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. The antivirus signs again with its own root, which Windows trusts and Linux does not. Production has no such proxy.
-
-To use Docker anyway, export that root from the Windows certificate store to a PEM file, and pass it to the three app containers in an override that stays out of git:
+An antivirus that inspects HTTPS, such as Avast, signs connections with its own root certificate. Windows trusts it and the Linux containers do not, so they refuse Supabase with `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. Export that root from the Windows certificate store to a PEM file, and pass it to the three app containers in an override file kept out of git:
 
 ```yaml
 services:
@@ -201,44 +153,38 @@ services:
   # the same for dashboard and transactions
 ```
 
-Start with `docker compose -f docker-compose.yml -f <override>.yml up -d`.
+Then start with `docker compose -f docker-compose.yml -f <override>.yml up -d`.
 
 ## How to validate
 
 ### Contract tests
 
-`packages/infrastructure/src/contracts` has one contract suite per port: users, transactions, reset tokens and rate limits. The same cases run against both backends:
+`packages/infrastructure/src/contracts` holds one contract suite per port: users, the end of the sessions, transactions, reset tokens and rate limits. The same cases run against json-server in `npm test` and against Supabase on demand:
 
-- **json-server**, started for the test, with the memory limiter, in `npm test` and in the CI.
-- **Supabase** with the Postgres limiter (and its HMAC keys), only on demand:
+```powershell
+$env:SUPABASE_CONTRACT_TESTS='1'; npx vitest run supabase.contract; Remove-Item Env:SUPABASE_CONTRACT_TESTS
+```
 
-  ```powershell
-  $env:SUPABASE_CONTRACT_TESTS='1'; npx vitest run supabase.contract; Remove-Item Env:SUPABASE_CONTRACT_TESTS
-  ```
-
-  Everything the run creates has a prefix of its own and is deleted at the end.
-
-Three cases are skipped for json-server because it cannot hold them: a second user with the same email, two registrations at the same time, and two claims of one reset link at the same time. For Supabase every case runs. The counts are in [testing.md](testing.md).
+Everything a run creates has its own prefix and is deleted at the end. Three cases are skipped for json-server because it cannot hold them: a duplicate email, two registrations at the same time, and two claims of one reset link at the same time. Against Supabase every case runs ([testing.md](testing.md)).
 
 ### Deploy test
 
 On https://bytebank-shell.vercel.app, in a private window:
 
-1. Log in with the demonstration user, open the dashboard and the extract (the zones through the shell), and check the balance and the charts.
-2. Create, edit and delete a transaction. Attach an image and open it.
+1. Log in with the demonstration user and open the dashboard and the extract.
+2. Create, edit and delete a transaction, and open an attached image.
 3. Change the name in "Minha conta" and check the header.
-4. "Esqueci a senha": the generic message appears. In Vercel → shell → Logs, the line about the disabled email shows up, with no address.
-5. Open `/sobre`: the numbers come from Supabase.
-6. Check the headers: `curl -sI https://bytebank-shell.vercel.app/ | grep -i strict-transport-security` shows HSTS.
-7. Check the region: in Vercel → Logs, the functions run in `iad1`.
-8. Log out, and open `/dashboard`: the login comes back.
-9. Run the regression test of the session race against production ([testing.md](testing.md#browser-regression-the-session-race)). It changes the name of the demonstration user and puts it back; finish with `npm run db:reset:supabase`.
+4. Use "Esqueci a senha": the usual message appears, and the Vercel logs of the shell show the line about the disabled email.
+5. Open `/sobre`, whose counts come from Supabase.
+6. Check HSTS with `curl -sI https://bytebank-shell.vercel.app/ | grep -i strict-transport-security`.
+7. Check in the Vercel logs that the functions run in `iad1`.
+8. Leave with "Sair" and open `/dashboard`: the login comes back.
+9. Run `npm run test:session-race` against production ([testing.md](testing.md#browser-regression-the-session-race)), then `npm run db:reset:supabase`.
 
-A Preview deployment uses the variables of the Preview environment, which this checklist does not set: test on Production.
+A Preview deployment uses Preview variables, which this checklist does not set, so test on Production.
 
 ## Known limits
 
-- **Migrations by hand.** The SQL is versioned, but each file runs in the SQL Editor, in order; nothing records which ones ran. More migrations would call for the Supabase CLI or a runner.
-- **Expired tokens and old rate-limit rows are never deleted** ([security.md](security.md#next-phase)).
-- **Two backends to keep.** The contract suites keep them aligned; the guarantees that only Postgres gives are listed in [security.md](security.md#known-limits).
-- **Other sessions after a password change** stay valid until the JWT expires ([security.md](security.md#known-limits)).
+- The migrations run by hand in the SQL Editor, and nothing records which ones ran.
+- Expired tokens and old rate-limit rows are never deleted ([security.md](security.md#next-phase)).
+- The guarantees that only Postgres gives are listed in [security.md](security.md#known-limits).

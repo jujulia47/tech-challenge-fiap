@@ -1,6 +1,6 @@
 # State management
 
-Requirements: state management and cache. Both zones keep server data in RTK Query, built by the same factory: `createTransactionsApi(basePath)`, in `packages/store` (`@bytebank/store`).
+Both zones keep server data in RTK Query, built by one factory: `createTransactionsApi(basePath)` in `@bytebank/store` (`packages/store`).
 
 | Zone | API | Hooks used |
 |---|---|---|
@@ -9,63 +9,37 @@ Requirements: state management and cache. Both zones keep server data in RTK Que
 
 ## Why RTK Query
 
-- **The server computes everything.** The balance, the statement and the charts come from the BFF, so the client has nothing to calculate and no copy to keep in sync.
-- **Refreshing after a write is one declaration.** An invalidated tag reads the data again, in every screen that uses it, with no manual dispatch.
-- **It removes hand-written code.** The slice, the Context, the loaders in the layouts and the `useTransactions` hooks are gone, along with their loading and error flags.
-- **It comes with `@reduxjs/toolkit`,** which was already installed.
+The balance, the statement and the charts are computed by the bff, so the client has nothing to calculate and no copy to keep in sync. Refreshing after a write is one declaration: an invalidated tag reads the data again in every screen that shows it. RTK Query replaced a Redux slice, a React Context, the loaders of the layouts and the `useTransactions` hooks, with their loading and error flags. It also came with `@reduxjs/toolkit`, which the project already had.
 
 ## Where the code lives
 
-`@bytebank/store` holds `createTransactionsApi`, `createTransactionsStore`, `createTransactionsProvider` and the RxJS search of the transactions zone. It is its own package because it depends on Redux and React, and `@bytebank/bff` must not: the bff also runs on the server. The dependency points one way: `store → bff/client`.
+`@bytebank/store` holds `createTransactionsApi`, `createTransactionsStore`, `createTransactionsProvider` and the RxJS search of the extract. It is its own package because it depends on Redux and React, which the bff must not, since the bff runs on the server. The dependency points one way: `store → bff/client`. Each zone only has `store/transactionsApi.ts`, which calls the factories with its basePath and picks its hooks.
 
-Each zone only has `store/transactionsApi.ts`, which calls the factories with its `basePath` and picks the hooks it uses.
+`createApi` uses `fakeBaseQuery`, and each endpoint calls `createTransactionsClient(basePath)` from `@bytebank/bff/client`. There is only one HTTP client, so the 401 redirect and the error codes behave the same in both zones. Errors become `{ code }`, because Redux keeps plain objects.
 
-## One HTTP client
+## Tags and invalidation
 
-`createApi` uses `fakeBaseQuery`, and each endpoint calls `createTransactionsClient(basePath)` from `@bytebank/bff/client` in its `queryFn`. There is no second HTTP client, so the 401 redirect and the error codes are the same in both zones. Errors are reduced to `{ code }`, because Redux keeps plain objects only.
-
-## Tags
-
-| Tag | Provided by | Used on the screen by |
+| Tag | Provided by | Shown by |
 |---|---|---|
 | `Transactions` | `getTransactions` | The transactions page |
 | `Balance` | `getBalance` | `DashboardWelcome` |
 | `Statement` | `getStatement` | The dashboard page, `CardStatement` |
 | `ChartData` | `getChartData` | `CardCharts` |
 
-## What each mutation invalidates
+`createTransaction`, `updateTransaction` and `deleteTransaction` each invalidate all four tags, since any write can change any result. Only queries with a mounted screen are read again. Invalidation also happens after a failed write, because a 502 can mean a timeout after which the write was applied.
 
-| Mutation | `Transactions` | `Balance` | `Statement` | `ChartData` |
-|---|---|---|---|---|
-| `createTransaction` | ✓ | ✓ | ✓ | ✓ |
-| `updateTransaction` | ✓ | ✓ | ✓ | ✓ |
-| `deleteTransaction` | ✓ | ✓ | ✓ | ✓ |
-
-All three invalidate everything, because every one of them can change every result. Only queries with a mounted screen are read again.
-
-**Invalidation also happens after a failed mutation,** which is what `invalidatesTags` does when it is an array. A 502 can mean a timeout, and then the write may have been applied, so the screen must not keep showing the old state.
-
-## Order
-
-The client never sorts or inserts. After a create, the refetch brings the list in the order of the core. A backdated transaction was confirmed in a browser to land in its place.
+The client never sorts or inserts. After a write the refetch brings the list in the order of the core, so a backdated transaction lands in its place.
 
 ## What stays local
 
-Search, filters and pagination of the transactions page are local state of the screen, over the list that the query returns, run by an RxJS pipeline ([reactive-programming.md](reactive-programming.md)). A refetch keeps them: editing with a filter on keeps the filter.
+Search, filters and pagination of the extract are local state over the list the query returns, run by an RxJS pipeline ([reactive-programming.md](reactive-programming.md)). A refetch keeps them, so editing with a filter on keeps the filter.
 
-## The zones do not share a store
+The zones share no store. Each one is a separate app, and moving between them loads the page again, so each starts with an empty cache and a change made in one zone always shows in the other.
 
-Each zone is a separate Next.js app, and moving between them is a full page load, so each one starts with an empty cache and reads from the server. A change in one zone is therefore always visible when arriving at the other.
-
-## Notes
-
-- `data` keeps the previous result while new arguments load, so the charts do not blink when the period or the type changes.
-- `type` narrows the bars only. The pie stays complete, because it is what the type is chosen from.
-- The store is created once per module and queries only run in the browser, so nothing from one user stays on the server.
-- A 401 redirects once per failed request. After a write, the refetches also answer 401, so a navigation to `/` can replace the previous one. The user still ends on `/`.
+While new arguments load, `data` keeps the previous result, so the charts do not blink when the period or the type changes. The store is created once per module and queries run only in the browser, so nothing from one user stays on the server.
 
 ## How to validate
 
-- `npm test` runs the factory with a simulated `fetch`: every endpoint, the tags and what each mutation invalidates ([testing.md](testing.md)).
-- In the browser, DevTools → Network: create a transaction on the dashboard, and the balance, the statement and the charts are read again once each, with no reload. Choosing a chart period already hovered sends no request.
+- `npm test` runs the factory with a simulated `fetch`: every endpoint, the tags and the invalidation ([testing.md](testing.md)).
+- DevTools → Network: create a transaction on the dashboard, and the balance, the statement and the charts are read again once each, with no reload. A chart period already hovered sends no request when clicked.
 - The Redux DevTools extension shows the `transactionsApi` slice with its queries and tags.

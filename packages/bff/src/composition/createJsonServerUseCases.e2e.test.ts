@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { copyFileSync, mkdtempSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { createServer, type AddressInfo, type Socket } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -99,7 +99,13 @@ beforeAll(async () => {
 
   const port = await findFreePort()
   baseUrl = `http://${HOST}:${port}`
+  // Without its file watcher (NODE_ENV=production): the watcher reloads the file after a write and,
+  // under load, the reload lands on top of the next PATCH and undoes it (docs/fase4/testing.md,
+  // "Known instabilities"). In production mode json-server serves ./public, so the cwd has one.
+  mkdirSync(join(directory, 'public'))
   server = spawn(process.execPath, [JSON_SERVER_BIN, database, '--host', HOST, '--port', String(port)], {
+    cwd: directory,
+    env: { ...process.env, NODE_ENV: 'production' },
     stdio: 'ignore',
   })
   await waitUntilReady(`${baseUrl}/transactions`)
